@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import MapView, { Marker, Polygon, Polyline } from 'react-native-maps';
 import { DISTRICTS } from '../data/districts';
 import { ZONES } from '../data/zones';
 import { MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
 
 // Natív (iOS / Android) térkép. A webes változat: ParkingMap.web.tsx (Leaflet).
-export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress }: ParkingMapProps) {
+export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress, me, onLocate }: ParkingMapProps) {
   const ref = useRef<MapView>(null);
 
   useEffect(() => {
@@ -17,7 +17,13 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
     );
   }, [JSON.stringify(focus)]);
 
+  const locateMe = () => {
+    if (me) ref.current?.animateToRegion({ latitude: me.lat, longitude: me.lng, latitudeDelta: 0.006, longitudeDelta: 0.006 });
+    onLocate?.();
+  };
+
   return (
+    <View style={{ flex: 1 }}>
     <MapView
       ref={ref}
       style={{ flex: 1 }}
@@ -26,6 +32,8 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
         if ((e.nativeEvent as { action?: string }).action === 'marker-press') return;
         onMapPress?.({ lat: e.nativeEvent.coordinate.latitude, lng: e.nativeEvent.coordinate.longitude });
       }}
+      showsUserLocation={!!me}
+      showsMyLocationButton={false}
       initialRegion={{ latitude: 47.4979, longitude: 19.0402, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
     >
       {DISTRICTS.flatMap((d) =>
@@ -75,5 +83,15 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
         );
       })}
     </MapView>
+      {onLocate && (
+        <Pressable
+          onPress={locateMe}
+          accessibilityLabel="Saját helyzetem"
+          style={{ position: 'absolute', right: 12, top: 12, width: 44, height: 44, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 3 }}
+        >
+          <Text style={{ fontSize: 22, color: me ? '#2563EB' : '#0F172A' }}>◎</Text>
+        </Pressable>
+      )}
+    </View>
   );
 }

@@ -1,4 +1,5 @@
 import type { LatLng } from '../data/zones';
+import type { Fix } from '../logic/liveLocationTypes';
 
 export type MarkerKind = 'dest' | 'fastest' | 'cheapest' | 'garage' | 'here';
 
@@ -16,6 +17,10 @@ export type ParkingMapProps = {
   focus: LatLng[];
   /** Koppintás a térképre (\u201eParkolás itt\u201d) */
   onMapPress?: (pt: LatLng) => void;
+  /** Élő GPS helyzet (kék pont) */
+  me?: Fix | null;
+  /** A térkép „helyzetem” gombja: GPS indítása és ráközelítés */
+  onLocate?: () => void;
 };
 
 export const MARKER_COLORS: Record<MarkerKind, string> = {

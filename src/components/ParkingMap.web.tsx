@@ -6,7 +6,11 @@ import { DISTRICTS } from '../data/districts';
 import { DISTRICT_CENTERS } from '../logic/geo';
 import { MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
 
-export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress }: ParkingMapProps) {
+export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress, me, onLocate }: ParkingMapProps) {
+  const meRef = useRef(me);
+  meRef.current = me;
+  const wantCenter = useRef(false);
+  const meLayer = useRef<L.LayerGroup | null>(null);
   const pressRef = useRef(onMapPress);
   pressRef.current = onMapPress;
   const host = useRef<HTMLDivElement>(null);
@@ -17,13 +21,15 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
     const el = host.current;
     if (!el || map.current) return;
     const m = L.map(el, { zoomControl: false, attributionControl: true }).setView([47.4979, 19.0402], 14);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
+    // Részletes, színes alaptérkép (utcák, nevek, épületek, parkok, metró)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20,
+      subdomains: 'abcd',
       attribution: '© OpenStreetMap közreműködők, © CARTO',
     }).addTo(m);
     // Valódi kerülethatárok (OSM) és kerületszámok
     DISTRICTS.forEach((d) =>
-      d.rings.forEach((r) => L.polygon(r, { color: '#64748B', weight: 1, opacity: 0.6, fill: false, interactive: false }).addTo(m)),
+      d.rings.forEach((r) => L.polygon(r, { color: '#64748B', weight: 1, opacity: 0.35, dashArray: '4 4', fill: false, interactive: false }).addTo(m)),
     );
     DISTRICT_CENTERS.forEach((c) =>
       L.marker([c.lat, c.lng], {
@@ -40,11 +46,12 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
     [...ZONES].reverse().forEach((z) => {
       L.polygon(
         z.polygon.map((p) => [p.lat, p.lng] as [number, number]),
-        { color: z.color, weight: 1.5, fillColor: z.color, fillOpacity: 0.07, interactive: false },
+        { color: z.color, weight: 2, opacity: 0.8, fillColor: z.color, fillOpacity: 0.05, interactive: false },
       ).addTo(m);
     });
     m.on('click', (e: L.LeafletMouseEvent) => pressRef.current?.({ lat: e.latlng.lat, lng: e.latlng.lng }));
     layer.current = L.layerGroup().addTo(m);
+    meLayer.current = L.layerGroup().addTo(m);
     map.current = m;
     const timer = setTimeout(() => m.invalidateSize(), 50);
     return () => {
@@ -89,5 +96,44 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
       });
   }, [JSON.stringify(focus)]);
 
-  return <div ref={host} style={{ flex: 1, width: '100%', height: '100%', minHeight: 0, backgroundColor: '#EEF1F4' }} />;
+  // Kék pont pontossági körrel
+  useEffect(() => {
+    const m = map.current;
+    const g = meLayer.current;
+    if (!m || !g) return;
+    g.clearLayers();
+    if (!me) return;
+    L.circle([me.lat, me.lng], { radius: me.accuracy, color: '#2563EB', weight: 1, opacity: 0.4, fillColor: '#3B82F6', fillOpacity: 0.12, interactive: false }).addTo(g);
+    L.circleMarker([me.lat, me.lng], { radius: 8, color: '#fff', weight: 3, fillColor: '#2563EB', fillOpacity: 1, interactive: false }).addTo(g);
+    if (wantCenter.current) {
+      wantCenter.current = false;
+      m.setView([me.lat, me.lng], 17, { animate: true });
+    }
+  }, [me?.lat, me?.lng, me?.accuracy]);
+
+  const locateMe = () => {
+    const m = map.current;
+    if (meRef.current && m) m.setView([meRef.current.lat, meRef.current.lng], 17, { animate: true });
+    else wantCenter.current = true;
+    onLocate?.();
+  };
+
+  const btn: React.CSSProperties = {
+    width: 40, height: 40, borderRadius: 12, border: 'none', background: '#fff', color: '#0F172A',
+    font: '700 20px system-ui,sans-serif', boxShadow: '0 2px 8px rgba(15,23,42,.18)', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  };
+
+  return (
+    <div style={{ position: 'relative', flex: 1, width: '100%', height: '100%', minHeight: 0 }}>
+      <div ref={host} style={{ position: 'absolute', inset: 0, backgroundColor: '#EEF1F4' }} />
+      <div style={{ position: 'absolute', right: 12, top: 12, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <button aria-label="Nagyítás" style={btn} onClick={() => map.current?.zoomIn()}>+</button>
+        <button aria-label="Kicsinyítés" style={btn} onClick={() => map.current?.zoomOut()}>−</button>
+        {onLocate && (
+          <button aria-label="Saját helyzetem" style={{ ...btn, color: me ? '#2563EB' : '#0F172A' }} onClick={locateMe}>◎</button>
+        )}
+      </div>
+    </div>
+  );
 }

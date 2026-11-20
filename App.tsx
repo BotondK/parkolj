@@ -9,8 +9,9 @@ import { searchPlaces, type Place } from './src/data/places';
 import type { LatLng } from './src/data/zones';
 import { STRINGS, type Lang } from './src/i18n';
 import { geocode } from './src/logic/geocode';
-import { canLocate, locate } from './src/logic/locate';
-import { DISTRICT_CENTERS, districtAt } from './src/logic/geo';
+import { canLocate } from './src/logic/locate';
+import { DISTRICT_CENTERS, districtAt, zoneAt } from './src/logic/geo';
+import { useLiveLocation } from './src/logic/liveLocation';
 import { alertUser, requestNotify } from './src/logic/notify';
 import { formatClock, formatDuration, formatFt, isCharging, paidEnd } from './src/logic/pricing';
 import { hereOption, recommend, type ParkingOption } from './src/logic/recommend';
@@ -172,12 +173,33 @@ function Main() {
     setHere(pt);
   }, []);
 
-  const useMyLocation = async () => {
-    setLocMsg(t.locating);
-    const pt = await locate();
-    if (pt) pickHere(pt);
-    else setLocMsg(t.locationFailed);
+  // --- Élő GPS ---
+  const live = useLiveLocation();
+  const [hereFromGps, setHereFromGps] = useState(false);
+  const [firstFix, setFirstFix] = useState<LatLng | null>(null);
+  useEffect(() => {
+    if (live.fix && !firstFix) setFirstFix({ lat: live.fix.lat, lng: live.fix.lng });
+    if (live.fix && hereFromGps) {
+      setHereFromGps(false);
+      pickHere(live.fix);
+    }
+  }, [live.fix, hereFromGps, firstFix, pickHere]);
+  useEffect(() => {
+    if (live.status === 'asking') setLocMsg(t.locating);
+    else if (live.status === 'denied') setLocMsg(t.locationDenied);
+    else if (live.status === 'unavailable' && hereFromGps) setLocMsg(t.locationFailed);
+    else if (live.status === 'on') setLocMsg(live.fix ? null : t.locating);
+  }, [live.status, live.fix, hereFromGps, t]);
+
+  const useMyLocation = () => {
+    if (live.fix) pickHere(live.fix);
+    else {
+      setHereFromGps(true);
+      live.start();
+    }
   };
+  const meZone = live.fix ? zoneAt(live.fix) : null;
+  const meDistrict = live.fix ? districtAt(live.fix) : null;
 
   // --- Aktív parkolás óra ---
   const speedRef = useRef(demoSpeed);
@@ -324,10 +346,11 @@ function Main() {
   const focus = useMemo(() => {
     if ((step === 'active' || step === 'summary') && session) return [session.option.coord];
     if (hereOpt) return [hereOpt.coord];
+    if (!dest && firstFix) return [firstFix]; // első GPS-helyzetre egyszer rááll
     if (!dest) return [{ lat: 47.475, lng: 19.0 }, { lat: 47.535, lng: 19.11 }]; // belső kerületek
     if (selected && step !== 'options') return [dest, selected.coord];
     return [dest, ...options.map((o) => o.coord)];
-  }, [dest, options, selected, step, hereOpt, session]);
+  }, [dest, options, selected, step, hereOpt, session, firstFix]);
 
   const mapTappable = tab === 'park' && (step === 'search' || (step === 'pay' && !!hereOpt));
 
@@ -339,6 +362,8 @@ function Main() {
         onSelect={step === 'options' ? setSelectedId : undefined}
         onMapPress={mapTappable ? pickHere : undefined}
         focus={focus}
+        me={live.fix}
+        onLocate={live.status === 'unavailable' ? undefined : live.start}
       />
     </View>
   );
@@ -349,10 +374,23 @@ function Main() {
     <>
       {step === 'search' && !hereOpt && (
         <>
+          {live.fix && (
+            <View style={[styles.card, { marginBottom: 14, gap: 4, borderColor: '#BFDBFE' }]}>
+              <Text style={{ color: '#2563EB', fontWeight: '700', fontSize: 13 }}>● {t.youAreHere}</Text>
+              <Text style={{ color: C.text, fontWeight: '700', fontSize: 16 }}>
+                {meDistrict ?? 'Budapest'}
+                {meZone ? ` · ${meZone.id} ${t.zone} · ${meZone.pricePerHour} Ft${t.perHour}` : ` · ${t.outsideZones}`}
+              </Text>
+              <Text style={{ color: C.sub, fontSize: 12 }}>
+                ±{Math.round(live.fix.accuracy)} m{meZone && !isCharging(meZone) ? ` · ${t.free}` : ''}
+              </Text>
+              {meZone && <PrimaryButton text={t.startHere} onPress={useMyLocation} />}
+            </View>
+          )}
           <SearchStep t={t} query={query} setQuery={setQuery} results={results} onPick={pickDest} lang={lang} />
           <View style={[styles.card, { marginTop: 14, gap: 10 }]}>
             <Text style={{ color: C.sub, fontSize: 13 }}>{canLocate() ? t.orHere : t.tapMap}</Text>
-            {canLocate() && (
+            {canLocate() && !live.fix && (
               <Pressable style={styles.navBtn} onPress={useMyLocation}>
                 <Text style={styles.navBtnText}>◎ {t.useLocation}</Text>
                 <Text style={{ color: C.sub }}>›</Text>

@@ -24,6 +24,10 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 16. Hivatalos BKK szabályok: díjfizetés csak munkanapon (A 8–22, B 8–20, C 8–18, D 8–18), ünnepnapok, pótdíjak, a 68 valódi 4 jegyű zónakód az SMS-es fizetéshez
 17. Valódi címkeresés (Photon / OpenStreetMap), a helyi lista tartalékként
 18. Valódi kerülethatárok a térképen (OSM, ODbL); az A zóna az V. kerület valódi határa, a B zóna a pesti kerülethatárokra vágva; kerületkeresés
+19. Részletes, színes alaptérkép nagyító és helymeghatározó gombokkal
+20. Élő GPS: kék pont pontossági körrel, engedély után magától indul, „Parkolás itt” a GPS-helyzetből
+
+A terven felüli kérések naplója: [docs/TERVEN_FELUL.md](docs/TERVEN_FELUL.md)
 
 ## Futtatás
 ```bash
