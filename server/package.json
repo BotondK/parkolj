@@ -1,7 +1,7 @@
 {
   "name": "parkolj-server",
   "version": "1.0.0",
-  "description": "Parkolj API (alfa v\u00e1z)",
+  "description": "Parkolj API (alfa váz)",
   "directories": {
     "test": "test"
   },
@@ -12,10 +12,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "fastify": "^5.2.1"
+    "@fastify/cors": "^10.0.2",
+    "fastify": "^5.2.1",
+    "pg": "^8.13.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
+    "@types/pg": "^8.11.10",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   },

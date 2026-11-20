@@ -29,6 +29,9 @@ jobs:
         env:
           TZ: Europe/Budapest
       - run: npx expo export -p web
+        env:
+          # Repo → Settings → Secrets and variables → Actions → Variables → API_URL (üresen: nincs szerverszinkron)
+          EXPO_PUBLIC_API_URL: ${{ vars.API_URL }}
       # SPA: ismeretlen útvonalon is az app töltődjön be
       - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3

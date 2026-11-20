@@ -11,8 +11,15 @@ a parkolások szerveroldali tárolása (PostgreSQL + PostGIS), a valódi zónaha
 cd server
 npm install
 npm run dev     # http://localhost:3000
-npm test        # 8 API teszt
+npm test        # 8 API teszt + PostgreSQL teszt, ha van TEST_DATABASE_URL
 ```
+
+Környezeti változók:
+- `DATABASE_URL`: PostgreSQL cím (pl. Neon). Ha nincs, memóriában tárol (újraindításkor elvész). A tábla magától létrejön.
+- `CORS_ORIGINS`: vesszővel elválasztott extra engedélyezett origin (alapból github.io és a helyi Expo portok).
+- `PORT`: alapból 3000.
+
+Ingyenes hosztolás (Neon + Render): [HOSZTOLAS.md](HOSZTOLAS.md).
 
 ## Végpontok
 

@@ -12,6 +12,8 @@ export type Session = {
   elapsedSec: number;
   warnedSoon: boolean;
   warnedExpired: boolean;
+  /** Szerveroldali azonosító, ha be van állítva az API (EXPO_PUBLIC_API_URL) */
+  remoteId?: string;
 };
 
 export type HistoryItem = {

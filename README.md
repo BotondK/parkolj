@@ -44,6 +44,8 @@ npx expo start --web  # böngészőben
 npm test              # díj-, zóna- és ajánló logika tesztjei
 ```
 
+Szerverszinkron (opcionális): `EXPO_PUBLIC_API_URL=https://... npx expo start`. Szerver és adatbázis ingyenesen: [docs/HOSZTOLAS.md](docs/HOSZTOLAS.md).
+
 ## Fontos
 - `src/data/zones.ts`: díjak, díjfizetési idők, pótdíjak a BKK listái szerint (https://bkk.hu/downloads/43733/, https://bkk.hu/downloads/43739/). A zónahatárok (polygon) még **közelítők**, hivatalos határfájlt (GeoJSON/KML) nem találtunk nyilvánosan.
 - `src/data/zoneCodes.ts`: zónakódok kerülettel, ünnepnapok 2026–2027 (áthelyezett munkanapok még nincsenek benne).

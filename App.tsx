@@ -31,6 +31,7 @@ import {
   titleOf,
 } from './src/screens/steps';
 import type { Car, HistoryItem, Session } from './src/types';
+import { remoteExtend, remoteStart, remoteStop } from './src/logic/api';
 
 type Step = 'search' | 'options' | 'navigate' | 'pay' | 'active' | 'summary';
 type Tab = 'park' | 'history' | 'info';
@@ -270,6 +271,12 @@ function Main() {
       warnedSoon: false,
       warnedExpired: false,
     });
+    if (selected.zone && selected.kind !== 'garage') {
+      const startedAt = Date.now();
+      remoteStart({ coord: selected.coord, plate: car.plate, country: car.country, minutes: duration }).then((id) => {
+        if (id) setSession((cur) => (cur && cur.startedAt <= startedAt + 5000 ? { ...cur, remoteId: id } : cur));
+      });
+    }
     setStep('active');
   };
 
@@ -282,9 +289,11 @@ function Main() {
     }
     setBanner(null);
     setSession({ ...session, durationMin: session.durationMin + 15, warnedSoon: false, warnedExpired: false });
+    if (session.remoteId) remoteExtend(session.remoteId, 15);
   };
 
   const stopSession = () => {
+    if (session?.remoteId) remoteStop(session.remoteId);
     if (session) {
       const z = session.option.zone;
       const minutes = Math.max(1, Math.round(Math.min(session.elapsedSec / 60, session.durationMin)));

@@ -35,3 +35,4 @@ Ebben a fájlban vezetjük, mi került a projektbe ezen felül, és ki kérte. �
 | 2026-11-20 | „Vissza az autómhoz” gyalogos navigáció | Idegen helyen parkoló turistáknak |
 | 2026-11-20 | Saját app ikon, EAS build beállítás, telefonos útmutató | Felkészülés a telepíthető buildre |
 | 2026-11-20 | Szerver (API) váz már a prototípus idején | Az alfa (2027 jan–feb) előkészítése, a BKK-adatmegosztás bemutatható alapja |
+| 2026-11-20 | Ingyenes szerver + adatbázis előkészítése (Neon PostgreSQL, Render), opcionális app–szerver szinkron | Az alfa előkészítése; Boti kérésére: „csak regisztrálni kelljen” |

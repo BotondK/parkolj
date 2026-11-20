@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import cors from '@fastify/cors';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { ZONE_CODES } from '../../src/data/zoneCodes';
 import { ZONES, zoneById, type ZoneId } from '../../src/data/zones';
@@ -8,7 +9,7 @@ import { recommend } from '../../src/logic/recommend';
 import { plateValid } from '../../src/types';
 import { memoryStore, type SessionStore, type StoredSession } from './store';
 
-type Opts = { store?: SessionStore; now?: () => number; logger?: boolean };
+type Opts = { store?: SessionStore; now?: () => number; logger?: boolean; corsOrigins?: string[] };
 
 const num = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? Number(v) : typeof v === 'number' ? v : NaN);
 const inBudapest = (lat: number, lng: number) => lat > 47.3 && lat < 47.65 && lng > 18.9 && lng < 19.35;
@@ -17,6 +18,8 @@ export function buildApp(opts: Opts = {}): FastifyInstance {
   const store = opts.store ?? memoryStore();
   const now = opts.now ?? Date.now;
   const app = Fastify({ logger: opts.logger ?? false });
+  // A webes demó (GitHub Pages) és a helyi fejlesztés hívhatja
+  app.register(cors, { origin: opts.corsOrigins ?? ['https://botondk.github.io', /^http:\/\/localhost(:\d+)?$/] });
 
   const point = (q: Record<string, unknown>) => {
     const lat = num(q.lat);
@@ -39,7 +42,7 @@ export function buildApp(opts: Opts = {}): FastifyInstance {
     return { ...s, endsAt: end, usedMinutes: usedMin, cost, status };
   };
 
-  app.get('/health', async () => ({ ok: true }));
+  app.get('/health', async () => ({ ok: true, storage: opts.store ? 'external' : 'memory' }));
 
   app.get('/v1/zones', async () => ({
     source: 'BKK zónalista, https://bkk.hu/downloads/43733/ (2026. július)',
