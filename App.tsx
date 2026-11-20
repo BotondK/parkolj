@@ -629,6 +629,15 @@ function Main() {
   const tabTitle = tab === 'park' ? t.tabPark : tab === 'history' ? t.tabHistory : t.tabInfo;
   const sideTop = (
     <View style={styles.sideTop}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <View style={styles.brandMark}>
+          <Text style={{ color: C.brand, fontWeight: '900', fontSize: 13 }}>P</Text>
+        </View>
+        <Text style={{ fontSize: 22, letterSpacing: 2, color: C.brand }}>
+          PARK<Text style={{ fontWeight: '900' }}>OLJ</Text>
+        </Text>
+        <Text style={{ color: C.sub, fontSize: 12, flex: 1, textAlign: 'right' }}>{t.tagline}</Text>
+      </View>
       <SearchInput
         t={t}
         query={query}
@@ -639,7 +648,7 @@ function Main() {
         }}
       />
       <View style={styles.sideTitleRow}>
-        <Text style={styles.sideTitle}>{tabTitle}</Text>
+        <Text style={[styles.sideTitle, { color: C.brand }]}>{tabTitle}</Text>
         {(tab !== 'park' || (step !== 'search' && step !== 'active') || hereOpt) && (
           <Pressable onPress={() => (tab !== 'park' ? setTab('park') : reset())} accessibilityLabel={t.back}>
             <Text style={styles.closeX}>✕</Text>
@@ -648,20 +657,6 @@ function Main() {
       </View>
     </View>
   );
-  const brandCard = (
-    <View style={styles.brandCard}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View style={styles.brandMark}>
-          <Text style={{ color: C.brand, fontWeight: '900', fontSize: 13 }}>P</Text>
-        </View>
-        <Text style={{ fontSize: 20, letterSpacing: 2, color: C.brand }}>
-          PARK<Text style={{ fontWeight: '900' }}>OLJ</Text>
-        </Text>
-      </View>
-      <Text style={{ color: C.sub, fontSize: 11 }}>{t.tagline}</Text>
-    </View>
-  );
-
   const panel = (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: wide ? 28 : 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
       {banner && tab === 'park' && (
@@ -729,7 +724,6 @@ function Main() {
           <View style={{ width: 460, backgroundColor: C.bg }}>
             {sideTop}
             {panel}
-            {brandCard}
           </View>
           {map}
         </View>

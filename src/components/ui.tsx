@@ -148,7 +148,7 @@ export const styles = StyleSheet.create({
   demoNote: { marginTop: 24, color: '#8E8D96', fontSize: 12, textAlign: 'center' },
   // Asztali elrendezés: bal oldali panel
   sideTop: { backgroundColor: C.card, paddingHorizontal: 28, paddingTop: 28, paddingBottom: 20 },
-  sideTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28 },
+  sideTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24 },
   sideTitle: { fontSize: 38, fontWeight: '800', color: C.text, letterSpacing: -0.6 },
   closeX: { fontSize: 30, color: C.text, paddingHorizontal: 6, lineHeight: 32 },
   brandCard: {
