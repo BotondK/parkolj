@@ -21,6 +21,8 @@ export type ParkingMapProps = {
   me?: Fix | null;
   /** A térkép „helyzetem” gombja: GPS indítása és ráközelítés */
   onLocate?: () => void;
+  /** Telefonon az alsó lap takarja a térkép alját: a gombok jobbra fent, az óra alatt legyenek */
+  controlsTop?: boolean;
 };
 
 export const MARKER_COLORS: Record<MarkerKind, string> = {

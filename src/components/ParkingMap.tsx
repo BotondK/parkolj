@@ -87,7 +87,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
         <Pressable
           onPress={locateMe}
           accessibilityLabel="Saját helyzetem"
-          style={{ position: 'absolute', right: 12, top: 12, width: 44, height: 44, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 3 }}
+          style={{ position: 'absolute', right: 12, top: 80, width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 3 }}
         >
           <Text style={{ fontSize: 22, color: me ? '#2563EB' : '#0F172A' }}>◎</Text>
         </Pressable>

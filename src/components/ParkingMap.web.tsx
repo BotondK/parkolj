@@ -6,7 +6,7 @@ import { DISTRICTS } from '../data/districts';
 import { DISTRICT_CENTERS } from '../logic/geo';
 import { MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
 
-export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress, me, onLocate }: ParkingMapProps) {
+export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress, me, onLocate, controlsTop }: ParkingMapProps) {
   const meRef = useRef(me);
   meRef.current = me;
   const wantCenter = useRef(false);
@@ -118,21 +118,23 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
     onLocate?.();
   };
 
+  // Kerek fehér térképgombok jobbra lent (mint a városi közlekedési appokban)
   const btn: React.CSSProperties = {
-    width: 40, height: 40, borderRadius: 12, border: 'none', background: '#fff', color: '#0F172A',
-    font: '700 20px system-ui,sans-serif', boxShadow: '0 2px 8px rgba(15,23,42,.18)', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: 52, height: 52, borderRadius: 26, border: 'none', background: '#fff', color: '#1C1B1F',
+    font: '400 30px system-ui,sans-serif', boxShadow: '0 2px 8px rgba(0,0,0,.2)', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
   };
 
   return (
     <div style={{ position: 'relative', flex: 1, width: '100%', height: '100%', minHeight: 0 }}>
-      <div ref={host} style={{ position: 'absolute', inset: 0, backgroundColor: '#EEF1F4' }} />
-      <div style={{ position: 'absolute', right: 12, top: 12, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <style>{`.parkolj-map .leaflet-tile-pane{filter:sepia(.22) saturate(1.15) brightness(1.02)}.parkolj-map .leaflet-control-attribution{background:rgba(255,255,255,.75);font-size:11px}`}</style>
+      <div ref={host} className="parkolj-map" style={{ position: 'absolute', inset: 0, backgroundColor: '#F2EFE6' }} />
+      <div style={{ position: 'absolute', right: controlsTop ? 12 : 24, ...(controlsTop ? { top: 80 } : { bottom: 40 }), zIndex: 1000, display: 'flex', flexDirection: 'column', gap: controlsTop ? 10 : 14, transform: controlsTop ? 'scale(.85)' : undefined, transformOrigin: 'top right' }}>
+        {onLocate && (
+          <button aria-label="Saját helyzetem" style={{ ...btn, fontSize: 24, color: me ? '#2563EB' : '#4A1466' }} onClick={locateMe}>◎</button>
+        )}
         <button aria-label="Nagyítás" style={btn} onClick={() => map.current?.zoomIn()}>+</button>
         <button aria-label="Kicsinyítés" style={btn} onClick={() => map.current?.zoomOut()}>−</button>
-        {onLocate && (
-          <button aria-label="Saját helyzetem" style={{ ...btn, color: me ? '#2563EB' : '#0F172A' }} onClick={locateMe}>◎</button>
-        )}
       </div>
     </div>
   );

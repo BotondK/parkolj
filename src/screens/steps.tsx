@@ -46,6 +46,7 @@ export function SearchStep({
   results,
   onPick,
   lang,
+  hideInput,
 }: {
   t: Strings;
   query: string;
@@ -53,19 +54,14 @@ export function SearchStep({
   results: Place[];
   onPick: (p: Place) => void;
   lang: Lang;
+  /** Asztali nézetben a keresőmező a panel tetején van */
+  hideInput?: boolean;
 }) {
   const icon: Record<string, string> = { theatre: '🎭', cinema: '🎬', concert: '🎻', sight: '🏛️', mall: '🛍️', sport: '🏟️', address: '📍' };
   return (
     <View>
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder={t.searchPlaceholder}
-        placeholderTextColor="#94A3B8"
-        style={styles.search}
-        autoCorrect={false}
-      />
-      <Text style={styles.label}>{query ? '' : t.popular}</Text>
+      {!hideInput && <SearchInput t={t} query={query} setQuery={setQuery} />}
+      <Text style={[styles.label, hideInput && { marginTop: 0 }]}>{query ? '' : t.popular}</Text>
       {results.length === 0 && <Text style={styles.sub}>{t.noResults}</Text>}
       {results.map((p) => (
         <Pressable key={p.id} style={styles.result} onPress={() => onPick(p)}>
@@ -77,6 +73,26 @@ export function SearchStep({
           <Text style={{ color: C.sub }}>›</Text>
         </Pressable>
       ))}
+    </View>
+  );
+}
+
+export function SearchInput({ t, query, setQuery, onFocus }: { t: Strings; query: string; setQuery: (s: string) => void; onFocus?: () => void }) {
+  return (
+    <View>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        onFocus={onFocus}
+        placeholder={t.searchPlaceholder}
+        placeholderTextColor="#6B6A73"
+        style={styles.search}
+        autoCorrect={false}
+      />
+      <View pointerEvents="none" style={{ position: 'absolute', left: 17, top: 17 }}>
+        <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 2.5, borderColor: C.text }} />
+        <View style={{ position: 'absolute', left: 13, top: 14, width: 8, height: 2.5, borderRadius: 2, backgroundColor: C.text, transform: [{ rotate: '45deg' }] }} />
+      </View>
     </View>
   );
 }

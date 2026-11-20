@@ -37,3 +37,4 @@ Ebben a fájlban vezetjük, mi került a projektbe ezen felül, és ki kérte. �
 | 2026-11-20 | Szerver (API) váz már a prototípus idején | Az alfa (2027 jan–feb) előkészítése, a BKK-adatmegosztás bemutatható alapja |
 | 2026-11-20 | Ingyenes szerver + adatbázis előkészítése, opcionális app–szerver szinkron. Boti döntése alapján: Supabase (PostgreSQL) + Cloudflare Workers, időzített lezárással | Az alfa előkészítése; Boti kérésére: „csak regisztrálni kelljen” |
 | 2026-11-20 | Díjszámítás budapesti idő szerint, a készülék/szerver időzónájától függetlenül | A Workers UTC-ben fut, a külföldi turista telefonja más zónában lehet: enélkül rossz órára számolna |
+| 2026-11-20 | Design a BudapestGO mintájára: bal oldali panel + teljes térkép asztalon, alsó lap telefonon, lila fő szín, kerek térképgombok, óra és menü jobbra fent | Boti kérése („ilyen legyen a design 1/1”); saját név és logó, BKK-arculat nélkül |

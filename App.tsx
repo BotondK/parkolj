@@ -27,6 +27,7 @@ import {
   navApps,
   OptionCard,
   PayStep,
+  SearchInput,
   SearchStep,
   titleOf,
 } from './src/screens/steps';
@@ -63,6 +64,12 @@ function Main() {
   const wide = width >= 900;
 
   const [tab, setTab] = useState<Tab>('park');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [clock, setClock] = useState(() => formatClock(new Date()));
+  useEffect(() => {
+    const id = setInterval(() => setClock(formatClock(new Date())), 15000);
+    return () => clearInterval(id);
+  }, []);
   const [step, setStep] = useState<Step>('search');
   const [query, setQuery] = useState('');
   const [dest, setDest] = useState<Place | null>(null);
@@ -382,7 +389,7 @@ function Main() {
   const mapTappable = tab === 'park' && (step === 'search' || (step === 'pay' && !!hereOpt));
 
   const map = (
-    <View style={wide ? { flex: 1 } : { height: tab !== 'park' ? 140 : step === 'search' ? 260 : step === 'options' ? 300 : 200 }}>
+    <View style={{ flex: 1 }}>
       <ParkingMap
         markers={markers}
         selectedId={selectedId}
@@ -391,7 +398,42 @@ function Main() {
         focus={focus}
         me={live.fix}
         onLocate={live.status === 'unavailable' ? undefined : live.start}
+        controlsTop={!wide}
       />
+      <View style={{ position: 'absolute', top: wide ? 24 : 12, right: wide ? 24 : 12, zIndex: 1100 }}>
+        <Pressable style={styles.pill} onPress={() => setMenuOpen((o) => !o)} accessibilityLabel="Menü">
+          <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, fontVariant: ['tabular-nums'] }}>{clock}</Text>
+          <View style={{ gap: 5 }}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={{ width: 24, height: 3, borderRadius: 2, backgroundColor: C.brand }} />
+            ))}
+          </View>
+        </Pressable>
+        {menuOpen && (
+          <View style={styles.menu}>
+            {(
+              [
+                ['park', t.tabPark],
+                ['history', t.tabHistory],
+                ['info', t.tabInfo],
+              ] as [Tab, string][]
+            ).map(([k, label]) => (
+              <Pressable key={k} style={styles.menuItem} onPress={() => { setTab(k); setMenuOpen(false); }}>
+                <Text style={{ fontSize: 16, fontWeight: tab === k ? '800' : '500', color: tab === k ? C.brand : C.text }}>{label}</Text>
+                {k === 'park' && step === 'active' && <Text style={{ color: C.brand }}>●</Text>}
+              </Pressable>
+            ))}
+            <View style={{ height: 1, backgroundColor: C.line, marginVertical: 6 }} />
+            <View style={[styles.menuItem, { gap: 8, justifyContent: 'flex-start' }]}>
+              {(['hu', 'en'] as Lang[]).map((l) => (
+                <Pressable key={l} onPress={() => setLang(l)} style={[styles.chip, { paddingVertical: 6 }, lang === l && styles.chipOn]}>
+                  <Text style={{ fontWeight: '700', color: lang === l ? '#fff' : C.text }}>{l === 'hu' ? 'Magyar' : 'English'}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+      </View>
     </View>
   );
 
@@ -414,7 +456,7 @@ function Main() {
               {meZone && <PrimaryButton text={t.startHere} onPress={useMyLocation} />}
             </View>
           )}
-          <SearchStep t={t} query={query} setQuery={setQuery} results={results} onPick={pickDest} lang={lang} />
+          <SearchStep t={t} query={query} setQuery={setQuery} results={results} onPick={pickDest} lang={lang} hideInput={wide} />
           <View style={[styles.card, { marginTop: 14, gap: 10 }]}>
             <Text style={{ color: C.sub, fontSize: 13 }}>{canLocate() ? t.orHere : t.tapMap}</Text>
             {canLocate() && !live.fix && (
@@ -581,8 +623,44 @@ function Main() {
     </>
   );
 
+  const tabTitle = tab === 'park' ? t.tabPark : tab === 'history' ? t.tabHistory : t.tabInfo;
+  const sideTop = (
+    <View style={styles.sideTop}>
+      <SearchInput
+        t={t}
+        query={query}
+        setQuery={setQuery}
+        onFocus={() => {
+          if (tab !== 'park') setTab('park');
+          if (step !== 'search' && step !== 'active') reset();
+        }}
+      />
+      <View style={styles.sideTitleRow}>
+        <Text style={styles.sideTitle}>{tabTitle}</Text>
+        {(tab !== 'park' || (step !== 'search' && step !== 'active') || hereOpt) && (
+          <Pressable onPress={() => (tab !== 'park' ? setTab('park') : reset())} accessibilityLabel={t.back}>
+            <Text style={styles.closeX}>✕</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+  const brandCard = (
+    <View style={styles.brandCard}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={styles.brandMark}>
+          <Text style={{ color: C.brand, fontWeight: '900', fontSize: 13 }}>P</Text>
+        </View>
+        <Text style={{ fontSize: 20, letterSpacing: 2, color: C.brand }}>
+          PARK<Text style={{ fontWeight: '900' }}>OLJ</Text>
+        </Text>
+      </View>
+      <Text style={{ color: C.sub, fontSize: 11 }}>{t.tagline}</Text>
+    </View>
+  );
+
   const panel = (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: wide ? 28 : 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
       {banner && tab === 'park' && (
         <View style={[styles.banner, { backgroundColor: banner.kind === 'warn' ? C.warnSoft : C.dangerSoft }]}>
           <Text style={{ color: banner.kind === 'warn' ? C.warn : C.danger, fontWeight: '600' }}>{banner.text}</Text>
@@ -638,40 +716,30 @@ function Main() {
       </SafeAreaView>
     );
 
+  const sheetH = tab !== 'park' ? '78%' : step === 'search' && !hereOpt ? '52%' : step === 'options' ? '60%' : '66%';
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top', 'bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={wide ? ['top', 'bottom'] : ['top']}>
       <StatusBar style="dark" />
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={styles.logo}>
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>P</Text>
-          </View>
-          <View>
-            <Text style={{ fontWeight: '800', fontSize: 18, color: C.text }}>{t.appName}</Text>
-            <Text style={{ color: C.sub, fontSize: 12 }}>{t.tagline}</Text>
-          </View>
-        </View>
-        <View style={styles.langSwitch}>
-          {(['hu', 'en'] as Lang[]).map((l) => (
-            <Pressable key={l} onPress={() => setLang(l)} style={[styles.langBtn, lang === l && styles.langBtnOn]}>
-              <Text style={{ fontWeight: '700', color: lang === l ? '#fff' : C.sub, fontSize: 12 }}>{l.toUpperCase()}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
       {wide ? (
         <View style={{ flex: 1, flexDirection: 'row' }}>
-          <View style={{ width: 440, borderRightWidth: 1, borderColor: C.line, backgroundColor: C.bg }}>
-            {tabs}
+          <View style={{ width: 460, backgroundColor: C.bg }}>
+            {sideTop}
             {panel}
+            {brandCard}
           </View>
           {map}
         </View>
       ) : (
         <View style={{ flex: 1 }}>
           {map}
-          {panel}
-          {tabs}
+          <View style={[styles.sheet, { height: sheetH }]}>
+            <View style={styles.grabber} />
+            {panel}
+            <SafeAreaView edges={['bottom']} style={{ backgroundColor: C.card }}>
+              {tabs}
+            </SafeAreaView>
+          </View>
         </View>
       )}
     </SafeAreaView>
