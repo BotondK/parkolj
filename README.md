@@ -2,6 +2,8 @@
 
 Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 
+**Webes demó:** https://botondk.github.io/parkolj/ (minden `main` push után automatikusan frissül, lásd `.github/workflows/pages.yml`).
+
 ## Mit tud (prototípus, demó adatokkal)
 1. Célpont keresés (színház, mozi, látványosság) – demó lista
 2. Zóna felismerés (A–D), díj és időkorlát kijelzése
