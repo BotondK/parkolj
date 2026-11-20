@@ -2,6 +2,7 @@ import { GARAGES, type Garage } from '../data/garages';
 import type { LatLng, Zone } from '../data/zones';
 import { distanceM, offset, walkMinutes, zoneAt } from './geo';
 import { formatClock, paidEnd, priceFor, priceWindow } from './pricing';
+import { bpParts } from './budapestTime';
 
 export type OptionKind = 'fastest' | 'cheapest' | 'garage' | 'here';
 
@@ -35,9 +36,9 @@ function noise(a: number, b: number, c: number) {
 
 /** Mock foglaltsági modell: a célpont közelében és este (rendezvények) nehezebb helyet találni. */
 function availabilityAt(pt: LatLng, distFromDest: number, at: Date): number {
-  const h = at.getHours();
+  const { hour: h, weekday } = bpParts(at);
   const eventPeak = h >= 17 && h <= 21 ? 0.18 : 0;
-  const officePeak = h >= 9 && h <= 16 && at.getDay() >= 1 && at.getDay() <= 5 ? 0.12 : 0;
+  const officePeak = h >= 9 && h <= 16 && weekday >= 1 && weekday <= 5 ? 0.12 : 0;
   const base = 0.2 + Math.min(distFromDest, 1200) / 1500 - eventPeak - officePeak;
   const n = (noise(pt.lat * 1000, pt.lng * 1000, h) - 0.5) * 0.35;
   return Math.max(0.05, Math.min(0.95, base + n));
@@ -100,7 +101,7 @@ export function recommend(dest: LatLng, plannedMinutes: number, at: Date = new D
 
   // 2) Legközelebbi garázs
   const g = [...GARAGES].sort((a, b) => distanceM(dest, a) - distanceM(dest, b))[0];
-  const gFree = Math.round(g.capacity * (0.08 + noise(g.lat, g.lng, at.getHours()) * 0.3));
+  const gFree = Math.round(g.capacity * (0.08 + noise(g.lat, g.lng, bpParts(at).hour) * 0.3));
   const garage: ParkingOption = {
     id: g.id,
     kind: 'garage',

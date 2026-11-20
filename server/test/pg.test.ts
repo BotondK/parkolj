@@ -22,3 +22,19 @@ test('PostgreSQL tároló: létrehozás, olvasás, frissítés', { skip: !url &&
   assert.equal(await store.get('nem-uuid'), null);
   await store.close();
 });
+
+test('PostgreSQL kérésenkénti kapcsolat (Workers-mód) + nyitott parkolások', { skip: !url && 'nincs TEST_DATABASE_URL' }, async () => {
+  const { pgOpen } = await import('../src/pgStore');
+  const open = pgOpen(url!);
+  const h = await open();
+  const id = randomUUID();
+  await h.store.create({
+    id, plate: 'XYZ-999', country: 'H', zoneId: 'A', zoneCode: '0501', district: 'V. kerület', lat: 47.507, lng: 19.0456,
+    startedAt: Date.now() - 60 * 60000, plannedMinutes: 30, autoStopAt: null, stoppedAt: null, cost: null,
+  });
+  assert.ok((await h.store.open()).some((s) => s.id === id));
+  await h.close();
+  const h2 = await open();
+  assert.equal((await h2.store.get(id))?.plate, 'XYZ-999');
+  await h2.close();
+});

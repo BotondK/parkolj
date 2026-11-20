@@ -1,16 +1,30 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { bpParts, bpTime } from '../../src/logic/budapestTime';
 import { buildApp } from '../src/app';
 
 // Szerda 2026-11-18, helyi idő
-const at = (h: number, m = 0) => new Date(2026, 10, 18, h, m).getTime();
+const at = (h: number, m = 0) => new Date(bpTime(2026, 10 + 1, 18, h + m / 60)).getTime();
 const OPERA = { lat: 47.5026, lng: 19.0583 }; // VI. ker., B zóna
 const PARLAMENT = { lat: 47.507, lng: 19.0456 }; // V. ker., A zóna
 
+type Req = string | { method: string; url: string; payload?: unknown };
+
 function setup(start: number) {
   let t = start;
-  const app = buildApp({ now: () => t });
-  return { app, advance: (min: number) => (t += min * 60000) };
+  const hono = buildApp({ now: () => t });
+  // Kis segéd: a Fastify-féle inject() stílus, hogy a tesztek rövidek maradjanak
+  const inject = async (r: Req) => {
+    const o = typeof r === 'string' ? { method: 'GET', url: r } : r;
+    const res = await hono.request(o.url, {
+      method: o.method,
+      headers: o.payload === undefined ? undefined : { 'content-type': 'application/json' },
+      body: o.payload === undefined ? undefined : JSON.stringify(o.payload),
+    });
+    const text = await res.text();
+    return { statusCode: res.status, json: () => JSON.parse(text), headers: res.headers };
+  };
+  return { app: { inject }, hono, advance: (min: number) => (t += min * 60000) };
 }
 
 test('zónalista: 4 zóna, BKK díjak, 68 zónakód', async () => {
@@ -28,7 +42,7 @@ test('zone-at: kerület és zóna, hibás pontra 400', async () => {
   assert.equal(r.district, 'VI. kerület');
   assert.equal(r.zone.id, 'B');
   assert.equal(r.zone.chargingNow, true);
-  assert.equal(new Date(r.zone.paidUntil).getHours(), 20);
+  assert.equal(bpParts(r.zone.paidUntil).hour, 20);
   assert.equal((await app.inject('/v1/zone-at?lat=48&lng=20')).statusCode, 400);
 });
 
@@ -45,7 +59,7 @@ test('parkolás: este 19:30-tól 3 órára → automatikus leállítás 20:00-ko
   const s = c.json();
   assert.equal(s.zoneId, 'B');
   assert.equal(s.estimatedCost, 300);
-  assert.equal(new Date(s.autoStopAt).getHours(), 20);
+  assert.equal(bpParts(s.autoStopAt).hour, 20);
   advance(45);
   const g = (await app.inject(`/v1/sessions/${s.id}`)).json();
   assert.equal(g.status, 'auto_stopped');
@@ -94,4 +108,28 @@ test('városi statisztika: csak legalább 5 parkolású cellák, rendszám nélk
   assert.equal(r.rows[0].zoneId, 'B');
   assert.equal(r.rows[0].sessions, 5);
   assert.ok(!JSON.stringify(r).includes('ABC'));
+});
+
+test('időzített lezárás: lejárt parkolás leáll, a futó nem', async () => {
+  const { app, hono, advance } = setup(at(10));
+  const a = (await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...OPERA, plate: 'ABC-123', minutes: 30 } })).json();
+  const b = (await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...OPERA, plate: 'XYZ-999', minutes: 120 } })).json();
+  advance(45);
+  assert.equal(await hono.closeExpired(), 1);
+  const ga = (await app.inject(`/v1/sessions/${a.id}`)).json();
+  assert.equal(ga.status, 'stopped');
+  assert.equal(ga.usedMinutes, 30);
+  assert.equal(ga.cost, 300);
+  assert.equal((await app.inject(`/v1/sessions/${b.id}`)).json().status, 'active');
+});
+
+test('CORS: a webes demó hívhatja, idegen oldal nem', async () => {
+  const { app } = setup(at(10));
+  const ok = await app.inject('/health');
+  assert.equal(ok.statusCode, 200);
+  const { hono } = setup(at(10));
+  const r1 = await hono.request('/health', { headers: { origin: 'https://botondk.github.io' } });
+  assert.equal(r1.headers.get('access-control-allow-origin'), 'https://botondk.github.io');
+  const r2 = await hono.request('/health', { headers: { origin: 'https://gonosz.example' } });
+  assert.equal(r2.headers.get('access-control-allow-origin'), null);
 });

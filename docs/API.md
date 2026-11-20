@@ -1,6 +1,6 @@
 # Parkolj API (alfa váz)
 
-A `server/` mappában lévő Node + TypeScript + Fastify szerver. Ugyanazt a díj-, zóna- és ajánlólogikát használja,
+A `server/` mappában lévő TypeScript + Hono szerver, élesben Cloudflare Workeren, adatbázis: Supabase PostgreSQL. Ugyanazt a díj-, zóna- és ajánlólogikát használja,
 mint az app (`src/logic`, `src/data`), így a kettő mindig ugyanúgy számol.
 
 **Állapot:** a prototípus app még nem hívja, offline is működik. Az alfában ide kerül a felhasználói fiók,
@@ -15,11 +15,11 @@ npm test        # 8 API teszt + PostgreSQL teszt, ha van TEST_DATABASE_URL
 ```
 
 Környezeti változók:
-- `DATABASE_URL`: PostgreSQL cím (pl. Neon). Ha nincs, memóriában tárol (újraindításkor elvész). A tábla magától létrejön.
+- `DATABASE_URL`: PostgreSQL cím (Supabase Transaction pooler). Ha nincs, memóriában tárol (újraindításkor elvész). A tábla magától létrejön.
 - `CORS_ORIGINS`: vesszővel elválasztott extra engedélyezett origin (alapból github.io és a helyi Expo portok).
 - `PORT`: alapból 3000.
 
-Ingyenes hosztolás (Neon + Render): [HOSZTOLAS.md](HOSZTOLAS.md).
+Hosztolás (Supabase + Cloudflare Workers): [HOSZTOLAS.md](HOSZTOLAS.md). Időzítő: 5 percenként lezárja a lejárt parkolásokat.
 
 ## Végpontok
 

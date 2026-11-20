@@ -1,4 +1,4 @@
-// Parkolások tárolója. Most memóriában; élesben PostgreSQL + PostGIS (ugyanez az interfész).
+// Parkolások tárolója: memóriában (tesztek, helyi próba) vagy PostgreSQL-ben (Supabase), ugyanazzal az interfésszel.
 export type StoredSession = {
   id: string;
   plate: string;
@@ -21,7 +21,12 @@ export interface SessionStore {
   get(id: string): Promise<StoredSession | null>;
   update(s: StoredSession): Promise<void>;
   all(): Promise<StoredSession[]>;
+  /** Még le nem állított parkolások (az időzített lezáráshoz) */
+  open(): Promise<StoredSession[]>;
 }
+
+/** Kérésenként megnyitott tároló (Cloudflare Workersben a kapcsolat nem élhet túl egy kérést). */
+export type OpenStore = () => Promise<{ store: SessionStore; close(): Promise<void> }>;
 
 export function memoryStore(): SessionStore {
   const m = new Map<string, StoredSession>();
@@ -38,6 +43,9 @@ export function memoryStore(): SessionStore {
     },
     async all() {
       return [...m.values()].map((s) => ({ ...s }));
+    },
+    async open() {
+      return [...m.values()].filter((s) => s.stoppedAt == null).map((s) => ({ ...s }));
     },
   };
 }

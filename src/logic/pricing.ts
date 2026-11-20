@@ -1,10 +1,9 @@
 import type { Zone } from '../data/zones';
 import { HOLIDAYS } from '../data/zoneCodes';
+import { bpParts, bpTime, bpYmd } from './budapestTime';
 
-const ymd = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-export const isHoliday = (d: Date) => HOLIDAYS.has(ymd(d));
+// Minden időpont budapesti helyi időben értendő (lásd budapestTime.ts), a készülék időzónájától függetlenül.
+export const isHoliday = (d: Date) => HOLIDAYS.has(bpYmd(d));
 
 /** Díj a megadott percekre, percalapú elszámolással (ahogy a mobilparkolás működik). */
 export function priceFor(zone: Pick<Zone, 'pricePerHour'>, minutes: number): number {
@@ -12,7 +11,7 @@ export function priceFor(zone: Pick<Zone, 'pricePerHour'>, minutes: number): num
 }
 
 export function chargingWindow(zone: Zone, at: Date): [number, number] | null {
-  const day = at.getDay(); // 0 = vasárnap
+  const day = bpParts(at).weekday; // 0 = vasárnap
   if (day === 0 || isHoliday(at)) return null;
   if (day === 6) return zone.saturdayHours;
   return zone.weekdayHours;
@@ -22,7 +21,8 @@ export function chargingWindow(zone: Zone, at: Date): [number, number] | null {
 export function isCharging(zone: Zone, at: Date = new Date()): boolean {
   const w = chargingWindow(zone, at);
   if (!w) return false;
-  const h = at.getHours() + at.getMinutes() / 60;
+  const p = bpParts(at);
+  const h = p.hour + p.minute / 60;
   return h >= w[0] && h < w[1];
 }
 
@@ -47,8 +47,10 @@ export const formatDuration = (min: number, lang: 'hu' | 'en') => {
   return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
 };
 
-export const formatClock = (d: Date) =>
-  `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+export const formatClock = (d: Date) => {
+  const p = bpParts(d);
+  return `${p.hour.toString().padStart(2, '0')}:${p.minute.toString().padStart(2, '0')}`;
+};
 
 /** Hány perc esik díjfizetési időbe a [start, start+minutes) szakaszból. */
 export function chargeableMinutes(zone: Zone, start: Date, minutes: number): number {
@@ -67,7 +69,6 @@ export function priceWindow(zone: Zone, start: Date, minutes: number): number {
 export function paidEnd(zone: Zone, at: Date): Date | null {
   if (!isCharging(zone, at)) return null;
   const w = chargingWindow(zone, at)!;
-  const end = new Date(at);
-  end.setHours(w[1], 0, 0, 0);
-  return end;
+  const p = bpParts(at);
+  return new Date(bpTime(p.year, p.month, p.day, w[1]));
 }

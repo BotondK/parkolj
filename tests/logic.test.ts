@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { bpParts, bpTime } from '../src/logic/budapestTime';
 import { zoneById } from '../src/data/zones';
 import { searchPlaces, PLACES } from '../src/data/places';
 import { distanceM, districtAt, zoneAt } from '../src/logic/geo';
@@ -10,8 +11,8 @@ import { ZONE_CODES } from '../src/data/zoneCodes';
 import { plateValid } from '../src/types';
 
 // Fix időpontok helyi időben: 2026-11-18 szerda, 2026-11-22 vasárnap
-const wed = (h: number, m = 0) => new Date(2026, 10, 18, h, m);
-const sun = (h: number) => new Date(2026, 10, 22, h, 0);
+const wed = (h: number, m = 0) => new Date(bpTime(2026, 10 + 1, 18, h + m / 60));
+const sun = (h: number) => new Date(bpTime(2026, 10 + 1, 22, h));
 
 test('zóna felismerés: belváros A, Opera B, Nemzeti Színház C', () => {
   assert.equal(zoneAt({ lat: 47.495, lng: 19.0545 })?.id, 'A'); // Katona
@@ -38,7 +39,7 @@ test('díjfizetési idő: vasárnap ingyenes, hétköznap este a B zóna 20:00-i
   assert.equal(isCharging(B, sun(12)), false);
   assert.equal(isCharging(B, wed(19, 30)), true);
   assert.equal(isCharging(B, wed(20, 0)), false);
-  assert.equal(paidEnd(B, wed(19, 0))?.getHours(), 20);
+  assert.equal(bpParts(paidEnd(B, wed(19, 0))!).hour, 20);
   assert.equal(paidEnd(B, wed(21, 0)), null);
 });
 
@@ -91,9 +92,9 @@ test('BKK szabályok: C zóna 18:00-ig, szombaton és ünnepnap ingyenes', () =>
   assert.equal(isCharging(C, wed(17, 59)), true);
   assert.equal(isCharging(C, wed(18, 0)), false);
   assert.equal(isCharging(zoneById('A'), wed(21, 30)), true);
-  assert.equal(isCharging(zoneById('A'), new Date(2026, 10, 21, 12)), false); // szombat
-  assert.equal(isCharging(zoneById('A'), new Date(2026, 11, 24, 12)), false); // dec. 24., csütörtök
-  assert.equal(isCharging(zoneById('A'), new Date(2026, 9, 23, 12)), false); // okt. 23.
+  assert.equal(isCharging(zoneById('A'), new Date(bpTime(2026, 10 + 1, 21, 12))), false); // szombat
+  assert.equal(isCharging(zoneById('A'), new Date(bpTime(2026, 11 + 1, 24, 12))), false); // dec. 24., csütörtök
+  assert.equal(isCharging(zoneById('A'), new Date(bpTime(2026, 9 + 1, 23, 12))), false); // okt. 23.
 });
 
 test('BKK zónakódok és pótdíjak', () => {
@@ -129,4 +130,18 @@ test('valódi kerülethatárok: kerület felismerés, az V. kerület A zóna', (
   assert.equal(districtAt({ lat: 47.507, lng: 19.0456 }), 'V. kerület'); // Országház
   assert.equal(districtAt({ lat: 47.4717, lng: 19.0717 }), 'IX. kerület'); // Nemzeti Színház
   assert.equal(zoneAt({ lat: 47.507, lng: 19.0456 })?.id, 'A');
+});
+
+test('budapesti idő: téli/nyári időszámítás, a gép időzónájától függetlenül', async () => {
+  const { bpParts, bpTime, budapestOffset } = await import('../src/logic/budapestTime');
+  // 2026-03-29 01:00 UTC-kor vált nyári időre, 2026-10-25 01:00 UTC-kor vissza
+  assert.equal(budapestOffset(Date.UTC(2026, 2, 29, 0, 59)), 1);
+  assert.equal(budapestOffset(Date.UTC(2026, 2, 29, 1, 0)), 2);
+  assert.equal(budapestOffset(Date.UTC(2026, 9, 25, 0, 59)), 2);
+  assert.equal(budapestOffset(Date.UTC(2026, 9, 25, 1, 0)), 1);
+  // Szerda 2026-11-18 19:30 Budapest = 18:30 UTC
+  const p = bpParts(Date.UTC(2026, 10, 18, 18, 30));
+  assert.deepEqual([p.weekday, p.hour, p.minute], [3, 19, 30]);
+  assert.equal(bpTime(2026, 11, 18, 20), Date.UTC(2026, 10, 18, 19));
+  assert.equal(bpTime(2026, 7, 1, 8.5), Date.UTC(2026, 6, 1, 6, 30));
 });

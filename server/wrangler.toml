@@ -1,0 +1,21 @@
+# Cloudflare Workers beállítás. Lásd docs/HOSZTOLAS.md
+name = "parkolj-api"
+main = "src/worker.ts"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Lejárt parkolások lezárása 5 percenként
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+CORS_ORIGINS = "https://botondk.github.io"
+
+[observability]
+enabled = true
+
+# A DATABASE_URL titok, nem ide kerül: Cloudflare → Workers → parkolj-api → Settings → Variables and Secrets
+# Opcionális gyorsítás (Hyperdrive), ha később kell:
+# [[hyperdrive]]
+# binding = "HYPERDRIVE"
+# id = "<hyperdrive-id>"
