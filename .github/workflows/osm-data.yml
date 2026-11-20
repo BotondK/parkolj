@@ -1,6 +1,7 @@
 name: OSM adatok letöltése (garázsok, töltők)
 
-# Kézzel indítható. Az eredményt csatolmányként tölti fel; a repóba átnézés után kerül be.
+# Kézzel indítható. Az eredmény az `osm-data` ágra kerül (és csatolmányként is letölthető);
+# a main ágra átnézés után kerül be: git checkout origin/osm-data -- src/data/osm public/data
 on:
   workflow_dispatch:
     inputs:
@@ -10,7 +11,7 @@ on:
         default: false
 
 permissions:
-  contents: read
+  contents: write # csak az osm-data ágra ír
 
 jobs:
   fetch:
@@ -29,3 +30,11 @@ jobs:
           path: |
             src/data/osm/
             public/data/zone-streets.json
+      - name: Eredmény az osm-data ágra
+        run: |
+          git config user.name "parkolj-osm-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B osm-data
+          git add -f src/data/osm public/data/zone-streets.json
+          git commit -m "OSM adatok $(date -u +%F)" || exit 0
+          git push -f origin osm-data
