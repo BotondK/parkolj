@@ -30,3 +30,7 @@ Ebben a fájlban vezetjük, mi került a projektbe ezen felül, és ki kérte. �
 | 2026-11-20 | Első indításkori bemutató, nyelv a telefon nyelvéből | Turisták |
 | 2026-11-20 | Hivatalos BKK díjfizetési idők, ünnepnapok, pótdíjak, 68 zónakód | A demó adatok helyett valódi szabályok |
 | 2026-11-20 | Automatikus tesztek és GitHub Actions | Minőség, biztonságos kiadás |
+| 2026-11-20 | Ütemezett lejárati értesítés telefonon (bezárt appnál is) | A terv „lejárati figyelmeztetés” pontjának teljes megvalósítása |
+| 2026-11-20 | Telepíthető webapp (ikon, teljes képernyő) | Telefonon kipróbálható boltok nélkül |
+| 2026-11-20 | „Vissza az autómhoz” gyalogos navigáció | Idegen helyen parkoló turistáknak |
+| 2026-11-20 | Saját app ikon, EAS build beállítás, telefonos útmutató | Felkészülés a telepíthető buildre |

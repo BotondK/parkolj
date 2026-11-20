@@ -12,7 +12,7 @@ import { geocode } from './src/logic/geocode';
 import { canLocate } from './src/logic/locate';
 import { DISTRICT_CENTERS, districtAt, zoneAt } from './src/logic/geo';
 import { useLiveLocation } from './src/logic/liveLocation';
-import { alertUser, requestNotify } from './src/logic/notify';
+import { alertUser, cancelExpiry, requestNotify, scheduleExpiry, SCHEDULES_IN_BACKGROUND } from './src/logic/notify';
 import { formatClock, formatDuration, formatFt, isCharging, paidEnd } from './src/logic/pricing';
 import { hereOption, recommend, type ParkingOption } from './src/logic/recommend';
 import { loadJSON, saveJSON } from './src/logic/storage';
@@ -207,7 +207,12 @@ function Main() {
   useEffect(() => {
     if (step !== 'active') return;
     const id = setInterval(() => {
-      setSession((s) => (s ? { ...s, elapsedSec: s.elapsedSec + (speedRef.current ? 60 : 1) } : s));
+      setSession((s) => {
+        if (!s) return s;
+        // Valós időben a tényleges eltelt időből számol (újranyitás után is pontos), demóban gyorsítva
+        const real = Math.floor((Date.now() - s.startedAt) / 1000);
+        return { ...s, elapsedSec: speedRef.current ? s.elapsedSec + 60 : Math.max(s.elapsedSec + 1, real) };
+      });
     }, 1000);
     return () => clearInterval(id);
   }, [step]);
@@ -224,17 +229,30 @@ function Main() {
     const left = session.durationMin * 60 - session.elapsedSec;
     if (left <= 600 && left > 0 && !session.warnedSoon) {
       setBanner({ kind: 'warn', text: t.alertSoon });
-      alertUser(t.appName, t.alertSoon);
+      if (!(SCHEDULES_IN_BACKGROUND && !demoSpeed)) alertUser(t.appName, t.alertSoon);
       setSession({ ...session, warnedSoon: true });
     } else if (left <= 0 && !session.warnedExpired) {
       setBanner({
         kind: 'danger',
         text: t.alertExpired + (z ? t.expiredFine(formatFt(z.surcharge[0])) : ''),
       });
-      alertUser(t.appName, t.alertExpired);
+      if (!(SCHEDULES_IN_BACKGROUND && !demoSpeed)) alertUser(t.appName, t.alertExpired);
       setSession({ ...session, warnedExpired: true });
     }
-  }, [session, step, t]);
+  }, [session, step, t, demoSpeed]);
+
+  // Valós idejű parkolásnál a telefon előre ütemezi a lejárati értesítéseket (bezárt appnál is szól)
+  const endAt = session ? session.startedAt + session.durationMin * 60000 : 0;
+  useEffect(() => {
+    if (step !== 'active' || !session || demoSpeed) {
+      cancelExpiry();
+      return;
+    }
+    const z = session.option.zone;
+    const pe = z ? paidEnd(z, new Date(session.startedAt)) : null;
+    const end = pe ? Math.min(pe.getTime(), endAt) : endAt;
+    scheduleExpiry(end, t.alertSoon, t.alertExpired, t.appName);
+  }, [step, endAt, demoSpeed, t]);
 
   const startSession = () => {
     const car = cars.find((c) => c.id === carId);

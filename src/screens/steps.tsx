@@ -326,6 +326,17 @@ export function ActiveStep({
           </Pressable>
         </View>
       )}
+      <Pressable
+        style={[styles.navBtn, { marginTop: 14 }]}
+        onPress={() =>
+          Linking.openURL(
+            `https://www.google.com/maps/dir/?api=1&destination=${s.option.coord.lat},${s.option.coord.lng}&travelmode=walking`,
+          )
+        }
+      >
+        <Text style={styles.navBtnText}>🚶 {t.backToCar}</Text>
+        <Text style={{ color: C.sub }}>↗</Text>
+      </Pressable>
       <View style={styles.demoRow}>
         <Text style={{ color: C.sub, flex: 1, fontSize: 13 }}>{t.demoSpeed}</Text>
         <Switch value={demoSpeed} onValueChange={setDemoSpeed} />

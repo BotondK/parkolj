@@ -10,3 +10,8 @@ export async function alertUser(title: string, body: string) {
     if ('Notification' in window && Notification.permission === 'granted') new Notification(title, { body });
   } catch {}
 }
+
+// Weben nincs háttérbeli ütemezés push szerver nélkül; az appon belüli sáv és a böngészőértesítés szól, amíg nyitva van.
+export async function scheduleExpiry(_endAt: number, _soon: string, _expired: string, _title: string) {}
+export async function cancelExpiry() {}
+export const SCHEDULES_IN_BACKGROUND = false;

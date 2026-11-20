@@ -26,6 +26,11 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 18. Valódi kerülethatárok a térképen (OSM, ODbL); az A zóna az V. kerület valódi határa, a B zóna a pesti kerülethatárokra vágva; kerületkeresés
 19. Részletes, színes alaptérkép nagyító és helymeghatározó gombokkal
 20. Élő GPS: kék pont pontossági körrel, engedély után magától indul, „Parkolás itt” a GPS-helyzetből
+21. Telefonon ütemezett lejárati értesítés, bezárt appnál is
+22. Telepíthető webapp (Hozzáadás a kezdőképernyőhöz), saját ikon
+23. „Vissza az autómhoz” gyalogos navigáció
+
+Telefonos kipróbálás és build: [docs/TELEFONOS_BUILD.md](docs/TELEFONOS_BUILD.md)
 
 A terven felüli kérések naplója: [docs/TERVEN_FELUL.md](docs/TERVEN_FELUL.md)
 
