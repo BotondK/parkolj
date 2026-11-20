@@ -1,0 +1,29 @@
+name: OSM adatok letöltése (garázsok, töltők)
+
+# Kézzel indítható. Az eredményt csatolmányként tölti fel; a repóba átnézés után kerül be.
+on:
+  workflow_dispatch:
+    inputs:
+      probe_zones:
+        description: 'Parkolási zóna adatok felmérése az OSM-ben (csak napló)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/fetch-osm.mjs
+        env:
+          PROBE_ZONES: ${{ inputs.probe_zones && '1' || '' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: osm-data
+          path: src/data/osm/
