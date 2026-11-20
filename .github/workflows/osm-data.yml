@@ -26,4 +26,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: osm-data
-          path: src/data/osm/
+          path: |
+            src/data/osm/
+            public/data/zone-streets.json

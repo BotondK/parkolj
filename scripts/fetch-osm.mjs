@@ -88,12 +88,38 @@ const chargers = cEls
   .sort((a, b) => a.id.localeCompare(b.id));
 
 mkdirSync('src/data/osm', { recursive: true });
+mkdirSync('public/data', { recursive: true });
 const meta = { source: '© OpenStreetMap közreműködők (ODbL)', fetchedAt: new Date().toISOString().slice(0, 10) };
 writeFileSync('src/data/osm/garages.json', JSON.stringify({ ...meta, items: garages }) + '\n');
 writeFileSync('src/data/osm/chargers.json', JSON.stringify({ ...meta, items: chargers }) + '\n');
 console.log(`Garázsok: ${garages.length} (névvel: ${garages.filter((g) => g.name).length}), töltők: ${chargers.length}`);
 
-// 3) Felmérés: van-e az OSM-ben parkolási zóna adat Budapestre (csak naplóz)
+// 3) Utcaszintű parkolási zónák: az OSM-ben az utcák oldalanként jelölve (parking:left|right|both:zone = A–D,
+//    díjfizetési idő: parking:*:fee:conditional). Ebből rajzoljuk a pontos zónákat és határozzuk meg a zónát egy ponton.
+const zEls = await overpass(`[out:json][timeout:300];${AREA}
+way["highway"][~"^parking:(left|right|both):zone$"~"^[A-D]$"](area.bp);
+out tags geom;`);
+const HOURS = /yes @ \(([^)]*)\)/;
+const streets = [];
+for (const e of zEls) {
+  const t = e.tags;
+  const zone = t['parking:both:zone'] ?? t['parking:right:zone'] ?? t['parking:left:zone'];
+  if (!/^[A-D]$/.test(zone ?? '') || !e.geometry) continue;
+  const fee = t['parking:both:fee:conditional'] ?? t['parking:right:fee:conditional'] ?? t['parking:left:fee:conditional'] ?? '';
+  streets.push({
+    z: zone,
+    n: t.name ?? null,
+    h: HOURS.exec(fee)?.[1] ?? null,
+    c: e.geometry.map((g) => [r5(g.lon), r5(g.lat)]),
+  });
+}
+writeFileSync('public/data/zone-streets.json', JSON.stringify({ ...meta, items: streets }) + '\n');
+const byZone = streets.reduce((a, s) => ((a[s.z] = (a[s.z] ?? 0) + 1), a), {});
+console.log(`Zónás utcaszakaszok: ${streets.length}`, byZone);
+const hours = streets.reduce((a, s) => ((a[`${s.z} ${s.h}`] = (a[`${s.z} ${s.h}`] ?? 0) + 1), a), {});
+console.log('Díjidők zónánként:', hours);
+
+// 4) Felmérés: van-e az OSM-ben parkolási zóna adat Budapestre (csak naplóz)
 if (process.env.PROBE_ZONES) {
   const probes = {
     'utcák parking:*:zone taggel': `way["highway"][~"^parking:.*zone$"~"."](area.bp);`,
