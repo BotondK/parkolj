@@ -30,6 +30,8 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 22. Telepíthető webapp (Hozzáadás a kezdőképernyőhöz), saját ikon
 23. „Vissza az autómhoz” gyalogos navigáció
 
+Szerver (API, alfa váz): [docs/API.md](docs/API.md)
+
 Telefonos kipróbálás és build: [docs/TELEFONOS_BUILD.md](docs/TELEFONOS_BUILD.md)
 
 A terven felüli kérések naplója: [docs/TERVEN_FELUL.md](docs/TERVEN_FELUL.md)

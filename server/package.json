@@ -1,0 +1,23 @@
+{
+  "name": "parkolj-server",
+  "version": "1.0.0",
+  "description": "Parkolj API (alfa v\u00e1z)",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "dev": "TZ=Europe/Budapest tsx watch src/index.ts",
+    "start": "TZ=Europe/Budapest tsx src/index.ts",
+    "test": "TZ=Europe/Budapest node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "private": true
+}
