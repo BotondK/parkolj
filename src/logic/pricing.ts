@@ -43,3 +43,25 @@ export const formatDuration = (min: number, lang: 'hu' | 'en') => {
 
 export const formatClock = (d: Date) =>
   `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+
+/** Hány perc esik díjfizetési időbe a [start, start+minutes) szakaszból. */
+export function chargeableMinutes(zone: Zone, start: Date, minutes: number): number {
+  let n = 0;
+  const t0 = start.getTime();
+  for (let m = 0; m < Math.floor(minutes); m++) if (isCharging(zone, new Date(t0 + m * 60000))) n++;
+  return n;
+}
+
+/** Díj a díjfizetési időszakot figyelembe véve: díjmentes időre nem fizetsz. */
+export function priceWindow(zone: Zone, start: Date, minutes: number): number {
+  return priceFor(zone, chargeableMinutes(zone, start, minutes));
+}
+
+/** Ha most fizetős a zóna: mikor ér véget a mostani díjfizetési időszak. Egyébként null. */
+export function paidEnd(zone: Zone, at: Date): Date | null {
+  if (!isCharging(zone, at)) return null;
+  const w = chargingWindow(zone, at)!;
+  const end = new Date(at);
+  end.setHours(w[1], 0, 0, 0);
+  return end;
+}

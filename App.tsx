@@ -10,11 +10,12 @@ import type { LatLng } from './src/data/zones';
 import { STRINGS, type Lang } from './src/i18n';
 import { locate } from './src/logic/locate';
 import { alertUser, requestNotify } from './src/logic/notify';
-import { formatDuration, formatFt, isCharging } from './src/logic/pricing';
+import { formatClock, formatDuration, formatFt, isCharging, paidEnd } from './src/logic/pricing';
 import { hereOption, recommend, type ParkingOption } from './src/logic/recommend';
 import { loadJSON, saveJSON } from './src/logic/storage';
 import HistoryScreen from './src/screens/HistoryScreen';
 import InfoScreen from './src/screens/InfoScreen';
+import Onboarding from './src/screens/Onboarding';
 import {
   ActiveStep,
   chargeFor,
@@ -54,6 +55,7 @@ function Main() {
   const [here, setHere] = useState<LatLng | null>(null);
   const [locMsg, setLocMsg] = useState<string | null>(null);
   const [stay, setStay] = useState(120);
+  const [arriveOffset, setArriveOffset] = useState(0); // perc múlva érkezel
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cars, setCars] = useState<Car[]>([{ id: 'demo', plate: 'ABC-123', country: 'H' }]);
   const [carId, setCarId] = useState<string | null>('demo');
@@ -64,6 +66,7 @@ function Main() {
   const [demoSpeed, setDemoSpeed] = useState(true);
   const [banner, setBanner] = useState<{ kind: 'warn' | 'danger'; text: string } | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [onboarded, setOnboarded] = useState(true);
 
   // --- Helyi tárolás: autók, előzmények, aktív parkolás, nyelv ---
   useEffect(() => {
@@ -74,12 +77,20 @@ function Main() {
         loadJSON<Session | null>('session', null),
         loadJSON<Lang | null>('lang', null),
       ]);
+      setOnboarded(await loadJSON<boolean>('onboarded', false));
       if (c && c.length) {
         setCars(c);
         setCarId(c[0].id);
       }
       setHistory(h);
       if (l) setLang(l);
+      else {
+        // Első indításkor a készülék nyelve alapján: magyar, különben angol (turisták)
+        try {
+          const loc = Intl.DateTimeFormat().resolvedOptions().locale || '';
+          setLang(loc.toLowerCase().startsWith('hu') ? 'hu' : 'en');
+        } catch {}
+      }
       if (s) {
         setSession(s);
         setStep('active');
@@ -100,7 +111,16 @@ function Main() {
     if (loaded) saveJSON('session', step === 'active' ? session : null);
   }, [session, step, loaded]);
 
-  const options = useMemo(() => (dest ? recommend(dest, stay) : []), [dest, stay]);
+  const arriveChoices = useMemo(() => {
+    // Most, majd a következő 4 félórás időpont (pl. színházi kezdéshez)
+    const now = new Date();
+    const first = 30 - (now.getMinutes() % 30);
+    return [0, first, first + 30, first + 60, first + 90];
+  }, [dest]);
+  const options = useMemo(
+    () => (dest ? recommend(dest, stay, new Date(Date.now() + arriveOffset * 60000)) : []),
+    [dest, stay, arriveOffset],
+  );
   const hereOpt = useMemo(() => (here ? hereOption(here, stay) : null), [here, stay]);
   const selected = hereOpt ?? options.find((o) => o.id === selectedId) ?? null;
 
@@ -113,6 +133,7 @@ function Main() {
   const pickDest = (p: Place) => {
     setHere(null);
     setDest(p);
+    setArriveOffset(0);
     setSelectedId(null);
     setStep('options');
   };
@@ -143,6 +164,13 @@ function Main() {
 
   useEffect(() => {
     if (!session || step !== 'active') return;
+    const z = session.option.zone;
+    const pe = z ? paidEnd(z, new Date(session.startedAt)) : null;
+    if (pe && session.startedAt + session.elapsedSec * 1000 >= pe.getTime()) {
+      stopSession();
+      setBanner({ kind: 'warn', text: t.autoStopped(formatClock(pe)) });
+      return;
+    }
     const left = session.durationMin * 60 - session.elapsedSec;
     if (left <= 600 && left > 0 && !session.warnedSoon) {
       setBanner({ kind: 'warn', text: t.alertSoon });
@@ -339,6 +367,18 @@ function Main() {
             <DestZone dest={dest} t={t} />
           </Text>
 
+          <Text style={styles.label}>{t.arriveAt}</Text>
+          <View style={styles.chipRow}>
+            {arriveChoices.map((m) => (
+              <Chip
+                key={m}
+                active={arriveOffset === m}
+                onPress={() => setArriveOffset(m)}
+                text={m === 0 ? t.now : formatClock(new Date(Date.now() + m * 60000 - (Date.now() % 60000)))}
+              />
+            ))}
+          </View>
+
           <Text style={styles.label}>{t.plannedStay}</Text>
           <View style={styles.chipRow}>
             {STAY_CHOICES.map((m) => (
@@ -432,7 +472,7 @@ function Main() {
           <Text style={styles.h1}>{t.stopped}</Text>
           <View style={[styles.card, { marginTop: 12 }]}>
             <Row k={t.plate} v={`${session.country} · ${session.plate}`} />
-            <Row k={t.zone} v={session.option.zone ? `${session.option.zone.id} ${t.zone}` : '—'} />
+            <Row k={t.zone.charAt(0).toUpperCase() + t.zone.slice(1)} v={session.option.zone ? `${session.option.zone.id} ${t.zone}` : '—'} />
             <Row k={t.duration} v={formatDuration(Math.min(session.elapsedSec / 60, session.durationMin), lang)} />
             <Row k={t.charged} v={formatFt(chargeFor(session))} strong />
           </View>
@@ -482,6 +522,22 @@ function Main() {
       ))}
     </View>
   );
+
+  if (!loaded) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
+  if (!onboarded)
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+        <Onboarding
+          t={t}
+          lang={lang}
+          setLang={setLang}
+          onDone={() => {
+            setOnboarded(true);
+            saveJSON('onboarded', true);
+          }}
+        />
+      </SafeAreaView>
+    );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top', 'bottom']}>

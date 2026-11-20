@@ -99,6 +99,18 @@ const hu = {
   infoTouristTitle: 'Turistáknak',
   infoTourist: 'Külföldi rendszámmal és külföldi bankkártyával is lehet parkolni. Az app angolul is használható.',
   noLimitShort: 'nincs',
+  freeFrom: (c: string) => `${c} után díjmentes, a díjat csak addig számoltuk.`,
+  autoStopNote: (c: string, d: string) => `${c}-kor véget ér a díjfizetés: csak ${d} díjat fizetsz, és a parkolás akkor magától leáll.`,
+  autoStopped: (c: string) => `${c}-kor véget ért a díjfizetés, a parkolást automatikusan leállítottuk.`,
+  arriveAt: 'Mikor érkezel?',
+  obTitle: 'Parkolj okosabban Budapesten',
+  obPoints: [
+    'Írd be, hova mész, és kapsz 3 jó parkolási lehetőséget: a leggyorsabbat, egy olcsóbbat és a legközelebbi garázst.',
+    'Egy koppintással navigálsz oda, és egy másikkal indítod a parkolást. SMS-ben is megy, ha nincs net.',
+    'Szólunk, mielőtt lejár az időd, és csak a díjfizetési időre fizetsz: utána a parkolás magától leáll.',
+  ],
+  obStart: 'Kezdjük',
+  now: 'Most',
   tapToMove: 'Koppints máshova a térképen, ha nem pontos a hely.',
 };
 
@@ -201,6 +213,18 @@ const en: typeof hu = {
   infoTouristTitle: 'For visitors',
   infoTourist: 'You can park with a foreign licence plate and pay with a foreign bank card. The app works in English.',
   noLimitShort: 'none',
+  freeFrom: (c: string) => `Free from ${c}; the price only counts paid time.`,
+  autoStopNote: (c: string, d: string) => `Paid hours end at ${c}: you only pay for ${d}, and parking stops by itself then.`,
+  autoStopped: (c: string) => `Paid hours ended at ${c}, so we stopped your parking automatically.`,
+  arriveAt: 'When will you arrive?',
+  obTitle: 'Smarter parking in Budapest',
+  obPoints: [
+    'Type where you are going and get 3 good options: the fastest, a cheaper one and the nearest garage.',
+    'Navigate there with one tap and start parking with another. Works by SMS too if you have no data.',
+    'We remind you before your time runs out, and you only pay for paid hours: parking stops by itself after that.',
+  ],
+  obStart: "Let's go",
+  now: 'Now',
   tapToMove: 'Tap elsewhere on the map if the spot is not right.',
 };
 

@@ -1,7 +1,7 @@
 import { GARAGES, type Garage } from '../data/garages';
 import type { LatLng, Zone } from '../data/zones';
 import { distanceM, offset, walkMinutes, zoneAt } from './geo';
-import { isCharging, priceFor } from './pricing';
+import { formatClock, paidEnd, priceFor, priceWindow } from './pricing';
 
 export type OptionKind = 'fastest' | 'cheapest' | 'garage' | 'here';
 
@@ -18,6 +18,8 @@ export type ParkingOption = {
   cost: number;
   /** Max. engedélyezett idő percben (3 órás szabály), null = korlátlan */
   maxMinutes: number | null;
+  /** Ha a parkolás alatt véget ér a díjfizetés: ettől ingyenes (pl. „20:00”) */
+  freeFrom?: string;
   /** Égtáj kulcs a leíráshoz (N, NE, ...) */
   bearing: string;
   distanceM: number;
@@ -42,9 +44,17 @@ function availabilityAt(pt: LatLng, distFromDest: number, at: Date): number {
 }
 
 function streetCost(zone: Zone | null, minutes: number, at: Date) {
-  if (!zone || !isCharging(zone, at)) return 0;
+  if (!zone) return 0;
   const capped = zone.maxMinutes ? Math.min(minutes, zone.maxMinutes) : minutes;
-  return priceFor(zone, capped);
+  return priceWindow(zone, at, capped);
+}
+
+/** Ha a parkolás közben véget ér a díjfizetés, annak időpontja (pl. „20:00”). */
+function freeFromLabel(zone: Zone | null, minutes: number, at: Date): string | undefined {
+  if (!zone) return undefined;
+  const end = paidEnd(zone, at);
+  if (end && end.getTime() < at.getTime() + minutes * 60000) return formatClock(end);
+  return undefined;
 }
 
 export function recommend(dest: LatLng, plannedMinutes: number, at: Date = new Date()): ParkingOption[] {
@@ -67,6 +77,7 @@ export function recommend(dest: LatLng, plannedMinutes: number, at: Date = new D
         walkMin: walkMinutes(dest, coord),
         availability,
         cost: streetCost(zone, plannedMinutes, at),
+        freeFrom: freeFromLabel(zone, plannedMinutes, at),
         maxMinutes: zone?.maxMinutes ?? null,
         bearing: BEARINGS[idx],
         distanceM: Math.round(d / 10) * 10,
@@ -118,6 +129,7 @@ export function hereOption(pt: LatLng, plannedMinutes: number, at: Date = new Da
     walkMin: 0,
     availability: 1,
     cost: streetCost(zone, plannedMinutes, at),
+    freeFrom: freeFromLabel(zone, plannedMinutes, at),
     maxMinutes: zone?.maxMinutes ?? null,
     bearing: '',
     distanceM: 0,

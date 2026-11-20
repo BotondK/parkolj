@@ -30,8 +30,9 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
     m.on('click', (e: L.LeafletMouseEvent) => pressRef.current?.({ lat: e.latlng.lat, lng: e.latlng.lng }));
     layer.current = L.layerGroup().addTo(m);
     map.current = m;
-    setTimeout(() => m.invalidateSize(), 50);
+    const timer = setTimeout(() => m.invalidateSize(), 50);
     return () => {
+      clearTimeout(timer);
       m.remove();
       map.current = null;
     };
@@ -59,13 +60,16 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
   useEffect(() => {
     const m = map.current;
     if (!m || focus.length === 0) return;
-    if (focus.length === 1) m.setView([focus[0].lat, focus[0].lng], 15, { animate: true });
+    // A térkép magassága lépésenként változik: méret frissítése, futó animáció leállítása
+    m.stop();
+    m.invalidateSize({ animate: false });
+    if (focus.length === 1) m.setView([focus[0].lat, focus[0].lng], 15, { animate: false });
     else
       m.fitBounds(L.latLngBounds(focus.map((f) => [f.lat, f.lng] as [number, number])), {
         paddingTopLeft: [40, 40],
         paddingBottomRight: [40, 40],
         maxZoom: 16,
-        animate: true,
+        animate: false,
       });
   }, [JSON.stringify(focus)]);
 

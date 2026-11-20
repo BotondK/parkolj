@@ -4,7 +4,7 @@ import { MARKER_COLORS } from '../components/mapTypes';
 import { BackLink, C, Chip, Meta, PrimaryButton, styles } from '../components/ui';
 import type { Place } from '../data/places';
 import { zoneAt } from '../logic/geo';
-import { formatClock, formatDuration, formatFt, isCharging, priceFor } from '../logic/pricing';
+import { chargeableMinutes, formatClock, formatDuration, formatFt, isCharging, paidEnd, priceWindow } from '../logic/pricing';
 import type { ParkingOption } from '../logic/recommend';
 import type { Lang, Strings } from '../i18n';
 import { COUNTRIES, plateValid, type Car, type Session } from '../types';
@@ -13,7 +13,7 @@ export function chargeFor(s: Session) {
   const z = s.option.zone;
   if (!z) return 0;
   const used = Math.min(s.elapsedSec / 60, s.durationMin);
-  return priceFor(z, used);
+  return priceWindow(z, new Date(s.startedAt), used);
 }
 
 export function titleOf(o: ParkingOption, t: Strings) {
@@ -108,7 +108,6 @@ export function OptionCard({
 }) {
   const color = MARKER_COLORS[o.kind];
   const sub = o.kind === 'fastest' ? t.fastestSub : o.kind === 'cheapest' ? t.cheapestSub : t.garageSub;
-  const charging = o.zone ? isCharging(o.zone) : true;
   const over = o.maxMinutes != null && stay > o.maxMinutes;
   return (
     <Pressable onPress={onPress} style={[styles.card, styles.option, active && { borderColor: color, borderWidth: 2 }]}>
@@ -123,7 +122,7 @@ export function OptionCard({
           <Text style={{ color: C.sub, fontSize: 13 }}>{sub}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ fontWeight: '800', fontSize: 17, color: C.text }}>{charging ? formatFt(o.cost) : t.free}</Text>
+          <Text style={{ fontWeight: '800', fontSize: 17, color: C.text }}>{o.zone && o.cost === 0 ? t.free : formatFt(o.cost)}</Text>
           <Text style={{ color: C.sub, fontSize: 12 }}>{formatDuration(over ? o.maxMinutes! : stay, lang)}</Text>
         </View>
       </View>
@@ -139,6 +138,7 @@ export function OptionCard({
         {o.kind === 'garage' && o.garage?.bookable && <Meta text={t.bookable} tone="good" />}
       </View>
       {over && <Text style={{ color: C.warn, fontSize: 12, marginTop: 8 }}>{t.rule3h}</Text>}
+      {o.freeFrom && <Text style={{ color: '#166534', fontSize: 12, marginTop: 8 }}>{t.freeFrom(o.freeFrom)}</Text>}
     </Pressable>
   );
 }
@@ -174,8 +174,12 @@ export function PayStep({
 }) {
   const z = option.zone;
   const max = z?.maxMinutes ?? 600;
-  const price = z ? priceFor(z, duration) : 0;
-  const charging = z ? isCharging(z) : false;
+  const now = new Date();
+  const price = z ? priceWindow(z, now, duration) : 0;
+  const charging = z ? isCharging(z, now) : false;
+  const pe = z ? paidEnd(z, now) : null;
+  const endsFree = pe && pe.getTime() < now.getTime() + duration * 60000;
+  const paidMin = z ? chargeableMinutes(z, now, duration) : 0;
   const smsNumber = z ? `+3630763${z.smsCode}` : '';
   const end = new Date(Date.now() + duration * 60000);
   const plate = cars.find((c) => c.id === carId)?.plate ?? '';
@@ -191,6 +195,11 @@ export function PayStep({
         </View>
       )}
       {!charging && <Text style={[styles.sub, { marginTop: 8 }]}>{t.notCharging}</Text>}
+      {endsFree && pe && (
+        <View style={[styles.banner, { backgroundColor: '#DCFCE7', marginTop: 10, marginBottom: 0 }]}>
+          <Text style={{ color: '#166534', fontWeight: '600' }}>{t.autoStopNote(formatClock(pe), formatDuration(paidMin, lang))}</Text>
+        </View>
+      )}
 
       <Text style={styles.label}>{t.myCars}</Text>
       <CarPicker t={t} cars={cars} carId={carId} setCarId={setCarId} onAddCar={onAddCar} />
@@ -203,7 +212,7 @@ export function PayStep({
         <View style={{ alignItems: 'center', flex: 1 }}>
           <Text style={{ fontSize: 26, fontWeight: '800', color: C.text }}>{formatDuration(duration, lang)}</Text>
           <Text style={{ color: C.sub }}>
-            {t.endsAt}: {formatClock(end)} · {formatFt(price)}
+            {t.endsAt}: {formatClock(endsFree && pe ? pe : end)} · {formatFt(price)}
           </Text>
         </View>
         <Pressable

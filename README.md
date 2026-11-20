@@ -16,11 +16,16 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 11. Előzmények havi összesítővel és nyugtával (helyben tárolva)
 12. Tudnivalók: zónák, díjak, 3 órás szabály, turistáknak (HU/EN)
 
+13. Csak a díjfizetési időre fizetsz: ha közben díjmentes lesz (pl. 20:00), a díj addig számol, és a parkolás magától leáll
+14. „Mikor érkezel?” választó: a becslés az érkezési időre számol
+15. Első indításkor nyelvválasztás (a készülék nyelve alapján előválasztva) és rövid bemutató
+
 ## Futtatás
 ```bash
 npm install
 npx expo start        # QR kód -> Expo Go app a telefonon
 npx expo start --web  # böngészőben
+npm test              # díj-, zóna- és ajánló logika tesztjei
 ```
 
 ## Fontos
