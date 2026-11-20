@@ -1,0 +1,392 @@
+import { useState } from 'react';
+import { Linking, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { MARKER_COLORS } from '../components/mapTypes';
+import { BackLink, C, Chip, Meta, PrimaryButton, styles } from '../components/ui';
+import type { Place } from '../data/places';
+import { zoneAt } from '../logic/geo';
+import { formatClock, formatDuration, formatFt, isCharging, priceFor } from '../logic/pricing';
+import type { ParkingOption } from '../logic/recommend';
+import type { Lang, Strings } from '../i18n';
+import { COUNTRIES, plateValid, type Car, type Session } from '../types';
+
+export function chargeFor(s: Session) {
+  const z = s.option.zone;
+  if (!z) return 0;
+  const used = Math.min(s.elapsedSec / 60, s.durationMin);
+  return priceFor(z, used);
+}
+
+export function titleOf(o: ParkingOption, t: Strings) {
+  if (o.kind === 'garage') return `${t.garage}: ${o.garage?.name}`;
+  if (o.kind === 'here') return t.hereTitle;
+  return o.kind === 'fastest' ? t.fastest : t.cheapest;
+}
+
+export function describe(o: ParkingOption, t: Strings) {
+  if (o.kind === 'garage') return `${o.distanceM} m · ${o.walkMin} ${t.minutes} ${t.walk}`;
+  if (o.kind === 'here') return t.hereSub;
+  return `${o.distanceM} m ${t.directions[o.bearing]} ${t.fromDest} · ${o.walkMin} ${t.minutes} ${t.walk}`;
+}
+
+export function navApps(o: ParkingOption) {
+  const { lat, lng } = o.coord;
+  return [
+    { name: 'Google Maps', url: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving` },
+    { name: 'Apple Maps', url: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d` },
+    { name: 'Waze', url: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes` },
+  ];
+}
+
+
+export function SearchStep({
+  t,
+  query,
+  setQuery,
+  results,
+  onPick,
+  lang,
+}: {
+  t: Strings;
+  query: string;
+  setQuery: (s: string) => void;
+  results: Place[];
+  onPick: (p: Place) => void;
+  lang: Lang;
+}) {
+  const icon: Record<string, string> = { theatre: '🎭', cinema: '🎬', concert: '🎻', sight: '🏛️', mall: '🛍️', sport: '🏟️' };
+  return (
+    <View>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder={t.searchPlaceholder}
+        placeholderTextColor="#94A3B8"
+        style={styles.search}
+        autoCorrect={false}
+      />
+      <Text style={styles.label}>{query ? '' : t.popular}</Text>
+      {results.length === 0 && <Text style={styles.sub}>{t.noResults}</Text>}
+      {results.map((p) => (
+        <Pressable key={p.id} style={styles.result} onPress={() => onPick(p)}>
+          <Text style={{ fontSize: 22 }}>{icon[p.kind]}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: '600', color: C.text, fontSize: 15 }}>{lang === 'en' && p.nameEn ? p.nameEn : p.name}</Text>
+            <Text style={{ color: C.sub, fontSize: 13 }}>{p.address}</Text>
+          </View>
+          <Text style={{ color: C.sub }}>›</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+export function DestZone({ dest, t }: { dest: Place; t: Strings }) {
+  const z = zoneAt(dest);
+  if (!z) return <Text>{t.outsideZones}</Text>;
+  return (
+    <Text style={{ color: z.color, fontWeight: '700' }}>
+      {z.id} {t.zone} · {formatFt(z.pricePerHour)}
+      {t.perHour}
+    </Text>
+  );
+}
+
+export function OptionCard({
+  o,
+  t,
+  lang,
+  stay,
+  active,
+  onPress,
+}: {
+  o: ParkingOption;
+  t: Strings;
+  lang: Lang;
+  stay: number;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const color = MARKER_COLORS[o.kind];
+  const sub = o.kind === 'fastest' ? t.fastestSub : o.kind === 'cheapest' ? t.cheapestSub : t.garageSub;
+  const charging = o.zone ? isCharging(o.zone) : true;
+  const over = o.maxMinutes != null && stay > o.maxMinutes;
+  return (
+    <Pressable onPress={onPress} style={[styles.card, styles.option, active && { borderColor: color, borderWidth: 2 }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={[styles.badge, { backgroundColor: color, borderRadius: o.kind === 'garage' ? 8 : 999 }]}>
+          <Text style={{ color: '#fff', fontWeight: '800' }}>{o.kind === 'fastest' ? '1' : o.kind === 'cheapest' ? '2' : 'P'}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontWeight: '700', fontSize: 16, color: C.text }}>
+            {o.kind === 'garage' ? o.garage?.name : o.kind === 'fastest' ? t.fastest : t.cheapest}
+          </Text>
+          <Text style={{ color: C.sub, fontSize: 13 }}>{sub}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ fontWeight: '800', fontSize: 17, color: C.text }}>{charging ? formatFt(o.cost) : t.free}</Text>
+          <Text style={{ color: C.sub, fontSize: 12 }}>{formatDuration(over ? o.maxMinutes! : stay, lang)}</Text>
+        </View>
+      </View>
+      <View style={styles.metaRow}>
+        <Meta text={`🚶 ${o.walkMin} ${t.minutes}`} />
+        {o.kind === 'garage' ? (
+          <Meta text={`${o.garage?.capacity} ${t.freeSpots}`} />
+        ) : (
+          <Meta text={`${Math.round(o.availability * 100)}% ${t.chance}`} tone={o.availability > 0.6 ? 'good' : o.availability > 0.4 ? 'mid' : 'bad'} />
+        )}
+        {o.zone && <Meta text={`${o.zone.id} ${t.zone} · ${o.zone.pricePerHour} Ft${t.perHour}`} />}
+        {o.kind === 'garage' && <Meta text={`${o.garage?.pricePerHour} Ft${t.perHour}`} />}
+        {o.kind === 'garage' && o.garage?.bookable && <Meta text={t.bookable} tone="good" />}
+      </View>
+      {over && <Text style={{ color: C.warn, fontSize: 12, marginTop: 8 }}>{t.rule3h}</Text>}
+    </Pressable>
+  );
+}
+
+export function PayStep({
+  t,
+  lang,
+  option,
+  cars,
+  carId,
+  setCarId,
+  onAddCar,
+  duration,
+  setDuration,
+  payMethod,
+  setPayMethod,
+  onBack,
+  onPay,
+}: {
+  t: Strings;
+  lang: Lang;
+  option: ParkingOption;
+  cars: Car[];
+  carId: string | null;
+  setCarId: (id: string) => void;
+  onAddCar: (plate: string, country: string) => void;
+  duration: number;
+  setDuration: (n: number) => void;
+  payMethod: 'apple' | 'google' | 'card';
+  setPayMethod: (m: 'apple' | 'google' | 'card') => void;
+  onBack: () => void;
+  onPay: () => void;
+}) {
+  const z = option.zone;
+  const max = z?.maxMinutes ?? 600;
+  const price = z ? priceFor(z, duration) : 0;
+  const charging = z ? isCharging(z) : false;
+  const smsNumber = z ? `+3630763${z.smsCode}` : '';
+  const end = new Date(Date.now() + duration * 60000);
+  const plate = cars.find((c) => c.id === carId)?.plate ?? '';
+  return (
+    <View>
+      <BackLink t={t} onPress={onBack} />
+      <Text style={styles.h1}>{t.startParking}</Text>
+      {z && (
+        <View style={[styles.zonePill, { backgroundColor: `${z.color}22` }]}>
+          <Text style={{ color: z.color, fontWeight: '800' }}>
+            {z.id} {t.zone} · {z.pricePerHour} Ft{t.perHour} · {z.maxMinutes ? `${t.maxStay} ${formatDuration(z.maxMinutes, lang)}` : t.noLimit}
+          </Text>
+        </View>
+      )}
+      {!charging && <Text style={[styles.sub, { marginTop: 8 }]}>{t.notCharging}</Text>}
+
+      <Text style={styles.label}>{t.myCars}</Text>
+      <CarPicker t={t} cars={cars} carId={carId} setCarId={setCarId} onAddCar={onAddCar} />
+
+      <Text style={styles.label}>{t.duration}</Text>
+      <View style={styles.stepper}>
+        <Pressable style={styles.stepBtn} onPress={() => setDuration(Math.max(15, duration - 15))}>
+          <Text style={styles.stepBtnText}>−</Text>
+        </Pressable>
+        <View style={{ alignItems: 'center', flex: 1 }}>
+          <Text style={{ fontSize: 26, fontWeight: '800', color: C.text }}>{formatDuration(duration, lang)}</Text>
+          <Text style={{ color: C.sub }}>
+            {t.endsAt}: {formatClock(end)} · {formatFt(price)}
+          </Text>
+        </View>
+        <Pressable
+          style={[styles.stepBtn, duration + 15 > max && { opacity: 0.35 }]}
+          onPress={() => setDuration(Math.min(max, duration + 15))}
+        >
+          <Text style={styles.stepBtnText}>+</Text>
+        </Pressable>
+      </View>
+      {z?.maxMinutes && <Text style={{ color: C.warn, fontSize: 12, marginTop: 8 }}>{t.rule3h}</Text>}
+
+      <Text style={styles.label}>{t.payWith}</Text>
+      <View style={styles.chipRow}>
+        <Chip text="Apple Pay" active={payMethod === 'apple'} onPress={() => setPayMethod('apple')} />
+        <Chip text="Google Pay" active={payMethod === 'google'} onPress={() => setPayMethod('google')} />
+        <Chip text="Visa •••• 4242" active={payMethod === 'card'} onPress={() => setPayMethod('card')} />
+      </View>
+      <Text style={[styles.sub, { fontSize: 12 }]}>{t.demoPay}</Text>
+
+      <PrimaryButton text={`${t.payAndStart} · ${formatFt(price)}`} onPress={onPay} disabled={!plate} />
+
+      {z && (
+        <View style={[styles.card, { marginTop: 18 }]}>
+          <Text style={{ color: C.sub, fontSize: 13 }}>{t.smsFallback}</Text>
+          <Text style={{ fontWeight: '700', marginTop: 6, color: C.text }}>
+            {plate} → {smsNumber}
+          </Text>
+          <Pressable
+            onPress={() => Linking.openURL(`sms:${smsNumber}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(plate)}`)}
+            style={[styles.navBtn, { marginTop: 10 }]}
+          >
+            <Text style={styles.navBtnText}>{t.smsSend}</Text>
+            <Text style={{ color: C.sub }}>✉</Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
+export function ActiveStep({
+  t,
+  lang,
+  s,
+  demoSpeed,
+  setDemoSpeed,
+  onExtend,
+  onStop,
+  onGarage,
+}: {
+  t: Strings;
+  lang: Lang;
+  s: Session;
+  demoSpeed: boolean;
+  setDemoSpeed: (b: boolean) => void;
+  onExtend: () => void;
+  onStop: () => void;
+  onGarage: () => void;
+}) {
+  const leftSec = Math.max(0, s.durationMin * 60 - s.elapsedSec);
+  const pct = Math.min(1, s.elapsedSec / (s.durationMin * 60));
+  const endAt = new Date(s.startedAt + s.durationMin * 60000);
+  const max = s.option.zone?.maxMinutes;
+  const atLimit = max != null && s.durationMin + 15 > max;
+  const color = leftSec <= 600 ? (leftSec === 0 ? C.danger : C.warn) : C.brand;
+  const hh = Math.floor(leftSec / 3600);
+  const mm = Math.floor((leftSec % 3600) / 60);
+  const ss = leftSec % 60;
+  return (
+    <View>
+      <Text style={styles.h1}>{t.active}</Text>
+      <Text style={styles.sub}>
+        {s.plate} · {s.option.zone ? `${s.option.zone.id} ${t.zone}` : ''} · {t.endsAt} {formatClock(endAt)}
+      </Text>
+      <View style={[styles.card, { alignItems: 'center', marginTop: 14, paddingVertical: 24 }]}>
+        <Text style={{ fontSize: 48, fontWeight: '800', color, fontVariant: ['tabular-nums'] }}>
+          {hh}:{mm.toString().padStart(2, '0')}:{ss.toString().padStart(2, '0')}
+        </Text>
+        <Text style={{ color: C.sub }}>{t.remaining}</Text>
+        <View style={styles.progress}>
+          <View style={{ width: `${pct * 100}%`, height: '100%', backgroundColor: color, borderRadius: 99 }} />
+        </View>
+        <Text style={{ color: C.sub, marginTop: 10 }}>
+          {t.costSoFar}: <Text style={{ fontWeight: '800', color: C.text }}>{formatFt(chargeFor(s))}</Text>
+        </Text>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+        <Pressable style={[styles.secondary, atLimit && { opacity: 0.4 }]} onPress={onExtend}>
+          <Text style={styles.secondaryText}>{t.extend}</Text>
+        </Pressable>
+        <Pressable style={[styles.secondary, { borderColor: C.danger }]} onPress={onStop}>
+          <Text style={[styles.secondaryText, { color: C.danger }]}>{t.stop}</Text>
+        </Pressable>
+      </View>
+      {atLimit && (
+        <View style={[styles.card, { marginTop: 14, backgroundColor: C.warnSoft, borderColor: C.warnSoft }]}>
+          <Text style={{ color: C.warn, fontWeight: '600' }}>{t.limitReached}</Text>
+          <Pressable onPress={onGarage} style={{ marginTop: 8 }}>
+            <Text style={{ color: C.brand, fontWeight: '700' }}>{t.suggestGarage} →</Text>
+          </Pressable>
+        </View>
+      )}
+      <View style={styles.demoRow}>
+        <Text style={{ color: C.sub, flex: 1, fontSize: 13 }}>{t.demoSpeed}</Text>
+        <Switch value={demoSpeed} onValueChange={setDemoSpeed} />
+      </View>
+    </View>
+  );
+}
+
+
+export function CarPicker({
+  t,
+  cars,
+  carId,
+  setCarId,
+  onAddCar,
+}: {
+  t: Strings;
+  cars: Car[];
+  carId: string | null;
+  setCarId: (id: string) => void;
+  onAddCar: (plate: string, country: string) => void;
+}) {
+  const [adding, setAdding] = useState(cars.length === 0);
+  const [plate, setPlate] = useState('');
+  const [country, setCountry] = useState('H');
+  const valid = plateValid(plate, country);
+  return (
+    <View>
+      <View style={styles.chipRow}>
+        {cars.map((c) => (
+          <Chip key={c.id} active={c.id === carId && !adding} onPress={() => { setCarId(c.id); setAdding(false); }} text={`${c.country} · ${c.plate}`} />
+        ))}
+        {!adding && <Chip active={false} onPress={() => setAdding(true)} text={t.addCar} />}
+      </View>
+      {adding && (
+        <View style={[styles.card, { gap: 10 }]}>
+          <Text style={{ color: C.sub, fontSize: 13 }}>{t.country}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+            {COUNTRIES.map((c) => (
+              <Pressable key={c} onPress={() => setCountry(c)} style={[styles.countryChip, country === c && styles.chipOn]}>
+                <Text style={{ fontWeight: '700', color: country === c ? '#fff' : C.text }}>{c}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={styles.euBand}>
+              <Text style={{ color: '#FDE047', fontSize: 9 }}>★</Text>
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{country}</Text>
+            </View>
+            <TextInput
+              value={plate}
+              onChangeText={(v) => setPlate(v.toUpperCase())}
+              placeholder={country === 'H' ? 'ABC-123' : 'B-AB 1234'}
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="characters"
+              autoCorrect={false}
+              style={[styles.search, { flex: 1, minWidth: 0, width: '100%', fontWeight: '800', letterSpacing: 2, fontSize: 18, paddingVertical: 10 }]}
+            />
+          </View>
+          {plate.length > 0 && !valid && <Text style={{ color: C.warn, fontSize: 12 }}>{t.plateInvalid}</Text>}
+          {country !== 'H' && <Text style={{ color: C.sub, fontSize: 12 }}>{t.foreignHint}</Text>}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {cars.length > 0 && (
+              <Pressable style={[styles.secondary, { paddingVertical: 10 }]} onPress={() => setAdding(false)}>
+                <Text style={styles.secondaryText}>{t.cancel}</Text>
+              </Pressable>
+            )}
+            <Pressable
+              style={[styles.secondary, { paddingVertical: 10, backgroundColor: C.brand, borderColor: C.brand }, !valid && { opacity: 0.4 }]}
+              onPress={() => {
+                if (!valid) return;
+                onAddCar(plate.trim(), country);
+                setPlate('');
+                setAdding(false);
+              }}
+            >
+              <Text style={[styles.secondaryText, { color: '#fff' }]}>{t.save}</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}

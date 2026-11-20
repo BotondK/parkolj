@@ -11,6 +11,10 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 6. Aktív parkolás: visszaszámláló, percalapú díj, +15 perc, leállítás
 7. Lejárati figyelmeztetés (10 perccel előtte és lejáratkor), 3 órás szabály az A–C zónában
 8. Magyar / angol felület
+9. „Parkolás itt”: koppintás a térképre vagy saját helyzet (telefonon), azonnali indítás
+10. Mentett autók, külföldi rendszám országkóddal
+11. Előzmények havi összesítővel és nyugtával (helyben tárolva)
+12. Tudnivalók: zónák, díjak, 3 órás szabály, turistáknak (HU/EN)
 
 ## Futtatás
 ```bash

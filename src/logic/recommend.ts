@@ -3,7 +3,7 @@ import type { LatLng, Zone } from '../data/zones';
 import { distanceM, offset, walkMinutes, zoneAt } from './geo';
 import { isCharging, priceFor } from './pricing';
 
-export type OptionKind = 'fastest' | 'cheapest' | 'garage';
+export type OptionKind = 'fastest' | 'cheapest' | 'garage' | 'here';
 
 export type ParkingOption = {
   id: string;
@@ -105,4 +105,21 @@ export function recommend(dest: LatLng, plannedMinutes: number, at: Date = new D
   };
 
   return [{ ...fastest, kind: 'fastest' }, cheapest, garage];
+}
+
+/** „Parkolás itt”: a felhasználó által választott pont (térkép-koppintás vagy saját helyzet). */
+export function hereOption(pt: LatLng, plannedMinutes: number, at: Date = new Date()): ParkingOption {
+  const zone = zoneAt(pt);
+  return {
+    id: `here-${pt.lat.toFixed(5)}-${pt.lng.toFixed(5)}`,
+    kind: 'here',
+    coord: pt,
+    zone,
+    walkMin: 0,
+    availability: 1,
+    cost: streetCost(zone, plannedMinutes, at),
+    maxMinutes: zone?.maxMinutes ?? null,
+    bearing: '',
+    distanceM: 0,
+  };
 }

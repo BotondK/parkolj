@@ -5,7 +5,7 @@ import { ZONES } from '../data/zones';
 import { MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
 
 // Natív (iOS / Android) térkép. A webes változat: ParkingMap.web.tsx (Leaflet).
-export default function ParkingMap({ markers, selectedId, onSelect, focus }: ParkingMapProps) {
+export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress }: ParkingMapProps) {
   const ref = useRef<MapView>(null);
 
   useEffect(() => {
@@ -20,6 +20,11 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus }: Par
     <MapView
       ref={ref}
       style={{ flex: 1 }}
+      onPress={(e) => {
+        // Markerre koppintáskor Androidon a térkép is kap eseményt, azt kihagyjuk
+        if ((e.nativeEvent as { action?: string }).action === 'marker-press') return;
+        onMapPress?.({ lat: e.nativeEvent.coordinate.latitude, lng: e.nativeEvent.coordinate.longitude });
+      }}
       initialRegion={{ latitude: 47.4979, longitude: 19.0402, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
     >
       {[...ZONES].reverse().map((z) => (

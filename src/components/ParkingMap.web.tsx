@@ -4,7 +4,9 @@ import 'leaflet/dist/leaflet.css';
 import { ZONES } from '../data/zones';
 import { DANUBE, MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
 
-export default function ParkingMap({ markers, selectedId, onSelect, focus }: ParkingMapProps) {
+export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress }: ParkingMapProps) {
+  const pressRef = useRef(onMapPress);
+  pressRef.current = onMapPress;
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
@@ -25,6 +27,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus }: Par
         { color: z.color, weight: 1.5, fillColor: z.color, fillOpacity: 0.07, interactive: false },
       ).addTo(m);
     });
+    m.on('click', (e: L.LeafletMouseEvent) => pressRef.current?.({ lat: e.latlng.lat, lng: e.latlng.lng }));
     layer.current = L.layerGroup().addTo(m);
     map.current = m;
     setTimeout(() => m.invalidateSize(), 50);

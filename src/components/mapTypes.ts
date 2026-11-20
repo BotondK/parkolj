@@ -1,6 +1,6 @@
 import type { LatLng } from '../data/zones';
 
-export type MarkerKind = 'dest' | 'fastest' | 'cheapest' | 'garage';
+export type MarkerKind = 'dest' | 'fastest' | 'cheapest' | 'garage' | 'here';
 
 export type MapMarker = LatLng & {
   id: string;
@@ -14,6 +14,8 @@ export type ParkingMapProps = {
   onSelect?: (id: string) => void;
   /** Ezekre a pontokra illeszti a nézetet */
   focus: LatLng[];
+  /** Koppintás a térképre (\u201eParkolás itt\u201d) */
+  onMapPress?: (pt: LatLng) => void;
 };
 
 export const MARKER_COLORS: Record<MarkerKind, string> = {
@@ -21,6 +23,7 @@ export const MARKER_COLORS: Record<MarkerKind, string> = {
   fastest: '#16A34A',
   cheapest: '#2563EB',
   garage: '#7C3AED',
+  here: '#0F766E',
 };
 
 export const MARKER_GLYPH: Record<MarkerKind, string> = {
@@ -28,6 +31,7 @@ export const MARKER_GLYPH: Record<MarkerKind, string> = {
   fastest: '1',
   cheapest: '2',
   garage: 'P',
+  here: '●',
 };
 
 // Stilizált Duna-vonal, hogy csempe (tile) nélkül is olvasható legyen a térkép.
