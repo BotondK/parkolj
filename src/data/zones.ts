@@ -1,7 +1,9 @@
-// DEMÓ ADAT. A zónahatárok itt durva közelítések a prototípushoz.
-// Élesben a fővárosi / NMFR hivatalos zónaadatból (GeoJSON, zónakódok) töltjük be.
-// Díjak és időkorlátok a 2026. júliustól érvényes budapesti szabályokat követik
-// (A 800, B 600, C 400, D 300 Ft/óra, A–C zónában max. 3 óra).
+// A zónahatárok (polygon) DEMÓ közelítések a prototípushoz; élesben a hivatalos határokból töltjük be.
+// Díjak, díjfizetési idők, időkorlátok és pótdíjak a BKK hivatalos listái szerint (2026. július 1-től):
+//   zónalista:  https://bkk.hu/downloads/43733/
+//   pótdíjak:   https://bkk.hu/downloads/43739/
+// Díjfizetés csak munkanapokon: A 8–22, B 8–20, C 8–18, D 8–18 (néhány zónakódnál 8:30-tól).
+// A–C: max. 3 óra, D: nincs korlát.
 
 export type LatLng = { lat: number; lng: number };
 
@@ -13,12 +15,14 @@ export type Zone = {
   pricePerHour: number;
   /** Maximális egybefüggő parkolási idő percben, null = nincs korlát */
   maxMinutes: number | null;
-  /** Díjfizetési idő (demó): hétköznap, órában [kezdet, vége) */
+  /** Díjfizetési idő munkanapokon, órában [kezdet, vége) */
   weekdayHours: [number, number];
-  /** Szombati díjfizetés (demó), null = ingyenes */
+  /** Szombati díjfizetés, null = ingyenes (Budapesten jelenleg minden zónában) */
   saturdayHours: [number, number] | null;
-  /** Demó SMS zónakód */
+  /** Demó SMS zónakód (élesben a táblán lévő 4 jegyű kód, lásd zoneCodes.ts) */
   smsCode: string;
+  /** Pótdíj személyautóra (D1): [15 napon belül, 15 nap után] Ft */
+  surcharge: [number, number];
   color: string;
   polygon: LatLng[];
 };
@@ -31,8 +35,9 @@ export const ZONES: Zone[] = [
     pricePerHour: 800,
     maxMinutes: 180,
     weekdayHours: [8, 22],
-    saturdayHours: [8, 18],
-    smsCode: '1001',
+    saturdayHours: null,
+    smsCode: '0501',
+    surcharge: [12800, 32000],
     color: '#E5484D',
     // Belváros, Kiskörúton belül (közelítés)
     polygon: p([
@@ -55,7 +60,8 @@ export const ZONES: Zone[] = [
     maxMinutes: 180,
     weekdayHours: [8, 20],
     saturdayHours: null,
-    smsCode: '1002',
+    smsCode: '0602',
+    surcharge: [8400, 24000],
     color: '#F76B15',
     // Pest, Nagykörúton belül (közelítés)
     polygon: p([
@@ -82,9 +88,10 @@ export const ZONES: Zone[] = [
     id: 'C',
     pricePerHour: 400,
     maxMinutes: 180,
-    weekdayHours: [8, 20],
+    weekdayHours: [8, 18],
     saturdayHours: null,
-    smsCode: '1003',
+    smsCode: '0907',
+    surcharge: [4800, 16000],
     color: '#E2A336',
     // Belső kerületek a Nagykörúton kívül + belső Buda (közelítés)
     polygon: p([
@@ -108,7 +115,8 @@ export const ZONES: Zone[] = [
     maxMinutes: null,
     weekdayHours: [8, 18],
     saturdayHours: null,
-    smsCode: '1004',
+    smsCode: '0908',
+    surcharge: [3600, 12000],
     color: '#3E63DD',
     // Külső díjfizetős területek (közelítés)
     polygon: p([

@@ -1,6 +1,6 @@
 import type { LatLng } from './zones';
 
-export type PlaceKind = 'theatre' | 'cinema' | 'concert' | 'sight' | 'mall' | 'sport';
+export type PlaceKind = 'theatre' | 'cinema' | 'concert' | 'sight' | 'mall' | 'sport' | 'address';
 
 export type Place = LatLng & {
   id: string;

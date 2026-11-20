@@ -19,6 +19,8 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 13. Csak a díjfizetési időre fizetsz: ha közben díjmentes lesz (pl. 20:00), a díj addig számol, és a parkolás magától leáll
 14. „Mikor érkezel?” választó: a becslés az érkezési időre számol
 15. Első indításkor nyelvválasztás (a készülék nyelve alapján előválasztva) és rövid bemutató
+16. Hivatalos BKK szabályok: díjfizetés csak munkanapon (A 8–22, B 8–20, C 8–18, D 8–18), ünnepnapok, pótdíjak, a 68 valódi 4 jegyű zónakód az SMS-es fizetéshez
+17. Valódi címkeresés (Photon / OpenStreetMap), a helyi lista tartalékként
 
 ## Futtatás
 ```bash
@@ -29,7 +31,9 @@ npm test              # díj-, zóna- és ajánló logika tesztjei
 ```
 
 ## Fontos
-- `src/data/zones.ts`: zónahatárok **közelítők**, élesben a fővárosi/NMFR adatból jönnek.
+- `src/data/zones.ts`: díjak, díjfizetési idők, pótdíjak a BKK listái szerint (https://bkk.hu/downloads/43733/, https://bkk.hu/downloads/43739/). A zónahatárok (polygon) még **közelítők**, hivatalos határfájlt (GeoJSON/KML) nem találtunk nyilvánosan.
+- `src/data/zoneCodes.ts`: zónakódok kerülettel, ünnepnapok 2026–2027 (áthelyezett munkanapok még nincsenek benne).
+- `src/logic/geocode.ts`: Photon geokódoló; élesben saját vagy fizetős szolgáltatás kell.
 - `src/logic/recommend.ts`: a foglaltság **szimulált** (determinisztikus modell).
 - `src/data/garages.ts`: kitalált garázsárak és kapacitás.
 - Fizetés: csak demó, az NMFR viszonteladói szerződésig nincs valódi fizetés.

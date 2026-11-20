@@ -8,6 +8,7 @@ import { BackLink, C, Chip, PrimaryButton, Row, styles } from './src/components/
 import { searchPlaces, type Place } from './src/data/places';
 import type { LatLng } from './src/data/zones';
 import { STRINGS, type Lang } from './src/i18n';
+import { geocode } from './src/logic/geocode';
 import { locate } from './src/logic/locate';
 import { alertUser, requestNotify } from './src/logic/notify';
 import { formatClock, formatDuration, formatFt, isCharging, paidEnd } from './src/logic/pricing';
@@ -128,7 +129,23 @@ function Main() {
     if (options.length && !options.some((o) => o.id === selectedId)) setSelectedId(options[0].id);
   }, [options, selectedId]);
 
-  const results = useMemo(() => searchPlaces(query), [query]);
+  const [remote, setRemote] = useState<Place[]>([]);
+  useEffect(() => {
+    // Valódi címkeresés 3+ karaktertől, 400 ms késleltetéssel; ha nem elérhető, marad a helyi lista
+    setRemote([]);
+    if (query.trim().length < 3) return;
+    const ctrl = new AbortController();
+    const id = setTimeout(() => geocode(query.trim(), ctrl.signal).then(setRemote), 400);
+    return () => {
+      clearTimeout(id);
+      ctrl.abort();
+    };
+  }, [query]);
+  const results = useMemo(() => {
+    const local = searchPlaces(query);
+    const far = remote.filter((r) => !local.some((l) => Math.abs(l.lat - r.lat) < 0.0015 && Math.abs(l.lng - r.lng) < 0.0015));
+    return [...local, ...far].slice(0, 10);
+  }, [query, remote]);
 
   const pickDest = (p: Place) => {
     setHere(null);
@@ -177,7 +194,10 @@ function Main() {
       alertUser(t.appName, t.alertSoon);
       setSession({ ...session, warnedSoon: true });
     } else if (left <= 0 && !session.warnedExpired) {
-      setBanner({ kind: 'danger', text: t.alertExpired });
+      setBanner({
+        kind: 'danger',
+        text: t.alertExpired + (z ? t.expiredFine(formatFt(z.surcharge[0])) : ''),
+      });
       alertUser(t.appName, t.alertExpired);
       setSession({ ...session, warnedExpired: true });
     }

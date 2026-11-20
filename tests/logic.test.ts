@@ -5,6 +5,8 @@ import { searchPlaces, PLACES } from '../src/data/places';
 import { distanceM, zoneAt } from '../src/logic/geo';
 import { chargeableMinutes, formatFt, isCharging, paidEnd, priceFor, priceWindow } from '../src/logic/pricing';
 import { hereOption, recommend } from '../src/logic/recommend';
+import { parsePhoton } from '../src/logic/geocode';
+import { ZONE_CODES } from '../src/data/zoneCodes';
 import { plateValid } from '../src/types';
 
 // Fix időpontok helyi időben: 2026-11-18 szerda, 2026-11-22 vasárnap
@@ -82,4 +84,42 @@ test('keresés ékezet nélkül is talál', () => {
   assert.equal(searchPlaces('mupa')[0]?.id, 'mupa');
   assert.equal(searchPlaces('vigszinhaz')[0]?.id, 'vig');
   assert.equal(searchPlaces('opera')[0]?.id, 'opera');
+});
+
+test('BKK szabályok: C zóna 18:00-ig, szombaton és ünnepnap ingyenes', () => {
+  const C = zoneById('C');
+  assert.equal(isCharging(C, wed(17, 59)), true);
+  assert.equal(isCharging(C, wed(18, 0)), false);
+  assert.equal(isCharging(zoneById('A'), wed(21, 30)), true);
+  assert.equal(isCharging(zoneById('A'), new Date(2026, 10, 21, 12)), false); // szombat
+  assert.equal(isCharging(zoneById('A'), new Date(2026, 11, 24, 12)), false); // dec. 24., csütörtök
+  assert.equal(isCharging(zoneById('A'), new Date(2026, 9, 23, 12)), false); // okt. 23.
+});
+
+test('BKK zónakódok és pótdíjak', () => {
+  assert.deepEqual(
+    (['A', 'B', 'C', 'D'] as const).map((z) => ZONE_CODES[z].length),
+    [20, 27, 15, 6],
+  );
+  const all = Object.values(ZONE_CODES).flat().map(([c]) => c);
+  assert.equal(new Set(all).size, all.length, 'egy kód csak egy zónában lehet');
+  assert.ok(all.every((c) => /^\d{4}$/.test(c)));
+  assert.deepEqual(zoneById('A').surcharge, [12800, 32000]);
+  assert.ok(ZONE_CODES.A.some(([c]) => c === zoneById('A').smsCode));
+});
+
+test('címkeresés: Photon válasz feldolgozása', () => {
+  const places = parsePhoton({
+    features: [
+      { geometry: { coordinates: [19.0583, 47.5026] }, properties: { osm_id: 1, osm_value: 'theatre', name: 'Operaház', street: 'Andrássy út', housenumber: '22', district: 'VI. kerület' } },
+      { geometry: { coordinates: [19.0583, 47.5026] }, properties: { osm_id: 2, osm_value: 'theatre', name: 'Operaház', street: 'Andrássy út', housenumber: '22', district: 'VI. kerület' } },
+      { geometry: { coordinates: [19.06, 47.5] }, properties: { osm_id: 3, osm_value: 'house', street: 'Király utca', housenumber: '10' } },
+      { geometry: { coordinates: [19.06, 47.5] }, properties: { osm_id: 4 } },
+    ],
+  });
+  assert.equal(places.length, 2);
+  assert.equal(places[0].kind, 'theatre');
+  assert.equal(places[0].address, 'Andrássy út 22, VI. kerület');
+  assert.equal(places[1].name, 'Király utca 10');
+  assert.equal(places[1].kind, 'address');
 });

@@ -4,6 +4,7 @@ import { MARKER_COLORS } from '../components/mapTypes';
 import { BackLink, C, Chip, Meta, PrimaryButton, styles } from '../components/ui';
 import type { Place } from '../data/places';
 import { zoneAt } from '../logic/geo';
+import { ZONE_CODES } from '../data/zoneCodes';
 import { chargeableMinutes, formatClock, formatDuration, formatFt, isCharging, paidEnd, priceWindow } from '../logic/pricing';
 import type { ParkingOption } from '../logic/recommend';
 import type { Lang, Strings } from '../i18n';
@@ -53,7 +54,7 @@ export function SearchStep({
   onPick: (p: Place) => void;
   lang: Lang;
 }) {
-  const icon: Record<string, string> = { theatre: '🎭', cinema: '🎬', concert: '🎻', sight: '🏛️', mall: '🛍️', sport: '🏟️' };
+  const icon: Record<string, string> = { theatre: '🎭', cinema: '🎬', concert: '🎻', sight: '🏛️', mall: '🛍️', sport: '🏟️', address: '📍' };
   return (
     <View>
       <TextInput
@@ -180,7 +181,8 @@ export function PayStep({
   const pe = z ? paidEnd(z, now) : null;
   const endsFree = pe && pe.getTime() < now.getTime() + duration * 60000;
   const paidMin = z ? chargeableMinutes(z, now, duration) : 0;
-  const smsNumber = z ? `+3630763${z.smsCode}` : '';
+  const [code, setCode] = useState(z?.smsCode ?? '');
+  const smsNumber = code ? `+3630763${code}` : '';
   const end = new Date(Date.now() + duration * 60000);
   const plate = cars.find((c) => c.id === carId)?.plate ?? '';
   return (
@@ -232,12 +234,21 @@ export function PayStep({
       </View>
       <Text style={[styles.sub, { fontSize: 12 }]}>{t.demoPay}</Text>
 
-      <PrimaryButton text={`${t.payAndStart} · ${formatFt(price)}`} onPress={onPay} disabled={!plate} />
+      <PrimaryButton text={price === 0 ? t.startFree : `${t.payAndStart} · ${formatFt(price)}`} onPress={onPay} disabled={!plate} />
 
       {z && (
         <View style={[styles.card, { marginTop: 18 }]}>
           <Text style={{ color: C.sub, fontSize: 13 }}>{t.smsFallback}</Text>
-          <Text style={{ fontWeight: '700', marginTop: 6, color: C.text }}>
+          <Text style={{ color: C.sub, fontSize: 12, marginTop: 8 }}>{t.zoneCodeHint(z.id)}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 8 }}>
+            {ZONE_CODES[z.id].map(([c, d]) => (
+              <Pressable key={c} onPress={() => setCode(c)} style={[styles.countryChip, code === c && styles.chipOn]}>
+                <Text style={{ fontWeight: '700', color: code === c ? '#fff' : C.text }}>{c}</Text>
+                <Text style={{ fontSize: 10, color: code === c ? '#fff' : C.sub, textAlign: 'center' }}>{d}.</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <Text style={{ fontWeight: '700', marginTop: 2, color: C.text }} selectable>
             {plate} → {smsNumber}
           </Text>
           <Pressable

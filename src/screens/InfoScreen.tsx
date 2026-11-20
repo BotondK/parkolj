@@ -2,7 +2,7 @@ import { Text, View } from 'react-native';
 import { C, styles } from '../components/ui';
 import { ZONES } from '../data/zones';
 import type { Lang, Strings } from '../i18n';
-import { formatDuration, isCharging } from '../logic/pricing';
+import { formatDuration, formatFt, isCharging } from '../logic/pricing';
 
 export default function InfoScreen({ t, lang }: { t: Strings; lang: Lang }) {
   const hours = (h: [number, number] | null) => (h ? `${h[0]}–${h[1]}` : '–');
@@ -34,7 +34,7 @@ export default function InfoScreen({ t, lang }: { t: Strings; lang: Lang }) {
                   {z.pricePerHour} Ft{t.perHour}
                 </Text>
                 <Text style={{ color: C.sub, fontSize: 12 }}>
-                  {t.infoWeekdays} {hours(z.weekdayHours)} · {t.infoSat} {hours(z.saturdayHours)}
+                  {t.infoWeekdays} {hours(z.weekdayHours)} · {t.surchargeShort} {formatFt(z.surcharge[0])}
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
@@ -55,6 +55,7 @@ export default function InfoScreen({ t, lang }: { t: Strings; lang: Lang }) {
         [t.infoPayTitle, t.infoPay],
         [t.info3hTitle, t.info3h],
         [t.infoFreeTitle, t.infoFree],
+        [t.infoSurchargeTitle, t.infoSurcharge],
         [t.infoTouristTitle, t.infoTourist],
       ].map(([h, b]) => (
         <View key={h} style={{ marginTop: 18 }}>

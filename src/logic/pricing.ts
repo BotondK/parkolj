@@ -1,4 +1,10 @@
 import type { Zone } from '../data/zones';
+import { HOLIDAYS } from '../data/zoneCodes';
+
+const ymd = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export const isHoliday = (d: Date) => HOLIDAYS.has(ymd(d));
 
 /** Díj a megadott percekre, percalapú elszámolással (ahogy a mobilparkolás működik). */
 export function priceFor(zone: Pick<Zone, 'pricePerHour'>, minutes: number): number {
@@ -7,7 +13,7 @@ export function priceFor(zone: Pick<Zone, 'pricePerHour'>, minutes: number): num
 
 export function chargingWindow(zone: Zone, at: Date): [number, number] | null {
   const day = at.getDay(); // 0 = vasárnap
-  if (day === 0) return null;
+  if (day === 0 || isHoliday(at)) return null;
   if (day === 6) return zone.saturdayHours;
   return zone.weekdayHours;
 }
