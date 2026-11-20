@@ -16,13 +16,38 @@ export function pointInPolygon(pt: LatLng, poly: LatLng[]): boolean {
 }
 
 /** A legbelső (legdrágább) zóna, ahová a pont esik. null = nem fizetős terület. */
+/** Gyűrű területe m²-ben (helyi síkvetület). */
+export function ringAreaM2(r: LatLng[]): number {
+  if (r.length < 3) return 0;
+  const kx = 111320 * Math.cos((r[0].lat * Math.PI) / 180), ky = 110540;
+  let a = 0;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j].lng * kx) * (r[i].lat * ky) - (r[i].lng * kx) * (r[j].lat * ky);
+  return Math.abs(a / 2);
+}
+
+/**
+ * A zónatérkép kis lyukai (terek, sétálóutcák, egy-egy épülettömb) nem zónahatárok: aki oda tart
+ * (pl. az Operaházhoz), a körülötte lévő zónában parkol. A nagy lyukak (pl. Belváros belseje) számítanak.
+ */
+export const SMALL_HOLE_M2 = 60000;
+const holeArea = new WeakMap<LatLng[], number>();
+const bigHole = (h: LatLng[]) => {
+  let a = holeArea.get(h);
+  if (a === undefined) holeArea.set(h, (a = ringAreaM2(h)));
+  return a >= SMALL_HOLE_M2;
+};
+
+/** Pont egy lyukas sokszögben: a külső gyűrűn belül és egyik nagy lyukban sincs. */
+export function inArea(pt: LatLng, rings: LatLng[][]): boolean {
+  return pointInPolygon(pt, rings[0]) && !rings.slice(1).some((h) => bigHole(h) && pointInPolygon(pt, h));
+}
+
 export function zoneAt(pt: LatLng): Zone | null {
   // 1) Pontos, utcaszintű adat (OSM), ha be van töltve és van zónás utca 30 m-en belül
   const st = streetZoneAt(pt);
   if (st) return ZONES.find((z) => z.id === st.z) ?? null;
-  // 2) Közelítő zónasokszögek. Az V. kerület egésze egyetlen A zóna (BKK: 0501), itt a valódi kerülethatárt használjuk
-  if (districtAt(pt) === 'V. kerület') return ZONES.find((z) => z.id === 'A') ?? null;
-  for (const z of ZONES) if (pointInPolygon(pt, z.polygon)) return z;
+  // 2) A BKK hivatalos zónatérképe (sokszögek lyukakkal)
+  for (const z of ZONES) if (z.areas.some((rings) => inArea(pt, rings))) return z;
   return null;
 }
 

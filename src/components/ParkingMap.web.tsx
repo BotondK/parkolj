@@ -32,7 +32,7 @@ const ring = (pts: { lat: number; lng: number }[]) => {
 };
 
 const ZONES_GJ = fc(
-  [...ZONES].reverse().map((z) => ({ type: 'Feature', properties: { color: z.color, id: z.id }, geometry: { type: 'Polygon', coordinates: [ring(z.polygon)] } })),
+  ZONES.map((z) => ({ type: 'Feature', properties: { color: z.color, id: z.id }, geometry: { type: 'MultiPolygon', coordinates: z.areas.map((rings) => rings.map(ring)) } })),
 );
 const DISTRICTS_GJ = fc(
   DISTRICTS.flatMap((d) => d.rings.map((r) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: ring(r.map(([lat, lng]) => ({ lat, lng }))) } }))),

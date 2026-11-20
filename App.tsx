@@ -626,7 +626,6 @@ function Main() {
     </>
   );
 
-  const tabTitle = tab === 'park' ? t.tabPark : tab === 'history' ? t.tabHistory : t.tabInfo;
   const sideTop = (
     <View style={styles.sideTop}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
@@ -647,14 +646,6 @@ function Main() {
           if (step !== 'search' && step !== 'active') reset();
         }}
       />
-      <View style={styles.sideTitleRow}>
-        <Text style={[styles.sideTitle, { color: C.brand }]}>{tabTitle}</Text>
-        {(tab !== 'park' || (step !== 'search' && step !== 'active') || hereOpt) && (
-          <Pressable onPress={() => (tab !== 'park' ? setTab('park') : reset())} accessibilityLabel={t.back}>
-            <Text style={styles.closeX}>✕</Text>
-          </Pressable>
-        )}
-      </View>
     </View>
   );
   const panel = (

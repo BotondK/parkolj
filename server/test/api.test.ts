@@ -5,8 +5,8 @@ import { buildApp } from '../src/app';
 
 // Szerda 2026-11-18, helyi idő
 const at = (h: number, m = 0) => new Date(bpTime(2026, 10 + 1, 18, h + m / 60)).getTime();
-const OPERA = { lat: 47.5026, lng: 19.0583 }; // VI. ker., B zóna
-const PARLAMENT = { lat: 47.507, lng: 19.0456 }; // V. ker., A zóna
+const NEMZETI = { lat: 47.4717, lng: 19.0717 }; // Nemzeti Színház, IX. ker., B zóna
+const PARLAMENT = { lat: 47.501, lng: 19.0497 }; // Nádor utca, V. ker., A zóna
 
 type Req = string | { method: string; url: string; payload?: unknown };
 
@@ -38,8 +38,8 @@ test('zónalista: 4 zóna, BKK díjak, 68 zónakód', async () => {
 
 test('zone-at: kerület és zóna, hibás pontra 400', async () => {
   const { app } = setup(at(19, 30));
-  const r = (await app.inject(`/v1/zone-at?lat=${OPERA.lat}&lng=${OPERA.lng}`)).json();
-  assert.equal(r.district, 'VI. kerület');
+  const r = (await app.inject(`/v1/zone-at?lat=${NEMZETI.lat}&lng=${NEMZETI.lng}`)).json();
+  assert.equal(r.district, 'IX. kerület');
   assert.equal(r.zone.id, 'B');
   assert.equal(r.zone.chargingNow, true);
   assert.equal(bpParts(r.zone.paidUntil).hour, 20);
@@ -48,13 +48,13 @@ test('zone-at: kerület és zóna, hibás pontra 400', async () => {
 
 test('recommend: 3 opció', async () => {
   const { app } = setup(at(18));
-  const r = (await app.inject(`/v1/recommend?lat=${OPERA.lat}&lng=${OPERA.lng}&minutes=120`)).json();
+  const r = (await app.inject(`/v1/recommend?lat=${NEMZETI.lat}&lng=${NEMZETI.lng}&minutes=120`)).json();
   assert.deepEqual(r.options.map((o: { kind: string }) => o.kind), ['fastest', 'cheapest', 'garage']);
 });
 
 test('parkolás: este 19:30-tól 3 órára → automatikus leállítás 20:00-kor, 30 perc díj', async () => {
   const { app, advance } = setup(at(19, 30));
-  const c = await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...OPERA, plate: 'abc-123', minutes: 180 } });
+  const c = await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...NEMZETI, plate: 'abc-123', minutes: 180 } });
   assert.equal(c.statusCode, 201);
   const s = c.json();
   assert.equal(s.zoneId, 'B');
@@ -92,7 +92,7 @@ test('parkolás: leállításkor percre pontos díj', async () => {
 
 test('parkolás: rossz rendszám 400, díjmentes terület 422', async () => {
   const { app } = setup(at(10));
-  assert.equal((await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...OPERA, plate: '1', minutes: 60 } })).statusCode, 400);
+  assert.equal((await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...NEMZETI, plate: '1', minutes: 60 } })).statusCode, 400);
   assert.equal(
     (await app.inject({ method: 'POST', url: '/v1/sessions', payload: { lat: 47.6, lng: 18.95, plate: 'ABC-123', minutes: 60 } })).statusCode,
     422,
@@ -101,7 +101,7 @@ test('parkolás: rossz rendszám 400, díjmentes terület 422', async () => {
 
 test('városi statisztika: csak legalább 5 parkolású cellák, rendszám nélkül', async () => {
   const { app } = setup(at(10));
-  for (let i = 0; i < 5; i++) await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...OPERA, plate: 'ABC-123', minutes: 60 } });
+  for (let i = 0; i < 5; i++) await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...NEMZETI, plate: 'ABC-123', minutes: 60 } });
   for (let i = 0; i < 2; i++) await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...PARLAMENT, plate: 'XYZ-999', minutes: 60 } });
   const r = (await app.inject('/v1/stats/occupancy')).json();
   assert.equal(r.rows.length, 1);
@@ -112,8 +112,8 @@ test('városi statisztika: csak legalább 5 parkolású cellák, rendszám nélk
 
 test('időzített lezárás: lejárt parkolás leáll, a futó nem', async () => {
   const { app, hono, advance } = setup(at(10));
-  const a = (await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...OPERA, plate: 'ABC-123', minutes: 30 } })).json();
-  const b = (await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...OPERA, plate: 'XYZ-999', minutes: 120 } })).json();
+  const a = (await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...NEMZETI, plate: 'ABC-123', minutes: 30 } })).json();
+  const b = (await app.inject({ method: 'POST', url: '/v1/sessions', payload: { ...NEMZETI, plate: 'XYZ-999', minutes: 120 } })).json();
   advance(45);
   assert.equal(await hono.closeExpired(), 1);
   const ga = (await app.inject(`/v1/sessions/${a.id}`)).json();

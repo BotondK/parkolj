@@ -14,10 +14,13 @@ import { plateValid } from '../src/types';
 const wed = (h: number, m = 0) => new Date(bpTime(2026, 10 + 1, 18, h + m / 60));
 const sun = (h: number) => new Date(bpTime(2026, 10 + 1, 22, h));
 
-test('zóna felismerés: belváros A, Opera B, Nemzeti Színház C', () => {
-  assert.equal(zoneAt({ lat: 47.495, lng: 19.0545 })?.id, 'A'); // Katona
-  assert.equal(zoneAt({ lat: 47.5026, lng: 19.0583 })?.id, 'B'); // Opera
-  assert.equal(zoneAt({ lat: 47.4717, lng: 19.0717 })?.id, 'C'); // Nemzeti
+test('zóna felismerés a BKK zónatérkép szerint (2026.07.01-től)', () => {
+  assert.equal(zoneAt({ lat: 47.501, lng: 19.0497 })?.id, 'A'); // Nádor utca, Lipótváros
+  assert.equal(zoneAt({ lat: 47.5026, lng: 19.0583 })?.id, 'A'); // Opera, Terézváros
+  assert.equal(zoneAt({ lat: 47.4717, lng: 19.0717 })?.id, 'B'); // Nemzeti Színház, Ferencváros
+  assert.equal(zoneAt({ lat: 47.5413, lng: 19.0395 })?.id, 'C'); // Flórián tér, Óbuda
+  assert.equal(zoneAt({ lat: 47.443, lng: 19.035 })?.id, 'D'); // Albertfalva
+  assert.equal(zoneAt({ lat: 47.495, lng: 19.0545 }), null); // Belváros belseje: nem zóna (a térképen fehér)
   assert.equal(zoneAt({ lat: 47.7, lng: 19.3 }), null);
 });
 
@@ -63,12 +66,12 @@ test('ajánló: mindig 3 opció, ebből egy garázs, és a garázs közel van', 
 
 test('ajánló: a díjmentes időszak kezdetét jelzi', () => {
   const opera = PLACES.find((p) => p.id === 'opera')!;
-  const o = recommend(opera, 180, wed(19, 0));
-  assert.equal(o[0].freeFrom, '20:00');
+  const o = recommend(opera, 180, wed(20, 30)); // A zóna: 22:00-ig fizetős
+  assert.equal(o[0].freeFrom, '22:00');
 });
 
 test('parkolás itt: zóna és ár a kijelölt pontra', () => {
-  const h = hereOption({ lat: 47.495, lng: 19.0545 }, 60, wed(10, 0));
+  const h = hereOption({ lat: 47.501, lng: 19.0497 }, 60, wed(10, 0));
   assert.equal(h.zone?.id, 'A');
   assert.equal(h.cost, 800);
 });
@@ -125,11 +128,11 @@ test('címkeresés: Photon válasz feldolgozása', () => {
   assert.equal(places[1].kind, 'address');
 });
 
-test('valódi kerülethatárok: kerület felismerés, az V. kerület A zóna', () => {
+test('valódi kerülethatárok: kerület felismerés', () => {
   assert.equal(districtAt({ lat: 47.5026, lng: 19.0583 }), 'VI. kerület'); // Opera
   assert.equal(districtAt({ lat: 47.507, lng: 19.0456 }), 'V. kerület'); // Országház
   assert.equal(districtAt({ lat: 47.4717, lng: 19.0717 }), 'IX. kerület'); // Nemzeti Színház
-  assert.equal(zoneAt({ lat: 47.507, lng: 19.0456 })?.id, 'A');
+  assert.equal(zoneAt({ lat: 47.507, lng: 19.0456 }), null); // Kossuth tér: nincs utcai parkolás
 });
 
 test('budapesti idő: téli/nyári időszámítás, a gép időzónájától függetlenül', async () => {
@@ -148,11 +151,11 @@ test('budapesti idő: téli/nyári időszámítás, a gép időzónájától fü
 
 test('utcaszintű zóna: a legközelebbi zónás utca dönt, 30 m-en túl a sokszög', async () => {
   const { setZoneStreets, streetZoneAt } = await import('../src/logic/zoneStreets');
-  // Kitalált utcaszakasz az Operaház mellett C zónával, hogy látszódjon: az utcaadat felülírja a sokszöget (B)
+  // Kitalált utcaszakasz az Operaház mellett C zónával, hogy látszódjon: az utcaadat felülírja a sokszöget (A)
   setZoneStreets([{ z: 'C', n: 'Próba utca', h: 'Mo-Fr 08:30-18:00', c: [[19.058, 47.5026], [19.0586, 47.5026]] }]);
   assert.equal(streetZoneAt({ lat: 47.50262, lng: 19.0583 })?.n, 'Próba utca');
   assert.equal(zoneAt({ lat: 47.50262, lng: 19.0583 })?.id, 'C');
-  assert.equal(zoneAt({ lat: 47.5035, lng: 19.0583 })?.id, 'B'); // ~100 m-re: sokszög
+  assert.equal(zoneAt({ lat: 47.5035, lng: 19.0583 })?.id, 'A'); // ~100 m-re: sokszög
   setZoneStreets([]);
-  assert.equal(zoneAt({ lat: 47.50262, lng: 19.0583 })?.id, 'B');
+  assert.equal(zoneAt({ lat: 47.50262, lng: 19.0583 })?.id, 'A');
 });

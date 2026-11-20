@@ -46,15 +46,18 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
           />
         )),
       )}
-      {[...ZONES].reverse().map((z) => (
-        <Polygon
-          key={z.id}
-          coordinates={z.polygon.map((p) => ({ latitude: p.lat, longitude: p.lng }))}
-          strokeColor={z.color}
-          fillColor={`${z.color}1A`}
-          strokeWidth={1.5}
-        />
-      ))}
+      {ZONES.flatMap((z) =>
+        z.areas.map((rings, i) => (
+          <Polygon
+            key={`${z.id}-${i}`}
+            coordinates={rings[0].map((p) => ({ latitude: p.lat, longitude: p.lng }))}
+            holes={rings.slice(1).map((h) => h.map((p) => ({ latitude: p.lat, longitude: p.lng })))}
+            strokeColor={z.color}
+            fillColor={`${z.color}1A`}
+            strokeWidth={1.5}
+          />
+        )),
+      )}
       {markers.map((mk) => {
         const sel = mk.id === selectedId;
         const size = mk.kind === 'dest' ? 34 : sel ? 38 : 30;

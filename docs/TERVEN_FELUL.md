@@ -39,4 +39,5 @@ Ebben a fájlban vezetjük, mi került a projektbe ezen felül, és ki kérte. �
 | 2026-11-20 | Díjszámítás budapesti idő szerint, a készülék/szerver időzónájától függetlenül | A Workers UTC-ben fut, a külföldi turista telefonja más zónában lehet: enélkül rossz órára számolna |
 | 2026-11-20 | Design a BudapestGO mintájára: bal oldali panel + teljes térkép asztalon, alsó lap telefonon, lila fő szín, kerek térképgombok, óra és menü jobbra fent | Boti kérése („ilyen legyen a design 1/1”); saját név és logó, BKK-arculat nélkül |
 | 2026-11-20 | Vektoros térkép (MapLibre + OpenFreeMap), rétegválasztó; valódi mélygarázsok/parkolóházak (77) és elektromos töltők (538) az OSM-ből; utcaszintű zónák díjidővel (2074 utcaszakasz), a zóna meghatározása ezekkel | Boti kérése: pontos zónahatárok, töltők, mélygarázsok a térképen |
-| 2026-11-20 | Oldalpanel sorrend: logó felül, alatta kereső, alatta lila „Parkolás” cím | Boti kérése |
+| 2026-11-20 | Oldalpanel: logó felül, alatta kereső; a „Parkolás” cím kikerült (a ✕ is, a lépésekben van „Vissza”) | Boti kérése |
+| 2026-11-20 | Hivatalos zónahatárok a BKK „Parkolási zónák 2026.07.01-étől” PDF-térképből (Boti találta): kinyerve, kerülethatárokra illesztve (~20 m), OSM-mel 94,8%-ban egyezik; zónaszínek a BKK térkép szerint | A becsült zónák helyett; a térkép tájékoztató jellegű |

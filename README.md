@@ -48,7 +48,7 @@ Szerverszinkron (opcionális): `EXPO_PUBLIC_API_URL=https://... npx expo start`.
 
 ## Fontos
 - Térkép: MapLibre GL + OpenFreeMap (ingyenes, kulcs nélkül). Garázsok, töltők, utcaszintű zónák: OpenStreetMap (ODbL), frissítés: Actions → „OSM adatok letöltése”, majd `git checkout origin/osm-data -- src/data/osm public/data`.
-- `src/data/zones.ts`: díjak, díjfizetési idők, pótdíjak a BKK listái szerint (https://bkk.hu/downloads/43733/, https://bkk.hu/downloads/43739/). A zónahatárok (polygon) még **közelítők**, hivatalos határfájlt (GeoJSON/KML) nem találtunk nyilvánosan.
+- `src/data/zones.ts`: díjak, díjfizetési idők, pótdíjak a BKK listái szerint (https://bkk.hu/downloads/43733/, https://bkk.hu/downloads/43739/). Zónahatárok: `src/data/zoneShapes.ts`, a BKK „Parkolási zónák 2026.07.01-étől” vektoros PDF-térképéből kinyerve és a kerülethatárokhoz illesztve (`scripts/zones_from_bkk_pdf.py`); a térkép tájékoztató jellegű.
 - `src/data/zoneCodes.ts`: zónakódok kerülettel, ünnepnapok 2026–2027 (áthelyezett munkanapok még nincsenek benne).
 - `src/logic/geocode.ts`: Photon geokódoló; élesben saját vagy fizetős szolgáltatás kell.
 - `src/logic/recommend.ts`: a foglaltság **szimulált** (determinisztikus modell).
