@@ -9,7 +9,8 @@ import { searchPlaces, type Place } from './src/data/places';
 import type { LatLng } from './src/data/zones';
 import { STRINGS, type Lang } from './src/i18n';
 import { geocode } from './src/logic/geocode';
-import { locate } from './src/logic/locate';
+import { canLocate, locate } from './src/logic/locate';
+import { DISTRICT_CENTERS, districtAt } from './src/logic/geo';
 import { alertUser, requestNotify } from './src/logic/notify';
 import { formatClock, formatDuration, formatFt, isCharging, paidEnd } from './src/logic/pricing';
 import { hereOption, recommend, type ParkingOption } from './src/logic/recommend';
@@ -34,6 +35,16 @@ type Step = 'search' | 'options' | 'navigate' | 'pay' | 'active' | 'summary';
 type Tab = 'park' | 'history' | 'info';
 
 const STAY_CHOICES = [30, 60, 120, 180, 240];
+
+const DISTRICT_PLACES: Place[] = DISTRICT_CENTERS.map((d) => ({
+  id: `district-${d.name}`,
+  name: d.name,
+  nameEn: `District ${d.name.split('.')[0]}`,
+  address: 'Budapest',
+  kind: 'address',
+  lat: d.lat,
+  lng: d.lng,
+}));
 
 export default function App() {
   return (
@@ -142,7 +153,7 @@ function Main() {
     };
   }, [query]);
   const results = useMemo(() => {
-    const local = searchPlaces(query);
+    const local = searchPlaces(query, DISTRICT_PLACES);
     const far = remote.filter((r) => !local.some((l) => Math.abs(l.lat - r.lat) < 0.0015 && Math.abs(l.lng - r.lng) < 0.0015));
     return [...local, ...far].slice(0, 10);
   }, [query, remote]);
@@ -313,7 +324,7 @@ function Main() {
   const focus = useMemo(() => {
     if ((step === 'active' || step === 'summary') && session) return [session.option.coord];
     if (hereOpt) return [hereOpt.coord];
-    if (!dest) return [{ lat: 47.4979, lng: 19.0502 }];
+    if (!dest) return [{ lat: 47.475, lng: 19.0 }, { lat: 47.535, lng: 19.11 }]; // belső kerületek
     if (selected && step !== 'options') return [dest, selected.coord];
     return [dest, ...options.map((o) => o.coord)];
   }, [dest, options, selected, step, hereOpt, session]);
@@ -340,11 +351,13 @@ function Main() {
         <>
           <SearchStep t={t} query={query} setQuery={setQuery} results={results} onPick={pickDest} lang={lang} />
           <View style={[styles.card, { marginTop: 14, gap: 10 }]}>
-            <Text style={{ color: C.sub, fontSize: 13 }}>{t.orHere}</Text>
-            <Pressable style={styles.navBtn} onPress={useMyLocation}>
-              <Text style={styles.navBtnText}>◎ {t.useLocation}</Text>
-              <Text style={{ color: C.sub }}>›</Text>
-            </Pressable>
+            <Text style={{ color: C.sub, fontSize: 13 }}>{canLocate() ? t.orHere : t.tapMap}</Text>
+            {canLocate() && (
+              <Pressable style={styles.navBtn} onPress={useMyLocation}>
+                <Text style={styles.navBtnText}>◎ {t.useLocation}</Text>
+                <Text style={{ color: C.sub }}>›</Text>
+              </Pressable>
+            )}
             {locMsg && <Text style={{ color: locMsg === t.locating ? C.sub : C.warn, fontSize: 13 }}>{locMsg}</Text>}
           </View>
         </>
@@ -354,6 +367,7 @@ function Main() {
         <View>
           <BackLink t={t} onPress={() => setHere(null)} />
           <Text style={styles.h1}>{t.hereTitle}</Text>
+          {districtAt(hereOpt.coord) && <Text style={styles.sub}>{districtAt(hereOpt.coord)}</Text>}
           {hereOpt.zone ? (
             <View style={[styles.zonePill, { backgroundColor: `${hereOpt.zone.color}22` }]}>
               <Text style={{ color: hereOpt.zone.color, fontWeight: '800' }}>

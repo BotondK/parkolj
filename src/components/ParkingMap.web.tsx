@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { ZONES } from '../data/zones';
-import { DANUBE, MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
+import { DISTRICTS } from '../data/districts';
+import { DISTRICT_CENTERS } from '../logic/geo';
+import { MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
 
 export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress }: ParkingMapProps) {
   const pressRef = useRef(onMapPress);
@@ -17,10 +19,24 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
     const m = L.map(el, { zoomControl: false, attributionControl: true }).setView([47.4979, 19.0402], 14);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
-      attribution: '© OpenStreetMap, © CARTO',
+      attribution: '© OpenStreetMap közreműködők, © CARTO',
     }).addTo(m);
-    L.polyline(DANUBE, { color: '#8EC5E8', weight: 22, opacity: 0.55, interactive: false }).addTo(m);
-    // Legkülső zóna elöl, hogy a belső zónák rajzolódjanak felülre
+    // Valódi kerülethatárok (OSM) és kerületszámok
+    DISTRICTS.forEach((d) =>
+      d.rings.forEach((r) => L.polygon(r, { color: '#64748B', weight: 1, opacity: 0.6, fill: false, interactive: false }).addTo(m)),
+    );
+    DISTRICT_CENTERS.forEach((c) =>
+      L.marker([c.lat, c.lng], {
+        interactive: false,
+        icon: L.divIcon({
+          className: '',
+          iconSize: [40, 14],
+          iconAnchor: [20, 7],
+          html: `<div style="font:700 11px system-ui,sans-serif;color:#475569;text-align:center;opacity:.8">${c.name.split(' ')[0]}</div>`,
+        }),
+      }).addTo(m),
+    );
+        // Legkülső zóna elöl, hogy a belső zónák rajzolódjanak felülre
     [...ZONES].reverse().forEach((z) => {
       L.polygon(
         z.polygon.map((p) => [p.lat, p.lng] as [number, number]),

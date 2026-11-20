@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { zoneById } from '../src/data/zones';
 import { searchPlaces, PLACES } from '../src/data/places';
-import { distanceM, zoneAt } from '../src/logic/geo';
+import { distanceM, districtAt, zoneAt } from '../src/logic/geo';
 import { chargeableMinutes, formatFt, isCharging, paidEnd, priceFor, priceWindow } from '../src/logic/pricing';
 import { hereOption, recommend } from '../src/logic/recommend';
 import { parsePhoton } from '../src/logic/geocode';
@@ -122,4 +122,11 @@ test('címkeresés: Photon válasz feldolgozása', () => {
   assert.equal(places[0].address, 'Andrássy út 22, VI. kerület');
   assert.equal(places[1].name, 'Király utca 10');
   assert.equal(places[1].kind, 'address');
+});
+
+test('valódi kerülethatárok: kerület felismerés, az V. kerület A zóna', () => {
+  assert.equal(districtAt({ lat: 47.5026, lng: 19.0583 }), 'VI. kerület'); // Opera
+  assert.equal(districtAt({ lat: 47.507, lng: 19.0456 }), 'V. kerület'); // Országház
+  assert.equal(districtAt({ lat: 47.4717, lng: 19.0717 }), 'IX. kerület'); // Nemzeti Színház
+  assert.equal(zoneAt({ lat: 47.507, lng: 19.0456 })?.id, 'A');
 });

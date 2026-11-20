@@ -1,3 +1,4 @@
+import { DISTRICTS } from '../data/districts';
 import { ZONES, type LatLng, type Zone } from '../data/zones';
 
 export function pointInPolygon(pt: LatLng, poly: LatLng[]): boolean {
@@ -15,6 +16,8 @@ export function pointInPolygon(pt: LatLng, poly: LatLng[]): boolean {
 
 /** A legbelső (legdrágább) zóna, ahová a pont esik. null = nem fizetős terület. */
 export function zoneAt(pt: LatLng): Zone | null {
+  // Az V. kerület egésze egyetlen A zóna (BKK: 0501), itt a valódi kerülethatárt használjuk
+  if (districtAt(pt) === 'V. kerület') return ZONES.find((z) => z.id === 'A') ?? null;
   for (const z of ZONES) if (pointInPolygon(pt, z.polygon)) return z;
   return null;
 }
@@ -40,3 +43,20 @@ export function offset(pt: LatLng, northM: number, eastM: number): LatLng {
   const dLng = eastM / (111320 * Math.cos((pt.lat * Math.PI) / 180));
   return { lat: pt.lat + dLat, lng: pt.lng + dLng };
 }
+
+
+const ringToLatLng = (r: [number, number][]) => r.map(([lat, lng]) => ({ lat, lng }));
+
+/** Melyik kerületben van a pont (valódi OSM kerülethatárok alapján). */
+export function districtAt(pt: LatLng): string | null {
+  for (const d of DISTRICTS) if (d.rings.some((r) => pointInPolygon(pt, ringToLatLng(r)))) return d.name;
+  return null;
+}
+
+/** Kerületek középpontja (a legnagyobb gyűrű csúcsainak átlaga) a kereséshez és a térképfeliratokhoz. */
+export const DISTRICT_CENTERS: { name: string; lat: number; lng: number }[] = DISTRICTS.map((d) => {
+  const r = [...d.rings].sort((a, b) => b.length - a.length)[0];
+  const lat = r.reduce((s, p) => s + p[0], 0) / r.length;
+  const lng = r.reduce((s, p) => s + p[1], 0) / r.length;
+  return { name: d.name, lat, lng };
+});

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
-import MapView, { Marker, Polygon } from 'react-native-maps';
+import MapView, { Marker, Polygon, Polyline } from 'react-native-maps';
+import { DISTRICTS } from '../data/districts';
 import { ZONES } from '../data/zones';
 import { MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
 
@@ -27,6 +28,16 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
       }}
       initialRegion={{ latitude: 47.4979, longitude: 19.0402, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
     >
+      {DISTRICTS.flatMap((d) =>
+        d.rings.map((r, i) => (
+          <Polyline
+            key={`${d.name}-${i}`}
+            coordinates={r.map(([latitude, longitude]) => ({ latitude, longitude }))}
+            strokeColor="#64748B99"
+            strokeWidth={1}
+          />
+        )),
+      )}
       {[...ZONES].reverse().map((z) => (
         <Polygon
           key={z.id}

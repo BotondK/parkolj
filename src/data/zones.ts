@@ -5,6 +5,8 @@
 // Díjfizetés csak munkanapokon: A 8–22, B 8–20, C 8–18, D 8–18 (néhány zónakódnál 8:30-tól).
 // A–C: max. 3 óra, D: nincs korlát.
 
+import { ZONE_SHAPES } from './zoneShapes';
+
 export type LatLng = { lat: number; lng: number };
 
 export type ZoneId = 'A' | 'B' | 'C' | 'D';
@@ -131,5 +133,11 @@ export const ZONES: Zone[] = [
     ]),
   },
 ];
+
+// A és B zóna: a valódi kerülethatárokhoz igazított alak (zoneShapes.ts)
+for (const z of ZONES) {
+  const shape = ZONE_SHAPES[z.id as 'A' | 'B'];
+  if (shape) z.polygon = shape[0].map(([lat, lng]) => ({ lat, lng }));
+}
 
 export const zoneById = (id: ZoneId) => ZONES.find((z) => z.id === id)!;

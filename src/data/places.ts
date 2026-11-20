@@ -37,10 +37,10 @@ const norm = (s: string) =>
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
 
-export function searchPlaces(q: string): Place[] {
+export function searchPlaces(q: string, extra: Place[] = []): Place[] {
   const n = norm(q.trim());
   if (!n) return PLACES.slice(0, 6);
-  return PLACES.filter((p) =>
-    [p.name, p.nameEn ?? '', p.address].some((f) => norm(f).includes(n)),
-  ).slice(0, 8);
+  return [...PLACES, ...extra]
+    .filter((p) => [p.name, p.nameEn ?? '', p.address].some((f) => norm(f).includes(n)))
+    .slice(0, 8);
 }
