@@ -145,3 +145,14 @@ test('budapesti idő: téli/nyári időszámítás, a gép időzónájától fü
   assert.equal(bpTime(2026, 11, 18, 20), Date.UTC(2026, 10, 18, 19));
   assert.equal(bpTime(2026, 7, 1, 8.5), Date.UTC(2026, 6, 1, 6, 30));
 });
+
+test('utcaszintű zóna: a legközelebbi zónás utca dönt, 30 m-en túl a sokszög', async () => {
+  const { setZoneStreets, streetZoneAt } = await import('../src/logic/zoneStreets');
+  // Kitalált utcaszakasz az Operaház mellett C zónával, hogy látszódjon: az utcaadat felülírja a sokszöget (B)
+  setZoneStreets([{ z: 'C', n: 'Próba utca', h: 'Mo-Fr 08:30-18:00', c: [[19.058, 47.5026], [19.0586, 47.5026]] }]);
+  assert.equal(streetZoneAt({ lat: 47.50262, lng: 19.0583 })?.n, 'Próba utca');
+  assert.equal(zoneAt({ lat: 47.50262, lng: 19.0583 })?.id, 'C');
+  assert.equal(zoneAt({ lat: 47.5035, lng: 19.0583 })?.id, 'B'); // ~100 m-re: sokszög
+  setZoneStreets([]);
+  assert.equal(zoneAt({ lat: 47.50262, lng: 19.0583 })?.id, 'B');
+});

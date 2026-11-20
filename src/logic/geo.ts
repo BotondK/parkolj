@@ -1,4 +1,5 @@
 import { DISTRICTS } from '../data/districts';
+import { streetZoneAt } from './zoneStreets';
 import { ZONES, type LatLng, type Zone } from '../data/zones';
 
 export function pointInPolygon(pt: LatLng, poly: LatLng[]): boolean {
@@ -16,7 +17,10 @@ export function pointInPolygon(pt: LatLng, poly: LatLng[]): boolean {
 
 /** A legbelső (legdrágább) zóna, ahová a pont esik. null = nem fizetős terület. */
 export function zoneAt(pt: LatLng): Zone | null {
-  // Az V. kerület egésze egyetlen A zóna (BKK: 0501), itt a valódi kerülethatárt használjuk
+  // 1) Pontos, utcaszintű adat (OSM), ha be van töltve és van zónás utca 30 m-en belül
+  const st = streetZoneAt(pt);
+  if (st) return ZONES.find((z) => z.id === st.z) ?? null;
+  // 2) Közelítő zónasokszögek. Az V. kerület egésze egyetlen A zóna (BKK: 0501), itt a valódi kerülethatárt használjuk
   if (districtAt(pt) === 'V. kerület') return ZONES.find((z) => z.id === 'A') ?? null;
   for (const z of ZONES) if (pointInPolygon(pt, z.polygon)) return z;
   return null;

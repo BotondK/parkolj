@@ -32,6 +32,7 @@ import {
   titleOf,
 } from './src/screens/steps';
 import type { Car, HistoryItem, Session } from './src/types';
+import { useZoneStreets } from './src/logic/loadZoneStreets';
 import { remoteExtend, remoteStart, remoteStop } from './src/logic/api';
 
 type Step = 'search' | 'options' | 'navigate' | 'pay' | 'active' | 'summary';
@@ -65,6 +66,7 @@ function Main() {
 
   const [tab, setTab] = useState<Tab>('park');
   const [menuOpen, setMenuOpen] = useState(false);
+  const zoneStreets = useZoneStreets();
   const [clock, setClock] = useState(() => formatClock(new Date()));
   useEffect(() => {
     const id = setInterval(() => setClock(formatClock(new Date())), 15000);
@@ -399,6 +401,7 @@ function Main() {
         me={live.fix}
         onLocate={live.status === 'unavailable' ? undefined : live.start}
         controlsTop={!wide}
+        zoneStreets={zoneStreets}
       />
       <View style={{ position: 'absolute', top: wide ? 24 : 12, right: wide ? 24 : 12, zIndex: 1100 }}>
         <Pressable style={styles.pill} onPress={() => setMenuOpen((o) => !o)} accessibilityLabel="Menü">

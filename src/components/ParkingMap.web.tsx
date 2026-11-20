@@ -1,135 +1,339 @@
-import { useEffect, useRef } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useEffect, useRef, useState } from 'react';
+import maplibregl, { type GeoJSONSource, type StyleSpecification } from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { ZONES } from '../data/zones';
 import { DISTRICTS } from '../data/districts';
+import { CHARGERS, OSM_GARAGES } from '../data/poi';
 import { DISTRICT_CENTERS } from '../logic/geo';
 import { MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
 
-export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress, me, onLocate, controlsTop }: ParkingMapProps) {
+// Vektoros alaptérkép: MapLibre GL + OpenFreeMap (ingyenes, kulcs és regisztráció nélkül, üzleti célra is).
+// Ugyanaz az OpenMapTiles adatséma, amit a városi közlekedési appok is használnak.
+const STYLE_URL = 'https://tiles.openfreemap.org/styles/bright';
+// Ha az alaptérkép nem érhető el (offline, beágyazott demó), akkor is látszanak a zónák és a pontok
+const FALLBACK: StyleSpecification = {
+  version: 8,
+  sources: {},
+  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#F2EFE6' } }],
+};
+
+const GARAGE_COLOR = '#4A1466';
+const ZONE_COLOR = Object.fromEntries(ZONES.map((z) => [z.id, z.color])) as Record<string, string>;
+const DAYS: Record<string, string> = { Mo: 'H', Tu: 'K', We: 'Sze', Th: 'Cs', Fr: 'P', Sa: 'Szo', Su: 'V' };
+const huHours = (h: string) => h.replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su)\b/g, (d) => DAYS[d]);
+const CHARGER_COLOR = '#0E9F6E';
+
+type Layers = { zones: boolean; garages: boolean; chargers: boolean };
+
+const fc = (features: GeoJSON.Feature[]): GeoJSON.FeatureCollection => ({ type: 'FeatureCollection', features });
+const ring = (pts: { lat: number; lng: number }[]) => {
+  const r = pts.map((p) => [p.lng, p.lat]);
+  return [...r, r[0]];
+};
+
+const ZONES_GJ = fc(
+  [...ZONES].reverse().map((z) => ({ type: 'Feature', properties: { color: z.color, id: z.id }, geometry: { type: 'Polygon', coordinates: [ring(z.polygon)] } })),
+);
+const DISTRICTS_GJ = fc(
+  DISTRICTS.flatMap((d) => d.rings.map((r) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: ring(r.map(([lat, lng]) => ({ lat, lng }))) } }))),
+);
+const GARAGES_GJ = fc(
+  OSM_GARAGES.map((g) => ({ type: 'Feature', properties: { id: g.id }, geometry: { type: 'Point', coordinates: [g.lng, g.lat] } })),
+);
+const CHARGERS_GJ = fc(
+  CHARGERS.map((c) => ({ type: 'Feature', properties: { id: c.id, fast: (c.maxKw ?? 0) >= 50 ? 1 : 0 }, geometry: { type: 'Point', coordinates: [c.lng, c.lat] } })),
+);
+
+const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
+
+function garageHtml(id: string) {
+  const g = OSM_GARAGES.find((x) => x.id === id);
+  if (!g) return '';
+  const rows = [
+    g.kind === 'underground' ? 'Mélygarázs' : 'Parkolóház',
+    g.capacity ? `${g.capacity} férőhely` : null,
+    g.fee === 'no' ? 'Ingyenes' : g.fee === 'yes' ? 'Fizetős' : null,
+    g.access === 'customers' ? 'Vásárlóknak' : null,
+    g.hours ? `Nyitva: ${g.hours}` : null,
+    g.operator,
+  ].filter(Boolean) as string[];
+  return `<b>${esc(g.name ?? (g.kind === 'underground' ? 'Mélygarázs' : 'Parkolóház'))}</b><br>${rows.map(esc).join('<br>')}`;
+}
+
+function chargerHtml(id: string) {
+  const c = CHARGERS.find((x) => x.id === id);
+  if (!c) return '';
+  const rows = [
+    c.sockets.length ? c.sockets.join(', ') : null,
+    c.maxKw ? `max. ${c.maxKw} kW` : null,
+    c.capacity ? `${c.capacity} töltőpont` : null,
+    c.operator,
+  ].filter(Boolean) as string[];
+  return `<b>⚡ ${esc(c.name ?? 'Elektromos töltő')}</b><br>${rows.map(esc).join('<br>')}`;
+}
+
+/** Kör sokszögként (méterben megadott sugár), a pontossági körhöz */
+function circle(lat: number, lng: number, radiusM: number) {
+  const pts: number[][] = [];
+  for (let i = 0; i <= 48; i++) {
+    const a = (i / 48) * 2 * Math.PI;
+    pts.push([lng + (radiusM / (111320 * Math.cos((lat * Math.PI) / 180))) * Math.cos(a), lat + (radiusM / 110540) * Math.sin(a)]);
+  }
+  return pts;
+}
+
+export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress, me, onLocate, controlsTop, zoneStreets }: ParkingMapProps) {
+  const host = useRef<HTMLDivElement>(null);
+  const map = useRef<maplibregl.Map | null>(null);
+  const domMarkers = useRef<maplibregl.Marker[]>([]);
+  const pressRef = useRef(onMapPress);
+  pressRef.current = onMapPress;
   const meRef = useRef(me);
   meRef.current = me;
   const wantCenter = useRef(false);
-  const meLayer = useRef<L.LayerGroup | null>(null);
-  const pressRef = useRef(onMapPress);
-  pressRef.current = onMapPress;
-  const host = useRef<HTMLDivElement>(null);
-  const map = useRef<L.Map | null>(null);
-  const layer = useRef<L.LayerGroup | null>(null);
+  const [ready, setReady] = useState(0);
+  const [layers, setLayers] = useState<Layers>({ zones: true, garages: true, chargers: true });
+  const layersRef = useRef(layers);
+  layersRef.current = layers;
+  const [layersOpen, setLayersOpen] = useState(false);
 
   useEffect(() => {
     const el = host.current;
     if (!el || map.current) return;
-    const m = L.map(el, { zoomControl: false, attributionControl: true }).setView([47.4979, 19.0402], 14);
-    // Részletes, színes alaptérkép (utcák, nevek, épületek, parkok, metró)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20,
-      subdomains: 'abcd',
-      attribution: '© OpenStreetMap közreműködők, © CARTO',
-    }).addTo(m);
-    // Valódi kerülethatárok (OSM) és kerületszámok
-    DISTRICTS.forEach((d) =>
-      d.rings.forEach((r) => L.polygon(r, { color: '#64748B', weight: 1, opacity: 0.35, dashArray: '4 4', fill: false, interactive: false }).addTo(m)),
-    );
-    DISTRICT_CENTERS.forEach((c) =>
-      L.marker([c.lat, c.lng], {
-        interactive: false,
-        icon: L.divIcon({
-          className: '',
-          iconSize: [40, 14],
-          iconAnchor: [20, 7],
-          html: `<div style="font:700 11px system-ui,sans-serif;color:#475569;text-align:center;opacity:.8">${c.name.split(' ')[0]}</div>`,
-        }),
-      }).addTo(m),
-    );
-        // Legkülső zóna elöl, hogy a belső zónák rajzolódjanak felülre
-    [...ZONES].reverse().forEach((z) => {
-      L.polygon(
-        z.polygon.map((p) => [p.lat, p.lng] as [number, number]),
-        { color: z.color, weight: 2, opacity: 0.8, fillColor: z.color, fillOpacity: 0.05, interactive: false },
-      ).addTo(m);
+    const m = new maplibregl.Map({
+      container: el,
+      style: FALLBACK,
+      center: [19.0402, 47.4979],
+      zoom: 13,
+      maxZoom: 19,
+      attributionControl: { compact: true, customAttribution: '© OpenStreetMap közreműködők · OpenFreeMap · OpenMapTiles' },
+      dragRotate: false,
+      pitchWithRotate: false,
     });
-    m.on('click', (e: L.LeafletMouseEvent) => pressRef.current?.({ lat: e.latlng.lat, lng: e.latlng.lng }));
-    layer.current = L.layerGroup().addTo(m);
-    meLayer.current = L.layerGroup().addTo(m);
+    m.touchZoomRotate.disableRotation();
     map.current = m;
-    const timer = setTimeout(() => m.invalidateSize(), 50);
+
+    // Saját rétegek: zónák, kerülethatárok, garázsok, töltők, saját helyzet. Stílusváltás után újra kellenek.
+    const addOverlays = () => {
+      if (m.getSource('zones')) return;
+      const before = m.getStyle().layers.find((l) => l.type === 'symbol')?.id; // a feliratok alá
+      m.addSource('districts', { type: 'geojson', data: DISTRICTS_GJ });
+      m.addLayer({ id: 'districts', type: 'line', source: 'districts', paint: { 'line-color': '#6B6A73', 'line-width': 1, 'line-opacity': 0.45, 'line-dasharray': [3, 3] } }, before);
+      m.addSource('zones', { type: 'geojson', data: ZONES_GJ });
+      m.addLayer({ id: 'zones-fill', type: 'fill', source: 'zones', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.08, 16, 0.03] } }, before);
+      m.addLayer({ id: 'zones-line', type: 'line', source: 'zones', paint: { 'line-color': ['get', 'color'], 'line-width': 2.5, 'line-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.85, 15, 0.3] } }, before);
+      // Utcaszintű zónák (OSM): közelről ezek a pontos határok, távolról a sokszög ad áttekintést
+      m.addSource('zone-streets', { type: 'geojson', data: fc([]) });
+      m.addLayer(
+        {
+          id: 'zone-streets',
+          type: 'line',
+          source: 'zone-streets',
+          minzoom: 12.5,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': ['match', ['get', 'z'], 'A', ZONE_COLOR.A, 'B', ZONE_COLOR.B, 'C', ZONE_COLOR.C, ZONE_COLOR.D],
+            'line-width': ['interpolate', ['linear'], ['zoom'], 12.5, 1.5, 15, 4, 18, 9],
+            'line-opacity': 0.75,
+          },
+        },
+        before,
+      );
+      m.addSource('me', { type: 'geojson', data: fc([]) });
+      m.addLayer({ id: 'me-acc', type: 'fill', source: 'me', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#3B82F6', 'fill-opacity': 0.12 } });
+      m.addLayer({ id: 'me-dot', type: 'circle', source: 'me', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 8, 'circle-color': '#2563EB', 'circle-stroke-color': '#fff', 'circle-stroke-width': 3 } });
+      m.addSource('chargers', { type: 'geojson', data: CHARGERS_GJ });
+      m.addLayer({
+        id: 'chargers',
+        type: 'circle',
+        source: 'chargers',
+        minzoom: 12,
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 7],
+          'circle-color': CHARGER_COLOR,
+          'circle-stroke-color': ['case', ['==', ['get', 'fast'], 1], '#FACC15', '#fff'],
+          'circle-stroke-width': 2,
+        },
+      });
+      m.addSource('garages', { type: 'geojson', data: GARAGES_GJ });
+      m.addLayer({
+        id: 'garages',
+        type: 'circle',
+        source: 'garages',
+        minzoom: 11,
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 10],
+          'circle-color': GARAGE_COLOR,
+          'circle-stroke-color': '#fff',
+          'circle-stroke-width': 2,
+        },
+      });
+      applyVisibility(m, layersRef.current);
+      setReady((n) => n + 1);
+    };
+    m.on('style.load', addOverlays);
+    if (m.isStyleLoaded()) addOverlays();
+
+    // Valódi alaptérkép betöltése; ha nem sikerül, marad a háttér + saját rétegek
+    fetch(STYLE_URL)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((style: StyleSpecification) => map.current === m && m.setStyle(style))
+      .catch(() => {});
+
+    // Kerületszámok (HTML címkék, nem függnek a stílus betűkészletétől)
+    DISTRICT_CENTERS.forEach((c) => {
+      const d = document.createElement('div');
+      d.textContent = c.name.split(' ')[0];
+      d.style.cssText = 'font:700 11px system-ui,sans-serif;color:#5E5D66;opacity:.75;pointer-events:none';
+      new maplibregl.Marker({ element: d }).setLngLat([c.lng, c.lat]).addTo(m);
+    });
+
+    const popup = new maplibregl.Popup({ closeButton: false, maxWidth: '260px', offset: 10 });
+    const showPopup = (html: string, at: maplibregl.LngLatLike) => popup.setLngLat(at).setHTML(`<div style="font:13px/1.4 system-ui,sans-serif;color:#1C1B1F">${html}</div>`).addTo(m);
+    m.on('click', (e) => {
+      const street = m.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['zone-streets'].filter((l) => m.getLayer(l)) })[0];
+      const hit = m.queryRenderedFeatures(e.point, { layers: ['garages', 'chargers'].filter((l) => m.getLayer(l)) })[0];
+      if (!hit && street && !pressRef.current) {
+        const p = street.properties as { z: string; n?: string; h?: string };
+        showPopup(`<b>${esc(p.z)} zóna</b>${p.n ? ` · ${esc(p.n)}` : ''}${p.h ? `<br>Fizetős: ${esc(huHours(p.h))}` : ''}`, e.lngLat);
+        return;
+      }
+      if (hit) {
+        const id = String(hit.properties?.id);
+        showPopup(hit.layer.id === 'garages' ? garageHtml(id) : chargerHtml(id), e.lngLat);
+        return;
+      }
+      popup.remove();
+      pressRef.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+    });
+    for (const l of ['garages', 'chargers']) {
+      m.on('mouseenter', l, () => (m.getCanvas().style.cursor = 'pointer'));
+      m.on('mouseleave', l, () => (m.getCanvas().style.cursor = ''));
+    }
+    const ro = new ResizeObserver(() => m.resize());
+    ro.observe(el);
     return () => {
-      clearTimeout(timer);
+      ro.disconnect();
       m.remove();
       map.current = null;
     };
   }, []);
 
   useEffect(() => {
+    if (map.current && map.current.getSource('zones')) applyVisibility(map.current, layers);
+  }, [layers, ready]);
+
+  useEffect(() => {
+    const src = map.current?.getSource('zone-streets') as GeoJSONSource | undefined;
+    if (!src || !zoneStreets?.length) return;
+    src.setData(fc(zoneStreets.map((st) => ({ type: 'Feature', properties: { z: st.z, n: st.n, h: st.h }, geometry: { type: 'LineString', coordinates: st.c } }))));
+  }, [zoneStreets, ready]);
+
+  // Célpont és ajánlott helyek jelölői
+  useEffect(() => {
     const m = map.current;
-    const g = layer.current;
-    if (!m || !g) return;
-    g.clearLayers();
-    markers.forEach((mk) => {
+    if (!m) return;
+    domMarkers.current.forEach((mk) => mk.remove());
+    domMarkers.current = markers.map((mk) => {
       const sel = mk.id === selectedId;
-      const size = mk.kind === 'dest' ? 34 : sel ? 38 : 30;
-      const html = `<div style="width:${size}px;height:${size}px;border-radius:${mk.kind === 'garage' ? 9 : 999}px;background:${MARKER_COLORS[mk.kind]};color:#fff;display:flex;align-items:center;justify-content:center;font:700 ${size / 2.3}px system-ui,sans-serif;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);${sel ? 'transform:scale(1.05);' : ''}">${MARKER_GLYPH[mk.kind]}</div>`;
-      const marker = L.marker([mk.lat, mk.lng], {
-        icon: L.divIcon({ html, className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2] }),
-        zIndexOffset: mk.kind === 'dest' ? 1000 : sel ? 900 : 0,
-        title: mk.label,
-      });
-      if (onSelect && mk.kind !== 'dest') marker.on('click', () => onSelect(mk.id));
-      marker.addTo(g);
+      const size = mk.kind === 'dest' ? 34 : sel ? 40 : 32;
+      const el = document.createElement('div');
+      el.title = mk.label;
+      el.style.cssText = `width:${size}px;height:${size}px;border-radius:${mk.kind === 'garage' ? 9 : 999}px;background:${MARKER_COLORS[mk.kind]};color:#fff;display:flex;align-items:center;justify-content:center;font:700 ${size / 2.3}px system-ui,sans-serif;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:${onSelect && mk.kind !== 'dest' ? 'pointer' : 'default'};z-index:${mk.kind === 'dest' ? 3 : sel ? 2 : 1}`;
+      el.textContent = MARKER_GLYPH[mk.kind];
+      if (onSelect && mk.kind !== 'dest')
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          onSelect(mk.id);
+        });
+      return new maplibregl.Marker({ element: el }).setLngLat([mk.lng, mk.lat]).addTo(m);
     });
   }, [markers, selectedId, onSelect]);
 
+  // Nézet illesztése; telefonon az alsó lap takarja a térkép alját, ezt kihagyjuk
   useEffect(() => {
     const m = map.current;
     if (!m || focus.length === 0) return;
-    // A térkép magassága lépésenként változik: méret frissítése, futó animáció leállítása
+    const h = m.getContainer().clientHeight;
+    const padding = controlsTop ? { top: 90, left: 40, right: 70, bottom: Math.round(h * 0.55) + 30 } : { top: 60, left: 60, right: 90, bottom: 60 };
     m.stop();
-    m.invalidateSize({ animate: false });
-    if (focus.length === 1) m.setView([focus[0].lat, focus[0].lng], 15, { animate: false });
-    else
-      m.fitBounds(L.latLngBounds(focus.map((f) => [f.lat, f.lng] as [number, number])), {
-        paddingTopLeft: [40, 40],
-        paddingBottomRight: [40, 40],
-        maxZoom: 16,
-        animate: false,
-      });
-  }, [JSON.stringify(focus)]);
+    if (focus.length === 1) m.jumpTo({ center: [focus[0].lng, focus[0].lat], zoom: 15, padding });
+    else {
+      const b = new maplibregl.LngLatBounds();
+      focus.forEach((f) => b.extend([f.lng, f.lat]));
+      m.fitBounds(b, { padding, maxZoom: 16, animate: false });
+    }
+  }, [JSON.stringify(focus), controlsTop]);
 
   // Kék pont pontossági körrel
   useEffect(() => {
     const m = map.current;
-    const g = meLayer.current;
-    if (!m || !g) return;
-    g.clearLayers();
-    if (!me) return;
-    L.circle([me.lat, me.lng], { radius: me.accuracy, color: '#2563EB', weight: 1, opacity: 0.4, fillColor: '#3B82F6', fillOpacity: 0.12, interactive: false }).addTo(g);
-    L.circleMarker([me.lat, me.lng], { radius: 8, color: '#fff', weight: 3, fillColor: '#2563EB', fillOpacity: 1, interactive: false }).addTo(g);
-    if (wantCenter.current) {
+    const src = m?.getSource('me') as GeoJSONSource | undefined;
+    if (!m || !src) return;
+    src.setData(
+      me
+        ? fc([
+            { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [circle(me.lat, me.lng, me.accuracy)] } },
+            { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [me.lng, me.lat] } },
+          ])
+        : fc([]),
+    );
+    if (me && wantCenter.current) {
       wantCenter.current = false;
-      m.setView([me.lat, me.lng], 17, { animate: true });
+      m.easeTo({ center: [me.lng, me.lat], zoom: 17 });
     }
-  }, [me?.lat, me?.lng, me?.accuracy]);
+  }, [me?.lat, me?.lng, me?.accuracy, ready]);
 
   const locateMe = () => {
     const m = map.current;
-    if (meRef.current && m) m.setView([meRef.current.lat, meRef.current.lng], 17, { animate: true });
+    if (meRef.current && m) m.easeTo({ center: [meRef.current.lng, meRef.current.lat], zoom: 17 });
     else wantCenter.current = true;
     onLocate?.();
   };
 
-  // Kerek fehér térképgombok jobbra lent (mint a városi közlekedési appokban)
+  // Kerek fehér térképgombok (mint a városi közlekedési appokban)
   const btn: React.CSSProperties = {
     width: 52, height: 52, borderRadius: 26, border: 'none', background: '#fff', color: '#1C1B1F',
     font: '400 30px system-ui,sans-serif', boxShadow: '0 2px 8px rgba(0,0,0,.2)', cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
   };
+  const toggle = (k: keyof Layers) => setLayers((l) => ({ ...l, [k]: !l[k] }));
+  const legend: [keyof Layers, string, string][] = [
+    ['zones', 'Parkolási zónák', '#E8590C'],
+    ['garages', `Mélygarázsok, parkolóházak (${OSM_GARAGES.length})`, GARAGE_COLOR],
+    ['chargers', `Elektromos töltők (${CHARGERS.length})`, CHARGER_COLOR],
+  ];
 
   return (
     <div style={{ position: 'relative', flex: 1, width: '100%', height: '100%', minHeight: 0 }}>
-      <style>{`.parkolj-map .leaflet-tile-pane{filter:sepia(.22) saturate(1.15) brightness(1.02)}.parkolj-map .leaflet-control-attribution{background:rgba(255,255,255,.75);font-size:11px}`}</style>
-      <div ref={host} className="parkolj-map" style={{ position: 'absolute', inset: 0, backgroundColor: '#F2EFE6' }} />
-      <div style={{ position: 'absolute', right: controlsTop ? 12 : 24, ...(controlsTop ? { top: 80 } : { bottom: 40 }), zIndex: 1000, display: 'flex', flexDirection: 'column', gap: controlsTop ? 10 : 14, transform: controlsTop ? 'scale(.85)' : undefined, transformOrigin: 'top right' }}>
+      <style>{`.maplibregl-ctrl-attrib{font-size:11px}.maplibregl-popup-content{border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.18);padding:10px 12px}`}</style>
+      <div ref={host} style={{ position: 'absolute', inset: 0, backgroundColor: '#F2EFE6' }} />
+      {/* Rétegválasztó (jobbra fent, az óra mellett / alatt) */}
+      <div style={{ position: 'absolute', zIndex: 1000, ...(controlsTop ? { right: 12, top: 80 } : { right: 192, top: 26 }) }}>
+        <button aria-label="Térképrétegek" style={{ ...btn, ...(controlsTop ? { width: 44, height: 44 } : {}) }} onClick={() => setLayersOpen((o) => !o)}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#1C1B1F" aria-hidden>
+            <path d="M12 2 1 8l11 6 11-6-11-6Zm0 14.2L3.2 11.4 1 12.6 12 18.6l11-6-2.2-1.2L12 16.2Zm0 4.6-8.8-4.8L1 17.2 12 23l11-5.8-2.2-1.2L12 20.8Z" />
+          </svg>
+        </button>
+        {layersOpen && (
+          <div style={{ position: 'absolute', top: controlsTop ? 52 : 60, right: 0, width: 270, background: '#fff', borderRadius: 14, padding: '8px 0', boxShadow: '0 4px 16px rgba(0,0,0,.18)', font: '14px system-ui,sans-serif' }}>
+            {legend.map(([k, label, color]) => (
+              <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', cursor: 'pointer', color: '#1C1B1F' }}>
+                <input type="checkbox" checked={layers[k]} onChange={() => toggle(k)} style={{ accentColor: '#4A1466', width: 18, height: 18 }} />
+                <span style={{ width: 12, height: 12, borderRadius: 6, background: color, flex: 'none' }} />
+                {label}
+              </label>
+            ))}
+            <div style={{ padding: '6px 14px 4px', color: '#5E5D66', fontSize: 11 }}>Garázsok, töltők: © OpenStreetMap közreműködők</div>
+          </div>
+        )}
+      </div>
+      <div
+        style={{
+          position: 'absolute', right: controlsTop ? 12 : 24, ...(controlsTop ? { top: 134 } : { bottom: 40 }), zIndex: 999,
+          display: 'flex', flexDirection: 'column', gap: controlsTop ? 10 : 14, transform: controlsTop ? 'scale(.85)' : undefined, transformOrigin: 'top right',
+        }}
+      >
         {onLocate && (
           <button aria-label="Saját helyzetem" style={{ ...btn, fontSize: 24, color: me ? '#2563EB' : '#4A1466' }} onClick={locateMe}>◎</button>
         )}
@@ -138,4 +342,13 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
       </div>
     </div>
   );
+}
+
+function applyVisibility(m: maplibregl.Map, l: Layers) {
+  const set = (id: string, on: boolean) => m.getLayer(id) && m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+  set('zones-fill', l.zones);
+  set('zones-line', l.zones);
+  set('zone-streets', l.zones);
+  set('garages', l.garages);
+  set('chargers', l.chargers);
 }

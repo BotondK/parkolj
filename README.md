@@ -47,6 +47,7 @@ npm test              # díj-, zóna- és ajánló logika tesztjei
 Szerverszinkron (opcionális): `EXPO_PUBLIC_API_URL=https://... npx expo start`. Szerver és adatbázis ingyenesen: [docs/HOSZTOLAS.md](docs/HOSZTOLAS.md).
 
 ## Fontos
+- Térkép: MapLibre GL + OpenFreeMap (ingyenes, kulcs nélkül). Garázsok, töltők, utcaszintű zónák: OpenStreetMap (ODbL), frissítés: Actions → „OSM adatok letöltése”, majd `git checkout origin/osm-data -- src/data/osm public/data`.
 - `src/data/zones.ts`: díjak, díjfizetési idők, pótdíjak a BKK listái szerint (https://bkk.hu/downloads/43733/, https://bkk.hu/downloads/43739/). A zónahatárok (polygon) még **közelítők**, hivatalos határfájlt (GeoJSON/KML) nem találtunk nyilvánosan.
 - `src/data/zoneCodes.ts`: zónakódok kerülettel, ünnepnapok 2026–2027 (áthelyezett munkanapok még nincsenek benne).
 - `src/logic/geocode.ts`: Photon geokódoló; élesben saját vagy fizetős szolgáltatás kell.

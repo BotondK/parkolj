@@ -1,5 +1,6 @@
 import type { LatLng } from '../data/zones';
 import type { Fix } from '../logic/liveLocationTypes';
+import type { ZoneStreet } from '../logic/zoneStreets';
 
 export type MarkerKind = 'dest' | 'fastest' | 'cheapest' | 'garage' | 'here';
 
@@ -23,6 +24,8 @@ export type ParkingMapProps = {
   onLocate?: () => void;
   /** Telefonon az alsó lap takarja a térkép alját: a gombok jobbra fent, az óra alatt legyenek */
   controlsTop?: boolean;
+  /** Utcaszintű zónák (OSM), ha betöltődtek */
+  zoneStreets?: ZoneStreet[];
 };
 
 export const MARKER_COLORS: Record<MarkerKind, string> = {
