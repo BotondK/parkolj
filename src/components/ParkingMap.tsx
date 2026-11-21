@@ -1,13 +1,33 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import MapView, { Marker, Polygon, Polyline } from 'react-native-maps';
+import MapView, { Marker, Polygon, Polyline, type Region } from 'react-native-maps';
+import { CHARGERS, OSM_GARAGES } from '../data/poi';
 import { DISTRICTS } from '../data/districts';
 import { ZONES } from '../data/zones';
 import { MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
 
-// Natív (iOS / Android) térkép. A webes változat: ParkingMap.web.tsx (Leaflet).
+// Natív (iOS / Android) térkép. A webes változat: ParkingMap.web.tsx (MapLibre).
 export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress, me, onLocate, dark }: ParkingMapProps) {
   const ref = useRef<MapView>(null);
+  const [region, setRegion] = useState<Region>({ latitude: 47.4979, longitude: 19.0402, latitudeDelta: 0.05, longitudeDelta: 0.05 });
+  const [layers, setLayers] = useState({ garages: true, chargers: true });
+  const [layersOpen, setLayersOpen] = useState(false);
+  // Garázsok és töltők csak közelről, és csak a látható részen (sok egyedi jelölő lassítaná a natív térképet)
+  const pois = useMemo(() => {
+    if (region.latitudeDelta > 0.06) return [];
+    const inView = (lat: number, lng: number) =>
+      Math.abs(lat - region.latitude) < region.latitudeDelta * 0.6 && Math.abs(lng - region.longitude) < region.longitudeDelta * 0.6;
+    const out: { id: string; kind: 'garage' | 'charger' | 'fast'; lat: number; lng: number; title: string; desc: string }[] = [];
+    if (layers.garages)
+      for (const g of OSM_GARAGES)
+        if (inView(g.lat, g.lng))
+          out.push({ id: `g${g.id}`, kind: 'garage', lat: g.lat, lng: g.lng, title: g.name ?? (g.kind === 'underground' ? 'Mélygarázs' : 'Parkolóház'), desc: [g.capacity ? `${g.capacity} hely` : '', g.operator ?? ''].filter(Boolean).join(' · ') });
+    if (layers.chargers)
+      for (const c of CHARGERS)
+        if (inView(c.lat, c.lng))
+          out.push({ id: `c${c.id}`, kind: (c.maxKw ?? 0) >= 50 ? 'fast' : 'charger', lat: c.lat, lng: c.lng, title: 'Elektromos töltő', desc: [c.capacity ? `${c.capacity} töltőpont` : '', c.maxKw ? `${c.maxKw} kW` : '', c.operator ?? ''].filter(Boolean).join(' · ') });
+    return out.slice(0, 150);
+  }, [region, layers]);
 
   useEffect(() => {
     if (!ref.current || focus.length === 0) return;
@@ -36,6 +56,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
       showsMyLocationButton={false}
       userInterfaceStyle={dark ? 'dark' : 'light'}
       initialRegion={{ latitude: 47.4979, longitude: 19.0402, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
+      onRegionChangeComplete={setRegion}
     >
       {DISTRICTS.flatMap((d) =>
         d.rings.map((r, i) => (
@@ -59,6 +80,24 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
           />
         )),
       )}
+      {pois.map((pt) => (
+        <Marker key={pt.id} coordinate={{ latitude: pt.lat, longitude: pt.lng }} title={pt.title} description={pt.desc} tracksViewChanges={false} anchor={{ x: 0.5, y: 0.5 }}>
+          <View
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: pt.kind === 'garage' ? 7 : 13,
+              backgroundColor: pt.kind === 'garage' ? '#4A1466' : '#0E9F6E',
+              borderWidth: 2,
+              borderColor: pt.kind === 'fast' ? '#FACC15' : '#fff',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: pt.kind === 'garage' ? 15 : 13 }}>{pt.kind === 'garage' ? 'P' : '⚡'}</Text>
+          </View>
+        </Marker>
+      ))}
       {markers.map((mk) => {
         const sel = mk.id === selectedId;
         const size = mk.kind === 'dest' ? 34 : sel ? 38 : 30;
@@ -87,15 +126,37 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
         );
       })}
     </MapView>
-      {onLocate && (
-        <Pressable
-          onPress={locateMe}
-          accessibilityLabel="Saját helyzetem"
-          style={{ position: 'absolute', right: 12, top: 80, width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 3 }}
-        >
-          <Text style={{ fontSize: 22, color: me ? '#2563EB' : '#0F172A' }}>◎</Text>
+      <View style={{ position: 'absolute', right: 12, top: 80, gap: 10, alignItems: 'flex-end' }}>
+        <Pressable onPress={() => setLayersOpen((o) => !o)} accessibilityLabel="Térképrétegek" style={[btn, { backgroundColor: dark ? '#242328' : '#fff' }]}>
+          <Text style={{ fontSize: 20, color: dark ? '#F5F4F7' : '#1C1B1F' }}>☰</Text>
         </Pressable>
-      )}
+        {layersOpen && (
+          <View style={{ backgroundColor: dark ? '#242328' : '#fff', borderRadius: 14, paddingVertical: 6, elevation: 4, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 8 }}>
+            {(
+              [
+                ['garages', `Mélygarázsok (${OSM_GARAGES.length})`, 'P', '#4A1466'],
+                ['chargers', `Elektromos töltők (${CHARGERS.length})`, '⚡', '#0E9F6E'],
+              ] as const
+            ).map(([k, label, glyph, color]) => (
+              <Pressable key={k} onPress={() => setLayers((l) => ({ ...l, [k]: !l[k] }))} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, opacity: layers[k] ? 1 : 0.45 }}>
+                <View style={{ width: 22, height: 22, borderRadius: k === 'garages' ? 6 : 11, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{glyph}</Text>
+                </View>
+                <Text style={{ color: dark ? '#F5F4F7' : '#1C1B1F', fontSize: 15 }}>{label}</Text>
+                <Text style={{ color: dark ? '#C9A9DC' : '#4A1466', fontWeight: '800' }}>{layers[k] ? '✓' : ''}</Text>
+              </Pressable>
+            ))}
+            <Text style={{ color: '#8E8D96', fontSize: 11, paddingHorizontal: 14, paddingBottom: 4 }}>Közelítéskor jelennek meg · © OpenStreetMap</Text>
+          </View>
+        )}
+        {onLocate && (
+          <Pressable onPress={locateMe} accessibilityLabel="Saját helyzetem" style={[btn, { backgroundColor: dark ? '#242328' : '#fff' }]}>
+            <Text style={{ fontSize: 22, color: me ? '#2563EB' : dark ? '#C9A9DC' : '#4A1466' }}>◎</Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
+
+const btn = { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 3, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 6 } as const;
