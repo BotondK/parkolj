@@ -203,7 +203,7 @@ export function EmptyState({ icon, text }: { icon: IconName; text: string }) {
 /** Kis választó gombsor (Rendszer / Világos / Sötét) */
 export function Segmented<T extends string | number>({ options, value, onChange }: { options: [T, string][]; value: T; onChange: (v: T) => void }) {
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: C.soft, borderRadius: 14, padding: 4, gap: 6 }}>
+    <View style={{ flexDirection: 'row', backgroundColor: isDark ? C.soft : '#E7E1EC', borderWidth: isDark ? 0 : 1, borderColor: '#D9D0E0', borderRadius: 14, padding: 4, gap: 6 }}>
       {options.map(([k, label]) => {
         const on = k === value;
         return (

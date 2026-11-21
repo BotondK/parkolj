@@ -82,6 +82,75 @@ function circle(lat: number, lng: number, radiusM: number) {
   return pts;
 }
 
+/** Térképikonok vászonra rajzolva (nincs külső sprite-fájl); 2x felbontás az éles megjelenéshez */
+let iconCache: Record<string, ImageData> | null = null;
+function POI_ICONS(): Record<string, ImageData> {
+  if (iconCache) return iconCache;
+  const S = 52;
+  const make = (draw: (c: CanvasRenderingContext2D) => void) => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = S;
+    const c = cv.getContext('2d')!;
+    draw(c);
+    return c.getImageData(0, 0, S, S);
+  };
+  const shadow = (c: CanvasRenderingContext2D) => {
+    c.shadowColor = 'rgba(0,0,0,.35)';
+    c.shadowBlur = 4;
+    c.shadowOffsetY = 1;
+  };
+  const roundRect = (c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
+  };
+  const garage = make((c) => {
+    shadow(c);
+    roundRect(c, 5, 5, 42, 42, 11);
+    c.fillStyle = '#fff';
+    c.fill();
+    c.shadowColor = 'transparent';
+    roundRect(c, 9, 9, 34, 34, 8);
+    c.fillStyle = GARAGE_COLOR;
+    c.fill();
+    c.fillStyle = '#fff';
+    c.font = '800 26px system-ui,-apple-system,Segoe UI,sans-serif';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText('P', 26, 27.5);
+  });
+  const charger = (fast: boolean) =>
+    make((c) => {
+      shadow(c);
+      c.beginPath();
+      c.arc(26, 26, 21, 0, Math.PI * 2);
+      c.fillStyle = fast ? '#FACC15' : '#fff';
+      c.fill();
+      c.shadowColor = 'transparent';
+      c.beginPath();
+      c.arc(26, 26, 17, 0, Math.PI * 2);
+      c.fillStyle = CHARGER_COLOR;
+      c.fill();
+      // villám
+      c.beginPath();
+      c.moveTo(29, 12);
+      c.lineTo(17, 29);
+      c.lineTo(25, 29);
+      c.lineTo(22, 40);
+      c.lineTo(35, 22);
+      c.lineTo(27, 22);
+      c.closePath();
+      c.fillStyle = '#fff';
+      c.fill();
+    });
+  iconCache = { 'poi-garage': garage, 'poi-charger': charger(false), 'poi-charger-fast': charger(true) };
+  return iconCache;
+}
+
 export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress, me, onLocate, controlsTop, zoneStreets, dark }: ParkingMapProps) {
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -142,31 +211,29 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
       m.addSource('me', { type: 'geojson', data: fc([]) });
       m.addLayer({ id: 'me-acc', type: 'fill', source: 'me', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#3B82F6', 'fill-opacity': 0.12 } });
       m.addLayer({ id: 'me-dot', type: 'circle', source: 'me', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 8, 'circle-color': '#2563EB', 'circle-stroke-color': '#fff', 'circle-stroke-width': 3 } });
+      // Saját rajzolású ikonok: garázs = lila négyzet „P” betűvel, töltő = zöld kör villámmal (gyorstöltő: sárga keret)
+      for (const [name, img] of Object.entries(POI_ICONS())) if (!m.hasImage(name)) m.addImage(name, img, { pixelRatio: 2 });
+      const iconSize: maplibregl.ExpressionSpecification = ['interpolate', ['linear'], ['zoom'], 11, 0.55, 14, 0.85, 17, 1.1];
       m.addSource('chargers', { type: 'geojson', data: CHARGERS_GJ });
       m.addLayer({
         id: 'chargers',
-        type: 'circle',
+        type: 'symbol',
         source: 'chargers',
         minzoom: 12,
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 7],
-          'circle-color': CHARGER_COLOR,
-          'circle-stroke-color': ['case', ['==', ['get', 'fast'], 1], '#FACC15', '#fff'],
-          'circle-stroke-width': 2,
+        layout: {
+          'icon-image': ['case', ['==', ['get', 'fast'], 1], 'poi-charger-fast', 'poi-charger'],
+          'icon-size': iconSize,
+          'icon-allow-overlap': true,
+          'icon-padding': 0,
         },
       });
       m.addSource('garages', { type: 'geojson', data: GARAGES_GJ });
       m.addLayer({
         id: 'garages',
-        type: 'circle',
+        type: 'symbol',
         source: 'garages',
         minzoom: 11,
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 10],
-          'circle-color': GARAGE_COLOR,
-          'circle-stroke-color': '#fff',
-          'circle-stroke-width': 2,
-        },
+        layout: { 'icon-image': 'poi-garage', 'icon-size': iconSize, 'icon-allow-overlap': true, 'icon-padding': 0 },
       });
       applyVisibility(m, layersRef.current);
       setReady((n) => n + 1);
@@ -329,7 +396,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
             {legend.map(([k, label, color]) => (
               <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', cursor: 'pointer', color: dark ? '#F5F4F7' : '#1C1B1F' }}>
                 <input type="checkbox" checked={layers[k]} onChange={() => toggle(k)} style={{ accentColor: '#4A1466', width: 18, height: 18 }} />
-                <span style={{ width: 12, height: 12, borderRadius: 6, background: color, flex: 'none' }} />
+                <span style={{ width: 18, height: 18, borderRadius: k === 'garages' ? 5 : 9, background: color, flex: 'none', color: '#fff', font: '800 11px system-ui,sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{k === 'garages' ? 'P' : k === 'chargers' ? '⚡' : ''}</span>
                 {label}
               </label>
             ))}
