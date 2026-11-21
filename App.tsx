@@ -276,12 +276,43 @@ function Main() {
       { at: Date.now(), rating, message, meta: { version: '0.3', platform: Platform.OS, lang, width: String(Math.round(width)), theme: dark ? 'dark' : 'light' } },
     ]);
 
+  const finishLogin = async (s: AuthSession, name: string) => {
+    const remote = await cloud!.load(s);
+    const merged = mergeData({ ...cloudData(), name: name || undefined }, remote);
+    applyData(merged);
+    setAccount({ name: merged.name || s.email.split('@')[0], email: s.email });
+    saveJSON('auth', s);
+    setPulled(true);
+    setAuthSession(s);
+  };
+  // Weben: visszatérés a belépő linkről (…/parkolj/#access_token=…)
+  useEffect(() => {
+    if (!loaded || !cloud || Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const hash = window.location.hash;
+    if (!/access_token=|error=/.test(hash)) return;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    (async () => {
+      try {
+        const r = await cloud!.sessionFromUrl(hash);
+        if (!r) return;
+        if ('error' in r) throw new Error(r.error);
+        await finishLogin(r, await loadJSON<string>('pendingName', ''));
+        saveJSON('pendingName', '');
+        setBanner({ kind: 'good', text: a.loggedIn(r.email) });
+      } catch {
+        setBanner({ kind: 'danger', text: a.linkFailed });
+      }
+    })();
+  }, [loaded]);
+
   const auth = {
     cloud: !!cloud,
     sync: authSession ? sync : ('off' as const),
-    sendCode: async (email: string) => {
+    sendCode: async (email: string, name: string) => {
       try {
-        await cloud!.sendCode(email);
+        saveJSON('pendingName', name);
+        const back = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin + window.location.pathname : undefined;
+        await cloud!.sendCode(email, back);
         return true;
       } catch {
         return false;
@@ -289,14 +320,7 @@ function Main() {
     },
     verify: async (email: string, code: string, name: string) => {
       try {
-        const s = await cloud!.verifyCode(email, code);
-        const remote = await cloud!.load(s);
-        const merged = mergeData({ ...cloudData(), name: name || undefined }, remote);
-        applyData(merged);
-        setAccount({ name: merged.name || email.split('@')[0], email: s.email });
-        saveJSON('auth', s);
-        setPulled(true);
-        setAuthSession(s);
+        await finishLogin(await cloud!.verifyCode(email, code), name);
         return true;
       } catch {
         return false;

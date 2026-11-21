@@ -1,7 +1,7 @@
 # Fiók és szinkron (Supabase) beállítása
 
 Az app kulcsok nélkül is működik: ilyenkor a fiók csak az adott eszközön él. Ha megadod a Supabase adatait,
-bekapcsol az e-mailes belépés (jelszó nélkül, 6 jegyű kóddal), és a következők minden eszközön meglesznek:
+bekapcsol az e-mailes belépés (jelszó nélkül, belépő linkkel vagy kóddal), és a következők minden eszközön meglesznek:
 autók, kedvencek, bankkártyák (csak márka + utolsó 4 számjegy + lejárat), számlázási profilok, lezárt parkolások, beállítások.
 
 Kb. 10 perc, ingyenes csomagban is megy.
@@ -14,18 +14,15 @@ Kb. 10 perc, ingyenes csomagban is megy.
 Ez létrehozza a `user_data` táblát, sorszintű jogosultsággal (mindenki csak a saját adatát látja),
 egy védelmet, hogy teljes kártyaszám ne kerülhessen be, és a „Fiók törlése” funkciót. Többször is futtatható.
 
-## 2. Belépés e-mail kóddal
+## 2. Belépés e-mailben
 
 1. **Authentication → Sign In / Providers → Email**: legyen bekapcsolva.
-2. **Authentication → Emails → Magic Link** sablon: a levélben a kód legyen benne, például:
-
-   ```html
-   <h2>Parkolj belépőkód</h2>
-   <p>A belépőkódod: <strong>{{ .Token }}</strong></p>
-   <p>10 percig érvényes. Ha nem te kérted, hagyd figyelmen kívül.</p>
-   ```
-
-3. Élesben érdemes saját SMTP-t beállítani (Authentication → Emails → SMTP), mert a beépített küldő óránként csak pár levelet enged.
+2. **Authentication → URL Configuration**:
+   - Site URL: `https://botondk.github.io/parkolj/`
+   - Redirect URLs: `https://botondk.github.io/parkolj/` (helyi teszthez: `http://localhost:8081/`)
+3. Ennyi. Az ingyenes csomag alap levelében egy „Sign in” link van: rákattintva visszajön az appba, és be is lép.
+4. Később, saját SMTP-vel (Authentication → Emails → SMTP) a levél szövege is szerkeszthető; ha a sablonba
+   `{{ .Token }}` kerül, a 6 jegyű kód is működik (telefonos appnál ez a kényelmesebb). Az app mindkettőt kezeli.
 
 ## 3. Kulcsok az apphoz
 

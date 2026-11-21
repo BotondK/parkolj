@@ -59,8 +59,24 @@ export function makeCloud(cfg: CloudConfig, f: Fetch = fetch) {
   });
 
   return {
-    /** Belépő kód küldése e-mailben (új fióknál regisztrál is) */
-    sendCode: (email: string) => call<unknown>('/auth/v1/otp', { method: 'POST', body: JSON.stringify({ email, create_user: true }) }),
+    /** Belépő e-mail küldése (új fióknál regisztrál is). A levélben link van (alap sablon), egyedi SMTP-vel kód is lehet.
+     *  A link ide irányít vissza: redirectTo (a Supabase „Redirect URLs” listáján szerepelnie kell). */
+    sendCode: (email: string, redirectTo?: string) =>
+      call<unknown>(`/auth/v1/otp${redirectTo ? `?redirect_to=${encodeURIComponent(redirectTo)}` : ''}`, {
+        method: 'POST',
+        body: JSON.stringify({ email, create_user: true }),
+      }),
+    /** A belépő linkről visszatérve az URL-ben (#access_token=…) lévő adatokból munkamenet */
+    sessionFromUrl: async (hash: string): Promise<AuthSession | { error: string } | null> => {
+      const q = new URLSearchParams(hash.replace(/^#/, ''));
+      if (q.get('error')) return { error: q.get('error_description') || q.get('error')! };
+      const accessToken = q.get('access_token');
+      const refreshToken = q.get('refresh_token');
+      if (!accessToken || !refreshToken) return null;
+      const user = await call<{ id: string; email: string }>('/auth/v1/user', { token: accessToken });
+      const expiresIn = Number(q.get('expires_in') || 3600);
+      return { accessToken, refreshToken, expiresAt: Date.now() + expiresIn * 1000, userId: user.id, email: user.email };
+    },
     /** A kapott 6 jegyű kód ellenőrzése */
     verifyCode: async (email: string, token: string) =>
       toSession(await call('/auth/v1/verify', { method: 'POST', body: JSON.stringify({ type: 'email', email, token }) })),

@@ -52,3 +52,4 @@ Ebben a fájlban vezetjük, mi került a projektbe ezen felül, és ki kérte. �
 | 2026-11-21 | Végigkattintós automata tesztek (Playwright, mobil + asztali), a webes demó csak akkor frissül, ha átmennek | Boti „folytasd”: alfa/béta előtti minőségbiztosítás |
 | 2026-11-21 | Visszajelzés küldése az appból (csillagos értékelés + szöveg), Supabase-táblába; kapcsolat nélkül sorba kerül | Boti „folytasd”: a zárt bétához kell |
 | 2026-11-21 | Kedvencek (Otthon, Munkahely, mentett helyek) a Parkolás panel tetején; asztalon a jobb felső menügomb kikerült, csak az óra maradt | Boti kérése |
+| 2026-11-21 | Belépés e-mailes linkkel is (a Supabase ingyenes csomagjában a levélsablon nem szerkeszthető, így kód nincs a levélben); a kód is megmaradt saját SMTP-hez | Boti jelezte, hogy a sablon nem szerkeszthető |

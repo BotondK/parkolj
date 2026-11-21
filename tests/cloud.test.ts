@@ -76,3 +76,19 @@ test('felhő: visszajelzés küldése belépés nélkül az anon kulccsal', asyn
   assert.equal(b.rating, 4);
   assert.equal(b.meta.platform, 'web');
 });
+
+test('felhő: belépő link – visszairányítási cím, majd munkamenet az URL-ből', async () => {
+  const log: { url: string; init: RequestInit }[] = [];
+  const c = makeCloud(cfg, fake({ '/auth/v1/user': { id: 'u9', email: 'x@y.hu' } }, log));
+  await c.sendCode('x@y.hu', 'https://botondk.github.io/parkolj/');
+  assert.equal(log[0].url, 'https://x.supabase.co/auth/v1/otp?redirect_to=https%3A%2F%2Fbotondk.github.io%2Fparkolj%2F');
+  const s = await c.sessionFromUrl('#access_token=AT&expires_in=3600&refresh_token=RT&token_type=bearer&type=magiclink');
+  assert.ok(s && !('error' in s));
+  if (s && !('error' in s)) {
+    assert.equal(s.userId, 'u9');
+    assert.equal(s.refreshToken, 'RT');
+  }
+  assert.equal((log[1].init.headers as Record<string, string>).Authorization, 'Bearer AT');
+  assert.deepEqual(await c.sessionFromUrl('#error=access_denied&error_description=Email+link+is+invalid+or+has+expired'), { error: 'Email link is invalid or has expired' });
+  assert.equal(await c.sessionFromUrl(''), null);
+});

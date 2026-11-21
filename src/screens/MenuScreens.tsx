@@ -50,7 +50,7 @@ export type MenuProps = {
   auth: {
     cloud: boolean;
     sync: 'off' | 'saving' | 'saved' | 'error';
-    sendCode: (email: string) => Promise<boolean>;
+    sendCode: (email: string, name: string) => Promise<boolean>;
     verify: (email: string, code: string, name: string) => Promise<boolean>;
     logout: () => void;
   };
@@ -218,7 +218,7 @@ function AccountPage({ a, account, setAccount, onWipe, onBack, auth }: MenuProps
                 onPress={async () => {
                   setBusy(true);
                   setErr(null);
-                  const ok = await auth.sendCode(email.trim().toLowerCase());
+                  const ok = await auth.sendCode(email.trim().toLowerCase(), name.trim());
                   setBusy(false);
                   if (ok) setCodeSentTo(email.trim().toLowerCase());
                   else setErr(a.sendFailed);
