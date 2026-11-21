@@ -1,7 +1,7 @@
 // Fiók és felhőszinkron Supabase-szel (Auth + Postgres), külső csomag nélkül, sima fetch-csel.
 // Ha nincs beállítva EXPO_PUBLIC_SUPABASE_URL és EXPO_PUBLIC_SUPABASE_ANON_KEY, az app helyi fiókkal működik tovább.
 // A tábla és a jogosultságok: supabase/schema.sql. Beállítás: docs/FIOK.md.
-import type { BillingProfile, Car, FavoritePlace, HistoryItem, PaymentCard, Settings } from '../types';
+import type { BillingProfile, Car, FavoritePlace, HistoryItem, PaymentCard, Session, Settings } from '../types';
 
 export type CloudConfig = { url: string; anonKey: string };
 
@@ -34,6 +34,8 @@ export type CloudData = {
   profiles?: BillingProfile[];
   history?: HistoryItem[];
   settings?: Partial<Settings>;
+  /** Az aktív parkolás (vagy null, ha nincs) és mikor változott utoljára: a frissebb nyer */
+  active?: { s: Session | null; at: number };
 };
 
 type Fetch = typeof fetch;
@@ -152,5 +154,6 @@ export function mergeData(local: CloudData, remote: CloudData | null): CloudData
     profiles: union(remote.profiles, local.profiles),
     history: union(remote.history, local.history).sort((a, b) => b.startedAt - a.startedAt).slice(0, 500),
     settings: { ...local.settings, ...remote.settings },
+    active: (remote.active?.at ?? 0) >= (local.active?.at ?? 0) ? remote.active ?? local.active : local.active,
   };
 }

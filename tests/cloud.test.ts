@@ -112,3 +112,10 @@ test('új formátumú (sb_publishable_) kulcs nem kerül az Authorization fejlé
   assert.equal(h.apikey, 'sb_publishable_abc');
   assert.equal(h.Authorization, undefined);
 });
+
+test('aktív parkolás: a frissebb állapot nyer (másik eszközön leállítva / indítva)', () => {
+  const s = { startedAt: 1, durationMin: 60 } as never;
+  assert.equal(mergeData({ active: { s, at: 100 } }, { active: { s: null, at: 200 } }).active?.s, null);
+  assert.equal(mergeData({ active: { s: null, at: 300 } }, { active: { s, at: 200 } }).active?.s, null);
+  assert.equal(mergeData({ active: { s: null, at: 0 } }, { active: { s, at: 50 } }).active?.s, s);
+});

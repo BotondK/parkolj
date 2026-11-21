@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Platform, Pressable, ScrollView, Text, TextInput, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { AppState, Linking, Platform, Pressable, ScrollView, Text, TextInput, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ParkingMap from './src/components/ParkingMap';
 import type { MapMarker } from './src/components/mapTypes';
@@ -197,8 +197,37 @@ function Main() {
   const authRef = useRef(authSession);
   // Csak a felhőből való első letöltés után mentünk, különben egy régi helyi állapot felülírná a másik eszköz változásait
   const [pulled, setPulled] = useState(false);
+  const [pullTick, setPullTick] = useState(0);
   authRef.current = authSession;
-  const cloudData = (): CloudData => ({ name: account?.name, cars, favorites, cards, profiles, history, settings });
+  // Aktív parkolás szinkronja: mikor változott utoljára (indítás, hosszabbítás, leállítás)
+  const activeNow = step === 'active' && session ? session : null;
+  const activeKey = activeNow ? `${activeNow.startedAt}:${activeNow.durationMin}` : 'none';
+  const [activeAt, setActiveAt] = useState(0);
+  const lastKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!loaded) return;
+    if (lastKey.current === null) {
+      lastKey.current = activeKey;
+      loadJSON<number>('activeAt', 0).then(setActiveAt);
+      return;
+    }
+    if (lastKey.current !== activeKey) {
+      lastKey.current = activeKey;
+      const at = Date.now();
+      setActiveAt(at);
+      saveJSON('activeAt', at);
+    }
+  }, [activeKey, loaded]);
+  const cloudData = (): CloudData => ({
+    name: account?.name,
+    cars,
+    favorites,
+    cards,
+    profiles,
+    history,
+    settings,
+    active: { s: activeNow ? { ...activeNow, elapsedSec: 0 } : null, at: activeAt },
+  });
   const applyData = (d: CloudData) => {
     if (d.cars) {
       setCars(d.cars);
@@ -209,6 +238,20 @@ function Main() {
     if (d.profiles) setProfiles(d.profiles);
     if (d.history) setHistory(d.history);
     if (d.settings) setSettings((s) => ({ ...s, ...d.settings }));
+    // Másik eszközön indított / leállított parkolás átvétele
+    if (d.active && d.active.at > activeAt) {
+      const r = d.active.s;
+      lastKey.current = r ? `${r.startedAt}:${r.durationMin}` : 'none';
+      setActiveAt(d.active.at);
+      saveJSON('activeAt', d.active.at);
+      if (r) {
+        setSession({ ...r, elapsedSec: Math.max(0, Math.floor((Date.now() - r.startedAt) / 1000)) });
+        setStep('active');
+      } else if (step === 'active') {
+        setSession(null);
+        setStep('search');
+      }
+    }
   };
   const withToken = async () => {
     const s0 = authRef.current;
@@ -235,7 +278,12 @@ function Main() {
         setSync('error');
       }
     })();
-  }, [loaded, !!authSession]);
+  }, [loaded, !!authSession, pullTick]);
+  // Amikor visszaváltasz az appra (másik lapról / háttérből), frissít a fiókból
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && setPullTick((n) => n + 1));
+    return () => sub.remove();
+  }, []);
   // Változáskor 1,5 mp késleltetéssel menti a fiókba
   useEffect(() => {
     if (!loaded || !cloud || !authSession || !pulled) return;
@@ -250,7 +298,7 @@ function Main() {
       }
     }, 1500);
     return () => clearTimeout(id);
-  }, [cars, favorites, cards, profiles, history, settings, account?.name, loaded, !!authSession, pulled]);
+  }, [cars, favorites, cards, profiles, history, settings, account?.name, loaded, !!authSession, pulled, activeAt]);
 
   // Visszajelzés: ha nincs kapcsolat vagy fiókszerver, sorba kerül, és később megy el
   const flushFeedback = async (extra: Feedback[] = []) => {

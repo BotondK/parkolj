@@ -54,3 +54,4 @@ Ebben a fájlban vezetjük, mi került a projektbe ezen felül, és ki kérte. �
 | 2026-11-21 | Kedvencek (Otthon, Munkahely, mentett helyek) a Parkolás panel tetején; asztalon a jobb felső menügomb kikerült, csak az óra maradt | Boti kérése |
 | 2026-11-21 | Belépés e-mailes linkkel is (a Supabase ingyenes csomagjában a levélsablon nem szerkeszthető, így kód nincs a levélben); a kód is megmaradt saját SMTP-hez | Boti jelezte, hogy a sablon nem szerkeszthető |
 | 2026-11-21 | Supabase-beállítás hibatűrése: a URL https:// nélkül vagy projektazonosítóként is jó, az új (sb_publishable_) kulcs is működik, a belépési hiba pontos okát kiírja | Boti élesítésekor kiderült hiba |
+| 2026-11-21 | Aktív parkolás szinkronja eszközök között (telefonon indítod, gépen látod/leállítod), frissítés visszaváltáskor | Boti „folytasd” a működő belépés után |
