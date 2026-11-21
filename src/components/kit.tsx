@@ -203,12 +203,14 @@ export function EmptyState({ icon, text }: { icon: IconName; text: string }) {
 /** Kis választó gombsor (Rendszer / Világos / Sötét) */
 export function Segmented<T extends string | number>({ options, value, onChange }: { options: [T, string][]; value: T; onChange: (v: T) => void }) {
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: C.soft, borderRadius: 14, padding: 4, gap: 4 }}>
+    <View style={{ flexDirection: 'row', backgroundColor: C.soft, borderRadius: 14, padding: 4, gap: 6 }}>
       {options.map(([k, label]) => {
         const on = k === value;
         return (
-          <Pressable key={String(k)} onPress={() => onChange(k)} style={{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', backgroundColor: on ? C.primary : 'transparent' }}>
-            <Text style={{ fontWeight: '700', color: on ? C.onPrimary : C.text }}>{label}</Text>
+          <Pressable key={String(k)} onPress={() => onChange(k)} style={{ flex: 1, minHeight: 44, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.primary : 'transparent' }}>
+            <Text style={{ fontWeight: '700', fontSize: 15, color: on ? C.onPrimary : C.text, textAlign: 'center' }} numberOfLines={1}>
+              {label}
+            </Text>
           </Pressable>
         );
       })}

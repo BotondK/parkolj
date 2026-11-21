@@ -226,7 +226,8 @@ function SettingsPage({ t, a, lang, setLang, settings, patchSettings, demoSpeed,
       <Section>
         <ToggleRow icon="bell" label={a.remind} value={settings.remind} onChange={(remind) => patchSettings({ remind })} />
         {settings.remind && (
-          <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderColor: C.line }}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16, borderBottomWidth: 1, borderColor: C.line, gap: 10 }}>
+            <Text style={{ color: C.sub, fontSize: 13, marginLeft: 38 }}>{a.remindWhen}</Text>
             <Segmented
               options={([5, 10, 15] as const).map((m) => [m, a.remindMin(m)] as [5 | 10 | 15, string])}
               value={settings.remindMin}
@@ -235,7 +236,7 @@ function SettingsPage({ t, a, lang, setLang, settings, patchSettings, demoSpeed,
           </View>
         )}
         <ToggleRow icon="info" label={a.helpBar} value={settings.helpBar} onChange={(helpBar) => patchSettings({ helpBar })} />
-        <ToggleRow icon="clock" label={a.demoClock} sub={t.demoSpeed} value={demoSpeed} onChange={setDemoSpeed} last />
+        <ToggleRow icon="clock" label={a.demoClock} sub={t.demoSpeed.replace(/^Dem[oó]: [^(]*/, '')} value={demoSpeed} onChange={setDemoSpeed} last />
       </Section>
     </View>
   );
