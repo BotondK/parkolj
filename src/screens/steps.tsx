@@ -162,12 +162,14 @@ export function OptionCard({
       <View style={styles.metaRow}>
         <Meta text={`🚶 ${o.walkMin} ${t.minutes}`} />
         {o.kind === 'garage' ? (
-          <Meta text={`${o.garage?.capacity} ${t.freeSpots}`} />
+          o.garage?.realCapacity ? <Meta text={t.places(o.garage.realCapacity)} /> : null
         ) : (
           <Meta text={`${Math.round(o.availability * 100)}% ${t.chance}`} tone={o.availability > 0.6 ? 'good' : o.availability > 0.4 ? 'mid' : 'bad'} />
         )}
         {o.zone && <Meta text={`${o.zone.id} ${t.zone} · ${o.zone.pricePerHour} Ft${t.perHour}`} />}
-        {o.kind === 'garage' && <Meta text={`${o.garage?.pricePerHour} Ft${t.perHour}`} />}
+        {o.kind === 'garage' && <Meta text={t.approxPerHour(o.garage?.pricePerHour ?? 0)} />}
+        {o.kind === 'garage' && o.garage?.hours === '24/7' && <Meta text={t.open247} />}
+        {o.kind === 'garage' && o.garage?.customersOnly && <Meta text={t.customersOnly} tone="mid" />}
         {o.kind === 'garage' && o.garage?.bookable && <Meta text={t.bookable} tone="good" />}
       </View>
       {over && <Text style={{ color: C.warn, fontSize: 12, marginTop: 8 }}>{t.rule3h}</Text>}

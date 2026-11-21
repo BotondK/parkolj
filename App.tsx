@@ -1008,7 +1008,8 @@ function Main() {
           {selected.kind === 'garage' ? (
             <View style={{ marginTop: 18 }}>
               <Text style={styles.sub}>{t.garageNote}</Text>
-              <PrimaryButton text={t.openPartner} onPress={() => setBanner({ kind: 'warn', text: t.partnerDemo })} />
+              <Text style={[styles.sub, { marginTop: 6 }]}>{t.garagePrices}</Text>
+              {selected.garage?.bookable && <PrimaryButton text={t.openPartner} onPress={() => Linking.openURL('https://parkl.net/')} />}
             </View>
           ) : (
             <PrimaryButton text={t.arrived} onPress={() => setStep('pay')} />

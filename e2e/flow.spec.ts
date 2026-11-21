@@ -161,3 +161,14 @@ test('a választógombok felirata keskeny telefonon sem csonkul', async ({ page 
   await page.getByText('Parkolj Plusz').first().click();
   await notTruncated();
 });
+
+test('garázsjavaslat valódi helyről becsült árral; adatkezelési tájékoztató a Menüben', async ({ page }) => {
+  await page.getByPlaceholder('Hova szeretnél menni?').fill('opera');
+  await page.getByText('Magyar Állami Operaház').first().click();
+  await expect(page.getByText(/^kb\. \d+ Ft\/óra$/).first()).toBeVisible();
+
+  await tab(page, 'Menü').click();
+  await page.getByText('Adatkezelési tájékoztató').click();
+  await expect(page.getByText('Milyen adatokat tárolunk?')).toBeVisible();
+  await expect(page.getByText(/a teljes számot és a CVC-t soha/)).toBeVisible();
+});

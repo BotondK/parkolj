@@ -159,3 +159,13 @@ test('utcaszintű zóna: a legközelebbi zónás utca dönt, 30 m-en túl a soks
   setZoneStreets([]);
   assert.equal(zoneAt({ lat: 47.50262, lng: 19.0583 })?.id, 'A');
 });
+
+test('garázsok: valódi (OSM) helyek, becsült ár, Parkl-foglalás csak a Parkl üzemeltetésűeknél', async () => {
+  const { GARAGES, estimateGaragePrice } = await import('../src/data/garages');
+  assert.ok(GARAGES.length > 20);
+  assert.ok(GARAGES.every((g) => g.name && g.pricePerHour >= 0));
+  assert.ok(GARAGES.filter((g) => g.bookable).every((g) => /parkl/i.test(g.operator ?? '')));
+  assert.equal(estimateGaragePrice({ lat: 47.4979, lng: 19.0532 }), 800);
+  assert.equal(estimateGaragePrice({ lat: 47.43, lng: 19.2 }), 400);
+  assert.equal(estimateGaragePrice({ lat: 47.43, lng: 19.2 }, 'no'), 0);
+});

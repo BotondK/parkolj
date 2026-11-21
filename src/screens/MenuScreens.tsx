@@ -20,9 +20,10 @@ import {
   PLUS_MONTHLY_FT,
 } from '../types';
 import InfoScreen from './InfoScreen';
+import PrivacyScreen from './PrivacyScreen';
 import { PlusBadge, PlusPage } from './PlusScreens';
 
-export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback' | 'plus';
+export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback' | 'plus' | 'privacy';
 
 export type MenuProps = {
   t: Strings;
@@ -87,6 +88,8 @@ export default function MenuScreens(p: MenuProps) {
     }
     case 'feedback':
       return <FeedbackPage {...p} onBack={back()} />;
+    case 'privacy':
+      return <PrivacyScreen lang={p.lang} onBack={back()} />;
     case 'info':
       return (
         <View>
@@ -143,7 +146,8 @@ function MenuHome({ a, account, setPage, notes, settings }: MenuProps) {
         <ListRow icon="gear" label={a.settings} onPress={() => setPage('settings')} />
         <ListRow icon="card" label={a.purchase} onPress={() => setPage('payment')} />
         <ListRow icon="help" label={a.infoHelp} onPress={() => setPage('info')} />
-        <ListRow icon="chat" label={a.feedback} onPress={() => setPage('feedback')} last />
+        <ListRow icon="chat" label={a.feedback} onPress={() => setPage('feedback')} />
+        <ListRow icon="info" label={a.privacy} onPress={() => setPage('privacy')} last />
       </Section>
       <Text style={{ color: C.sub, fontSize: 12, textAlign: 'center' }}>{a.appVersion}</Text>
     </View>
@@ -208,7 +212,7 @@ function Badge({ n }: { n: number }) {
   );
 }
 
-function AccountPage({ a, account, setAccount, onWipe, onBack, auth }: MenuProps & { onBack: () => void }) {
+function AccountPage({ a, account, setAccount, onWipe, onBack, auth, setPage }: MenuProps & { onBack: () => void }) {
   const [name, setName] = useState(account?.name ?? '');
   const [email, setEmail] = useState(account?.email ?? '');
   const [confirm, setConfirm] = useState(false);
@@ -234,6 +238,9 @@ function AccountPage({ a, account, setAccount, onWipe, onBack, auth }: MenuProps
               <Field label={a.name} value={name} onChange={setName} autoCap="words" />
               <Field label={a.email} value={email} onChange={setEmail} keyboard="email-address" />
               <Text style={{ color: C.sub, fontSize: 12 }}>{a.cloudNote}</Text>
+              <Text style={{ color: C.sub, fontSize: 12, marginTop: 4 }} onPress={() => setPage('privacy')}>
+                {a.privacyAgree} <Text style={{ color: titleColor(), fontWeight: '700', textDecorationLine: 'underline' }}>{a.privacy}</Text>
+              </Text>
               <PrimaryButton
                 text={a.sendCode}
                 disabled={!emailOk || busy}
