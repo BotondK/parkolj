@@ -97,9 +97,10 @@ export function PlusPage({
       <Section>
         <ToggleRow icon="clock" label={a.autoExtend} value={settings.autoExtend} onChange={(autoExtend) => patchSettings({ autoExtend })} last={!settings.autoExtend} />
         {settings.autoExtend && (
-          <View style={{ padding: 16 }}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16, gap: 10 }}>
+            <Text style={{ color: C.sub, fontSize: 13 }}>{a.autoExtendLimit}</Text>
             <Segmented
-              options={([30, 60, 120] as const).map((m) => [m, a.autoExtendMax(m)] as [30 | 60 | 120, string])}
+              options={([30, 60, 120] as const).map((m) => [m, a.extStep(m)] as [30 | 60 | 120, string])}
               value={settings.autoExtendMax}
               onChange={(autoExtendMax) => patchSettings({ autoExtendMax })}
             />

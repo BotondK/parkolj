@@ -145,3 +145,19 @@ test('Parkolj Plusz: alkalmi Plusz fizetéskor, autó helye, majd havi előfizet
   await page.getByText('CSV letöltése').click();
   expect((await download).suggestedFilename()).toMatch(/\.csv$/);
 });
+
+test('a választógombok felirata keskeny telefonon sem csonkul', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  const notTruncated = async () => {
+    const labels = page.getByTestId('seg-label');
+    await expect(labels.first()).toBeVisible();
+    const cut = await labels.evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent));
+    expect(cut).toEqual([]);
+  };
+  await tab(page, 'Menü').click();
+  await page.getByText('Beállítások', { exact: true }).click();
+  await notTruncated();
+  await page.getByLabel('Vissza').first().click();
+  await page.getByText('Parkolj Plusz').first().click();
+  await notTruncated();
+});
