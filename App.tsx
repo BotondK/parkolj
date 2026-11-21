@@ -5,7 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ParkingMap from './src/components/ParkingMap';
 import type { MapMarker } from './src/components/mapTypes';
 import { Icon, type IconName } from './src/components/icons';
-import { titleColor } from './src/components/kit';
+import { ListRow, Section, titleColor } from './src/components/kit';
 import { applyTheme, BackLink, C, Chip, isDark, PrimaryButton, Row, styles } from './src/components/ui';
 import type { Place } from './src/data/places';
 import type { LatLng } from './src/data/zones';
@@ -724,10 +724,10 @@ function Main() {
       />
       {wide ? (
         <View style={{ position: 'absolute', top: 24, right: 24, zIndex: 1100 }}>
-          <Pressable style={styles.pill} onPress={() => setTab(tab === 'menu' ? 'park' : 'menu')} accessibilityLabel={a.tabMenu}>
+          {/* Csak az óra: a menü a bal oldali sávban, az alsó fülsorból nyílik */}
+          <View style={[styles.pill, { paddingRight: 20 }]}>
             <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, fontVariant: ['tabular-nums'] }}>{clock}</Text>
-            <Icon name={tab === 'menu' ? 'close' : 'menu'} size={28} color={isDark ? C.text : C.brand} stroke={2.2} />
-          </Pressable>
+          </View>
         </View>
       ) : (
         <View style={{ position: 'absolute', top: 12, left: 12, right: 12, zIndex: 1100 }}>{searchPill}</View>
@@ -755,6 +755,30 @@ function Main() {
             </View>
           )}
           {meDistrict && !query && <Text style={[styles.h1, { fontSize: 24, color: titleColor(), marginBottom: 4 }]}>{a.near(meDistrict)}</Text>}
+          {!query && (
+            <>
+              <Text style={[styles.label, { marginTop: 4 }]}>{a.tabFav}</Text>
+              <Section>
+                {[
+                  ...(['home', 'work'] as const).map((slot) => {
+                    const f = favorites.find((x) => x.slot === slot);
+                    return { key: slot, icon: slot as IconName, label: slot === 'home' ? a.home : a.work, sub: f ? f.name : a.setPlace, go: () => goFavorite(slot) };
+                  }),
+                  ...favorites
+                    .filter((f) => f.slot === 'custom')
+                    .map((f) => ({
+                      key: f.id,
+                      icon: 'starFill' as IconName,
+                      label: f.label,
+                      sub: f.address,
+                      go: () => pickDest({ id: `fav-${f.id}`, name: f.name, address: f.address, kind: 'address', lat: f.lat, lng: f.lng }),
+                    })),
+                ].map((r, i, all) => (
+                  <ListRow key={r.key} icon={r.icon} label={r.label} sub={r.sub} onPress={r.go} last={i === all.length - 1} />
+                ))}
+              </Section>
+            </>
+          )}
           <SearchStep t={t} query={query} setQuery={setQuery} results={results} onPick={pickDest} lang={lang} hideInput />
           <View style={[styles.card, { marginTop: 14, gap: 10 }]}>
             <Text style={{ color: C.sub, fontSize: 13 }}>{canLocate() ? t.orHere : t.tapMap}</Text>
