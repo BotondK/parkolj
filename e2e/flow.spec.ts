@@ -110,3 +110,38 @@ test('visszajelzés: fiókszerver nélkül sorba kerül, nem vész el', async ({
   const queue = await page.evaluate(() => Object.entries(localStorage).find(([k]) => k.includes('feedbackQueue'))?.[1] ?? '');
   expect(queue).toContain('több garázs');
 });
+
+test('Parkolj Plusz: alkalmi Plusz fizetéskor, autó helye, majd havi előfizetés és kimutatás', async ({ page }) => {
+  await page.getByPlaceholder('Hova szeretnél menni?').fill('opera');
+  await page.getByText('Magyar Állami Operaház').first().click();
+  await page.getByText('Navigálj oda').click();
+  await page.getByText(/Megérkeztem/).click();
+  await page.getByRole('checkbox', { name: /Plusz erre a parkolásra/ }).click();
+  await expect(page.getByRole('checkbox', { name: /Plusz erre a parkolásra/ })).toBeChecked();
+  await page.getByText(/Fizetés és indítás|Indítás \(most/).click();
+  await expect(page.getByText('Aktív parkolás')).toBeVisible();
+
+  await page.getByPlaceholder(/-2\. szint/).fill('-2. szint, C12');
+  await page.getByText('Mentés', { exact: true }).click();
+  await expect(page.getByText('Elmentve')).toBeVisible();
+
+  await tab(page, 'Parkolásaim').click();
+  await expect(page.getByText('📍 -2. szint, C12')).toBeVisible();
+  await page.getByText('Részletek', { exact: true }).click();
+  await page.getByText('Parkolás leállítása').click();
+  await expect(page.getByText('Parkolás leállítva')).toBeVisible();
+  await page.getByText('Kész').click();
+
+  await tab(page, 'Menü').click();
+  await page.getByText('Parkolj Plusz').first().click();
+  await page.getByText('Előfizetek').click();
+  await expect(page.getByText(/Aktív előfizetés/)).toBeVisible();
+
+  await tab(page, 'Parkolásaim').click();
+  await page.getByText('Lezárt').click();
+  await expect(page.getByText('Havi kimutatás')).toBeVisible();
+  await expect(page.getByText('1 parkolás').first()).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.getByText('CSV letöltése').click();
+  expect((await download).suggestedFilename()).toMatch(/\.csv$/);
+});

@@ -195,9 +195,14 @@ export function PayStep({
   credit,
   onManagePay,
   a,
+  plusSlot,
+  plusFee = 0,
   onBack,
   onPay,
 }: {
+  plusSlot?: React.ReactNode;
+  /** Alkalmi Plusz díja, a fizetendőhöz adódik */
+  plusFee?: number;
   t: Strings;
   lang: Lang;
   option: ParkingOption;
@@ -294,10 +299,11 @@ export function PayStep({
           <Chip key={o.id} text={o.label} active={profileId === o.id} onPress={() => setProfileId(o.id)} />
         ))}
       </View>
+      {plusSlot}
       {used > 0 && <Text style={{ color: C.good, fontWeight: '600', marginTop: 6 }}>{a.creditApplied(formatFt(used))}</Text>}
       <Text style={[styles.sub, { fontSize: 12 }]}>{t.demoPay}</Text>
 
-      <PrimaryButton text={price === 0 ? t.startFree : `${t.payAndStart} · ${formatFt(price - used)}`} onPress={onPay} disabled={!plate} />
+      <PrimaryButton text={price === 0 && !plusFee ? t.startFree : `${t.payAndStart} · ${formatFt(price - used + plusFee)}`} onPress={onPay} disabled={!plate} />
 
       {z && (
         <View style={[styles.card, { marginTop: 18 }]}>
@@ -336,7 +342,9 @@ export function ActiveStep({
   onExtend,
   onStop,
   onGarage,
+  extra,
 }: {
+  extra?: React.ReactNode;
   t: Strings;
   lang: Lang;
   s: Session;
@@ -381,6 +389,7 @@ export function ActiveStep({
           <Text style={[styles.secondaryText, { color: C.danger }]}>{t.stop}</Text>
         </Pressable>
       </View>
+      {extra}
       {atLimit && (
         <View style={[styles.card, { marginTop: 14, backgroundColor: C.warnSoft, borderColor: C.warnSoft }]}>
           <Text style={{ color: C.warn, fontWeight: '600' }}>{t.limitReached}</Text>

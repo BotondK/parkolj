@@ -17,10 +17,12 @@ import {
   type BillingProfile,
   type PaymentCard,
   type Settings,
+  PLUS_MONTHLY_FT,
 } from '../types';
 import InfoScreen from './InfoScreen';
+import { PlusBadge, PlusPage } from './PlusScreens';
 
-export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback';
+export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback' | 'plus';
 
 export type MenuProps = {
   t: Strings;
@@ -79,6 +81,10 @@ export default function MenuScreens(p: MenuProps) {
       return <ProfilesPage {...p} onBack={back('payment')} />;
     case 'coupon':
       return <CouponPage {...p} onBack={back('payment')} />;
+    case 'plus': {
+      const card = p.cards.find((c) => c.id === p.settings.defaultPay);
+      return <PlusPage a={a} lang={p.lang} settings={p.settings} patchSettings={p.patchSettings} payLabel={card ? cardLabel(card) : walletLabel(a)} onBack={back()} />;
+    }
     case 'feedback':
       return <FeedbackPage {...p} onBack={back()} />;
     case 'info':
@@ -93,7 +99,7 @@ export default function MenuScreens(p: MenuProps) {
   }
 }
 
-function MenuHome({ a, account, setPage, notes }: MenuProps) {
+function MenuHome({ a, account, setPage, notes, settings }: MenuProps) {
   return (
     <View>
       <PageHeader title={a.tabMenu} />
@@ -117,6 +123,21 @@ function MenuHome({ a, account, setPage, notes }: MenuProps) {
         </View>
         <Icon name="chevron" size={20} color={C.sub} />
       </Pressable>
+      <Section>
+        <ListRow
+          icon="starFill"
+          label={a.plusName}
+          sub={settings.plus === 'monthly' ? `✓ ${a.plusMonthlyPrice(formatFt(PLUS_MONTHLY_FT))}` : a.plusTag}
+          onPress={() => setPage('plus')}
+          right={
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <PlusBadge small />
+              <Icon name="chevron" size={20} color={C.sub} />
+            </View>
+          }
+          last
+        />
+      </Section>
       <Section>
         <ListRow icon="bell" label={a.notifications} onPress={() => setPage('notes')} right={notes.length ? <Badge n={notes.length} /> : undefined} />
         <ListRow icon="gear" label={a.settings} onPress={() => setPage('settings')} />

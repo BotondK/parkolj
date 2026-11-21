@@ -23,6 +23,7 @@ import { usePlaceSearch } from './src/logic/usePlaceSearch';
 import FavoritesScreen from './src/screens/FavoritesScreen';
 import MenuScreens, { cardLabel, profileLabel, walletLabel, type MenuPage } from './src/screens/MenuScreens';
 import ParkingsScreen from './src/screens/ParkingsScreen';
+import { PlusActivePanel, PlusOnPay } from './src/screens/PlusScreens';
 import Onboarding from './src/screens/Onboarding';
 import {
   ActiveStep,
@@ -36,7 +37,10 @@ import {
   titleOf,
 } from './src/screens/steps';
 import {
+  AUTO_EXT_STEP_MIN,
   DEFAULT_SETTINGS,
+  PLUS_ONCE_FT,
+  shouldAutoExtend,
   type Account,
   type AppNote,
   type BillingProfile,
@@ -108,6 +112,7 @@ function Main() {
   const [credit, setCredit] = useState(0);
   const [usedCoupons, setUsedCoupons] = useState<string[]>([]);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [plusOnce, setPlusOnce] = useState(false);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [sync, setSync] = useState<'off' | 'saving' | 'saved' | 'error'>('off');
   const patchSettings = (p: Partial<Settings>) => setSettings((s) => ({ ...s, ...p }));
@@ -479,6 +484,17 @@ function Main() {
       addNote(a.noteAuto, t.autoStopped(formatClock(pe)));
       return;
     }
+    // Plusz: automatikus hosszabbítás lejárat előtt 2 perccel (3 órás szabály és keret betartva)
+    const sessionPlus = settings.plus === 'monthly' || !!session.plusOnce;
+    if (sessionPlus && settings.autoExtend && shouldAutoExtend(session, settings.autoExtendMax, z?.maxMinutes)) {
+      const durationMin = session.durationMin + AUTO_EXT_STEP_MIN;
+      const end = formatClock(new Date(session.startedAt + durationMin * 60000));
+      setSession({ ...session, durationMin, autoExtMin: (session.autoExtMin ?? 0) + AUTO_EXT_STEP_MIN, warnedSoon: false, warnedExpired: false });
+      if (session.remoteId) remoteExtend(session.remoteId, AUTO_EXT_STEP_MIN);
+      setBanner({ kind: 'good', text: a.autoExtended(end) });
+      addNote(a.autoExtendedNote, a.autoExtended(end));
+      return;
+    }
     const left = session.durationMin * 60 - session.elapsedSec;
     const soonText = a.soonIn(settings.remindMin);
     if (settings.remind && left <= settings.remindMin * 60 && left > 0 && !session.warnedSoon) {
@@ -495,7 +511,7 @@ function Main() {
       addNote(a.noteExpired, t.alertExpired);
       setSession({ ...session, warnedExpired: true });
     }
-  }, [session, step, t, a, demoSpeed, settings.remind, settings.remindMin]);
+  }, [session, step, t, a, demoSpeed, settings.remind, settings.remindMin, settings.plus, settings.autoExtend, settings.autoExtendMax]);
 
   // Valós idejű parkolásnál a telefon előre ütemezi a lejárati értesítéseket (bezárt appnál is szól)
   const endAt = session ? session.startedAt + session.durationMin * 60000 : 0;
@@ -539,6 +555,7 @@ function Main() {
     setSession({
       payLabel,
       profileLabel: profLabel,
+      plusOnce: settings.plus !== 'monthly' && plusOnce,
       option: selected,
       placeName: dest ? (lang === 'en' && dest.nameEn ? dest.nameEn : dest.name) : t.hereTitle,
       plate: car.plate,
@@ -593,6 +610,8 @@ function Main() {
           credit: used || undefined,
           payLabel: session.payLabel,
           profileLabel: session.profileLabel,
+          plusFee: session.plusOnce ? PLUS_ONCE_FT : undefined,
+          spot: session.spot,
         },
         ...h,
       ]);
@@ -664,6 +683,11 @@ function Main() {
     const f = favorites.find((x) => x.slot === slot);
     if (f) pickDest({ id: `fav-${f.id}`, name: f.name, address: f.address, kind: 'address', lat: f.lat, lng: f.lng });
     else setTab('fav');
+  };
+
+  const openPlus = () => {
+    setMenuPage('plus');
+    setTab('menu');
   };
 
   const wipe = () => {
@@ -1015,6 +1039,8 @@ function Main() {
             setTab('menu');
           }}
           a={a}
+          plusFee={settings.plus !== 'monthly' && plusOnce ? PLUS_ONCE_FT : 0}
+          plusSlot={<PlusOnPay a={a} monthly={settings.plus === 'monthly'} value={plusOnce} onChange={setPlusOnce} />}
           onBack={() => setStep(hereOpt ? 'search' : 'navigate')}
           onPay={startSession}
         />
@@ -1030,6 +1056,18 @@ function Main() {
           onExtend={extend}
           onStop={stopSession}
           onGarage={showGarage}
+          extra={
+            <PlusActivePanel
+              key={session.startedAt}
+              a={a}
+              s={session}
+              hasPlus={settings.plus === 'monthly' || !!session.plusOnce}
+              settings={settings}
+              patchSettings={patchSettings}
+              setSpot={(spot) => setSession((cur) => (cur ? { ...cur, spot: spot || undefined } : cur))}
+              onUnlock={openPlus}
+            />
+          }
         />
       )}
 
@@ -1107,6 +1145,8 @@ function Main() {
           onHideHelp={() => patchSettings({ helpBar: false })}
           onDetails={() => setTab('park')}
           onExtend={extend}
+          hasPlus={settings.plus === 'monthly'}
+          onUnlockPlus={openPlus}
           onNew={() => {
             if (step === 'summary') reset();
             setTab('park');

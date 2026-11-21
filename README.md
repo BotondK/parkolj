@@ -36,6 +36,8 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 28. Menü: fiók, értesítésnapló, beállítások (emlékeztető 5/10/15 perc), mentett bankkártyák (csak utolsó 4 számjegy), magán/céges számlázási profil, biometrikus jóváhagyás, kupon
 29. Fiók és szinkron minden eszközre: e-mailes belépés kóddal (Supabase; beállítás: [docs/FIOK.md](docs/FIOK.md))
 30. Visszajelzés küldése az appból (zárt bétához), kapcsolat nélkül sorba kerül
+31. Aktív parkolás szinkronja eszközök között
+32. Parkolj Plusz (590 Ft/hó vagy 39 Ft/parkolás, demó fizetés): automatikus hosszabbítás a 3 órás szabályon belül, havi kimutatás profilonként CSV-exporttal, „hol hagytam az autót” jegyzet
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 

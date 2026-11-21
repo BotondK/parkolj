@@ -8,6 +8,7 @@ import type { AccStrings } from '../i18nAccount';
 import { formatClock, formatDuration, formatFt } from '../logic/pricing';
 import type { HistoryItem, Session } from '../types';
 import HistoryScreen from './HistoryScreen';
+import { MonthlyReport } from './PlusScreens';
 import { chargeFor } from './steps';
 
 /** Parkolásaim: az aktív parkolás „jegy” kártyaként (mint a BudapestGO-ban a bérlet), alatta a lezártak. */
@@ -22,6 +23,8 @@ export default function ParkingsScreen({
   onDetails,
   onExtend,
   onNew,
+  hasPlus,
+  onUnlockPlus,
 }: {
   t: Strings;
   a: AccStrings;
@@ -33,6 +36,8 @@ export default function ParkingsScreen({
   onDetails: () => void;
   onExtend: () => void;
   onNew: () => void;
+  hasPlus: boolean;
+  onUnlockPlus: () => void;
 }) {
   const [tab, setTab] = useState<'active' | 'closed'>(session ? 'active' : history.length ? 'closed' : 'active');
   return (
@@ -61,7 +66,12 @@ export default function ParkingsScreen({
           {!session && <PillButton text={a.newParking} icon="plus" onPress={onNew} />}
         </>
       )}
-      {tab === 'closed' && <HistoryScreen t={t} lang={lang} items={history} hideTitle />}
+      {tab === 'closed' && (
+        <>
+          {history.length > 0 && <MonthlyReport a={a} lang={lang} items={history} hasPlus={hasPlus} onUnlock={onUnlockPlus} />}
+          <HistoryScreen t={t} lang={lang} items={history} hideTitle />
+        </>
+      )}
     </View>
   );
 }
@@ -99,6 +109,11 @@ function Ticket({ t, a, lang, s, onDetails, onExtend }: { t: Strings; a: AccStri
         <Text style={{ color: C.sub, fontSize: 14 }} numberOfLines={1}>
           {s.country} · {s.placeName}
         </Text>
+        {!!s.spot && (
+          <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }} numberOfLines={2}>
+            📍 {s.spot}
+          </Text>
+        )}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 12 }}>
           <View>
             <Text style={{ color: C.sub, fontSize: 13 }}>{a.expires}</Text>

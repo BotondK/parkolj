@@ -16,6 +16,12 @@ export type Session = {
   remoteId?: string;
   payLabel?: string;
   profileLabel?: string;
+  /** Plusz csak erre a parkolásra (alkalmi díj) */
+  plusOnce?: boolean;
+  /** Automatikus hosszabbítással eddig hozzáadott percek */
+  autoExtMin?: number;
+  /** „Hol hagytam az autót”: szint, oszlop, megjegyzés */
+  spot?: string;
 };
 
 export type HistoryItem = {
@@ -33,6 +39,9 @@ export type HistoryItem = {
   profileLabel?: string;
   /** Felhasznált kuponjóváírás (Ft) */
   credit?: number;
+  /** Alkalmi Plusz díja (Ft) */
+  plusFee?: number;
+  spot?: string;
 };
 
 export const COUNTRIES = ['H', 'A', 'D', 'SK', 'RO', 'HR', 'SRB', 'UA', 'PL', 'CZ', 'I', 'F', 'GB', '…'];
@@ -90,6 +99,12 @@ export type Settings = {
   biometricOver: number;
   defaultPay: string;
   defaultProfile: string;
+  /** Parkolj Plusz előfizetés */
+  plus: 'none' | 'monthly';
+  plusSince: number;
+  /** Plusz: automatikus hosszabbítás lejárat előtt, legfeljebb ennyi extra percig */
+  autoExtend: boolean;
+  autoExtendMax: 30 | 60 | 120;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -101,7 +116,44 @@ export const DEFAULT_SETTINGS: Settings = {
   biometricOver: 2000,
   defaultPay: 'wallet',
   defaultProfile: 'none',
+  plus: 'none',
+  plusSince: 0,
+  autoExtend: true,
+  autoExtendMax: 60,
 };
+
+/** Parkolj Plusz árak (a bevételi modell szerint, a Simple Pro 69 Ft-ja alatt) */
+export const PLUS_MONTHLY_FT = 590;
+export const PLUS_ONCE_FT = 39;
+
+/** Automatikus hosszabbítás: lejárat előtt ennyi másodperccel, ennyi perccel */
+export const AUTO_EXT_BEFORE_SEC = 120;
+export const AUTO_EXT_STEP_MIN = 15;
+
+/** Hosszabbítson-e most automatikusan (tiszta függvény, tesztelhető) */
+export function shouldAutoExtend(s: { durationMin: number; elapsedSec: number; autoExtMin?: number }, maxExtraMin: number, zoneMaxMin: number | null | undefined) {
+  const left = s.durationMin * 60 - s.elapsedSec;
+  if (left > AUTO_EXT_BEFORE_SEC || left <= 0) return false;
+  if ((s.autoExtMin ?? 0) + AUTO_EXT_STEP_MIN > maxExtraMin) return false;
+  if (zoneMaxMin != null && s.durationMin + AUTO_EXT_STEP_MIN > zoneMaxMin) return false;
+  return true;
+}
+
+/** Havi kimutatás CSV (pontosvesszővel, magyar Excelhez) */
+export function historyCsv(items: HistoryItem[]) {
+  const esc = (v: string | number | undefined) => {
+    const s = v == null ? '' : String(v);
+    return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const fmt = (ms: number) => {
+    const d = new Date(ms);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const head = ['Kezdés', 'Hely', 'Zóna', 'Rendszám', 'Perc', 'Parkolási díj (Ft)', 'Plusz (Ft)', 'Kupon (Ft)', 'Fizetés', 'Számlázás'];
+  const rows = items.map((i) => [fmt(i.startedAt), i.placeName, i.zoneId ?? '', `${i.country} ${i.plate}`, i.minutes, i.cost, i.plusFee ?? 0, i.credit ?? 0, i.payLabel ?? '', i.profileLabel ?? '']);
+  return '\ufeff' + [head, ...rows].map((r) => r.map(esc).join(';')).join('\r\n');
+}
 
 /** Luhn-ellenőrzés kártyaszámra (csak formai ellenőrzés) */
 export function luhnValid(num: string) {

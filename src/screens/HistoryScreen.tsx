@@ -13,7 +13,7 @@ export default function HistoryScreen({ t, lang, items, hideTitle }: { t: String
     const d = new Date(i.startedAt);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
-  const monthTotal = month.reduce((a, i) => a + i.cost, 0);
+  const monthTotal = month.reduce((a, i) => a + i.cost + (i.plusFee ?? 0), 0);
   const dateFmt = (ms: number) =>
     new Date(ms).toLocaleDateString(lang === 'hu' ? 'hu-HU' : 'en-GB', { month: 'short', day: 'numeric' });
 
@@ -51,7 +51,7 @@ export default function HistoryScreen({ t, lang, items, hideTitle }: { t: String
                   {dateFmt(i.startedAt)} · {formatClock(new Date(i.startedAt))} · {formatDuration(i.minutes, lang)}
                 </Text>
               </View>
-              <Text style={{ fontWeight: '800', color: C.text }}>{formatFt(i.cost)}</Text>
+              <Text style={{ fontWeight: '800', color: C.text }}>{formatFt(i.cost + (i.plusFee ?? 0))}</Text>
             </View>
             {isOpen && (
               <View style={{ marginTop: 12, borderTopWidth: 1, borderColor: C.line, paddingTop: 8 }}>
@@ -65,7 +65,9 @@ export default function HistoryScreen({ t, lang, items, hideTitle }: { t: String
                 {!!i.payLabel && <Row k={t.payWith} v={i.payLabel} />}
                 {!!i.profileLabel && <Row k={t.invoice} v={i.profileLabel} />}
                 {!!i.credit && <Row k={t.creditUsed} v={`−${formatFt(i.credit)}`} />}
-                <Row k={t.total} v={formatFt(i.cost)} strong />
+                {!!i.plusFee && <Row k="Plusz" v={formatFt(i.plusFee)} />}
+                {!!i.spot && <Row k="📍" v={i.spot} />}
+                <Row k={t.total} v={formatFt(i.cost + (i.plusFee ?? 0))} strong />
                 <Text style={{ color: C.sub, fontSize: 12, marginTop: 6 }}>{t.receiptNote}</Text>
               </View>
             )}
