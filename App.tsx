@@ -1,23 +1,28 @@
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, TextInput, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ParkingMap from './src/components/ParkingMap';
 import type { MapMarker } from './src/components/mapTypes';
-import { BackLink, C, Chip, PrimaryButton, Row, styles } from './src/components/ui';
-import { searchPlaces, type Place } from './src/data/places';
+import { Icon, type IconName } from './src/components/icons';
+import { titleColor } from './src/components/kit';
+import { applyTheme, BackLink, C, Chip, isDark, PrimaryButton, Row, styles } from './src/components/ui';
+import type { Place } from './src/data/places';
 import type { LatLng } from './src/data/zones';
 import { STRINGS, type Lang } from './src/i18n';
-import { geocode } from './src/logic/geocode';
+import { ACC, DEMO_COUPONS } from './src/i18nAccount';
 import { canLocate } from './src/logic/locate';
-import { DISTRICT_CENTERS, districtAt, zoneAt } from './src/logic/geo';
+import { districtAt, zoneAt } from './src/logic/geo';
 import { useLiveLocation } from './src/logic/liveLocation';
 import { alertUser, cancelExpiry, requestNotify, scheduleExpiry, SCHEDULES_IN_BACKGROUND } from './src/logic/notify';
-import { formatClock, formatDuration, formatFt, isCharging, paidEnd } from './src/logic/pricing';
+import { formatClock, formatDuration, formatFt, isCharging, paidEnd, priceWindow } from './src/logic/pricing';
 import { hereOption, recommend, type ParkingOption } from './src/logic/recommend';
 import { loadJSON, saveJSON } from './src/logic/storage';
-import HistoryScreen from './src/screens/HistoryScreen';
-import InfoScreen from './src/screens/InfoScreen';
+import { BIOMETRIC_AVAILABLE, confirmBiometric } from './src/logic/biometric';
+import { usePlaceSearch } from './src/logic/usePlaceSearch';
+import FavoritesScreen from './src/screens/FavoritesScreen';
+import MenuScreens, { cardLabel, profileLabel, walletLabel, type MenuPage } from './src/screens/MenuScreens';
+import ParkingsScreen from './src/screens/ParkingsScreen';
 import Onboarding from './src/screens/Onboarding';
 import {
   ActiveStep,
@@ -27,28 +32,29 @@ import {
   navApps,
   OptionCard,
   PayStep,
-  SearchInput,
   SearchStep,
   titleOf,
 } from './src/screens/steps';
-import type { Car, HistoryItem, Session } from './src/types';
+import {
+  DEFAULT_SETTINGS,
+  type Account,
+  type AppNote,
+  type BillingProfile,
+  type Car,
+  type FavoritePlace,
+  type HistoryItem,
+  type PaymentCard,
+  type Session,
+  type Settings,
+} from './src/types';
 import { useZoneStreets } from './src/logic/loadZoneStreets';
 import { remoteExtend, remoteStart, remoteStop } from './src/logic/api';
 
 type Step = 'search' | 'options' | 'navigate' | 'pay' | 'active' | 'summary';
-type Tab = 'park' | 'history' | 'info';
+type Tab = 'park' | 'fav' | 'parkings' | 'menu';
 
 const STAY_CHOICES = [30, 60, 120, 180, 240];
 
-const DISTRICT_PLACES: Place[] = DISTRICT_CENTERS.map((d) => ({
-  id: `district-${d.name}`,
-  name: d.name,
-  nameEn: `District ${d.name.split('.')[0]}`,
-  address: 'Budapest',
-  kind: 'address',
-  lat: d.lat,
-  lng: d.lng,
-}));
 
 export default function App() {
   return (
@@ -61,11 +67,16 @@ export default function App() {
 function Main() {
   const [lang, setLang] = useState<Lang>('hu');
   const t = STRINGS[lang];
+  const a = ACC[lang];
   const { width } = useWindowDimensions();
   const wide = width >= 900;
 
-  const [tab, setTab] = useState<Tab>('park');
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [tab, setTabRaw] = useState<Tab>('park');
+  const [menuPage, setMenuPage] = useState<MenuPage>('home');
+  const setTab = (k: Tab) => {
+    if (k === 'menu' && tab === 'menu') setMenuPage('home');
+    setTabRaw(k);
+  };
   const zoneStreets = useZoneStreets();
   const [clock, setClock] = useState(() => formatClock(new Date()));
   useEffect(() => {
@@ -84,10 +95,29 @@ function Main() {
   const [carId, setCarId] = useState<string | null>('demo');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [duration, setDuration] = useState(120);
-  const [payMethod, setPayMethod] = useState<'apple' | 'google' | 'card'>(Platform.OS === 'android' ? 'google' : 'apple');
+  const [payMethod, setPayMethod] = useState('wallet');
+  const [profileId, setProfileId] = useState('none');
+  // Fiók, kedvencek, fizetés, értesítések, beállítások (helyben tárolva)
+  const [favorites, setFavorites] = useState<FavoritePlace[]>([]);
+  const [cards, setCards] = useState<PaymentCard[]>([]);
+  const [profiles, setProfiles] = useState<BillingProfile[]>([]);
+  const [notes, setNotes] = useState<AppNote[]>([]);
+  const [account, setAccount] = useState<Account>(null);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [credit, setCredit] = useState(0);
+  const [usedCoupons, setUsedCoupons] = useState<string[]>([]);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const patchSettings = (p: Partial<Settings>) => setSettings((s) => ({ ...s, ...p }));
+  const addNote = (title: string, body: string) =>
+    setNotes((n) => [{ id: `${Date.now()}-${n.length}`, at: Date.now(), title, body }, ...n].slice(0, 50));
+
+  // --- Sötét / világos mód (rendszer szerint vagy kézzel) ---
+  const sysScheme = useColorScheme();
+  const dark = settings.theme === 'dark' || (settings.theme === 'system' && sysScheme === 'dark');
+  if (isDark !== dark) applyTheme(dark);
   const [session, setSession] = useState<Session | null>(null);
   const [demoSpeed, setDemoSpeed] = useState(true);
-  const [banner, setBanner] = useState<{ kind: 'warn' | 'danger'; text: string } | null>(null);
+  const [banner, setBanner] = useState<{ kind: 'warn' | 'danger' | 'good'; text: string } | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [onboarded, setOnboarded] = useState(true);
 
@@ -100,10 +130,29 @@ function Main() {
         loadJSON<Session | null>('session', null),
         loadJSON<Lang | null>('lang', null),
       ]);
+      const [fv, cd, pr, nt, ac, st, cr, uc, dc] = await Promise.all([
+        loadJSON<FavoritePlace[]>('favorites', []),
+        loadJSON<PaymentCard[]>('cards', []),
+        loadJSON<BillingProfile[]>('profiles', []),
+        loadJSON<AppNote[]>('notes', []),
+        loadJSON<Account>('account', null),
+        loadJSON<Partial<Settings>>('settings', {}),
+        loadJSON<number>('credit', 0),
+        loadJSON<string[]>('coupons', []),
+        loadJSON<string | null>('defaultCar', null),
+      ]);
+      setFavorites(fv);
+      setCards(cd);
+      setProfiles(pr);
+      setNotes(nt);
+      setAccount(ac);
+      setSettings({ ...DEFAULT_SETTINGS, ...st });
+      setCredit(cr);
+      setUsedCoupons(uc);
       setOnboarded(await loadJSON<boolean>('onboarded', false));
-      if (c && c.length) {
+      if (c) {
         setCars(c);
-        setCarId(c[0].id);
+        setCarId(c.find((x) => x.id === dc)?.id ?? c[0]?.id ?? null);
       }
       setHistory(h);
       if (l) setLang(l);
@@ -128,6 +177,18 @@ function Main() {
     if (loaded) saveJSON('history', history);
   }, [history, loaded]);
   useEffect(() => {
+    if (!loaded) return;
+    saveJSON('favorites', favorites);
+    saveJSON('cards', cards);
+    saveJSON('profiles', profiles);
+    saveJSON('notes', notes);
+    saveJSON('account', account);
+    saveJSON('settings', settings);
+    saveJSON('credit', credit);
+    saveJSON('coupons', usedCoupons);
+    saveJSON('defaultCar', carId);
+  }, [favorites, cards, profiles, notes, account, settings, credit, usedCoupons, carId, loaded]);
+  useEffect(() => {
     if (loaded) saveJSON('lang', lang);
   }, [lang, loaded]);
   useEffect(() => {
@@ -151,29 +212,15 @@ function Main() {
     if (options.length && !options.some((o) => o.id === selectedId)) setSelectedId(options[0].id);
   }, [options, selectedId]);
 
-  const [remote, setRemote] = useState<Place[]>([]);
-  useEffect(() => {
-    // Valódi címkeresés 3+ karaktertől, 400 ms késleltetéssel; ha nem elérhető, marad a helyi lista
-    setRemote([]);
-    if (query.trim().length < 3) return;
-    const ctrl = new AbortController();
-    const id = setTimeout(() => geocode(query.trim(), ctrl.signal).then(setRemote), 400);
-    return () => {
-      clearTimeout(id);
-      ctrl.abort();
-    };
-  }, [query]);
-  const results = useMemo(() => {
-    const local = searchPlaces(query, DISTRICT_PLACES);
-    const far = remote.filter((r) => !local.some((l) => Math.abs(l.lat - r.lat) < 0.0015 && Math.abs(l.lng - r.lng) < 0.0015));
-    return [...local, ...far].slice(0, 10);
-  }, [query, remote]);
+  const results = usePlaceSearch(query);
 
   const pickDest = (p: Place) => {
     setHere(null);
     setDest(p);
     setArriveOffset(0);
     setSelectedId(null);
+    setSaveOpen(false);
+    setTab('park');
     setStep('options');
   };
 
@@ -234,12 +281,15 @@ function Main() {
     if (pe && session.startedAt + session.elapsedSec * 1000 >= pe.getTime()) {
       stopSession();
       setBanner({ kind: 'warn', text: t.autoStopped(formatClock(pe)) });
+      addNote(a.noteAuto, t.autoStopped(formatClock(pe)));
       return;
     }
     const left = session.durationMin * 60 - session.elapsedSec;
-    if (left <= 600 && left > 0 && !session.warnedSoon) {
-      setBanner({ kind: 'warn', text: t.alertSoon });
-      if (!(SCHEDULES_IN_BACKGROUND && !demoSpeed)) alertUser(t.appName, t.alertSoon);
+    const soonText = a.soonIn(settings.remindMin);
+    if (settings.remind && left <= settings.remindMin * 60 && left > 0 && !session.warnedSoon) {
+      setBanner({ kind: 'warn', text: soonText });
+      if (!(SCHEDULES_IN_BACKGROUND && !demoSpeed)) alertUser(t.appName, soonText);
+      addNote(a.noteSoon, soonText);
       setSession({ ...session, warnedSoon: true });
     } else if (left <= 0 && !session.warnedExpired) {
       setBanner({
@@ -247,9 +297,10 @@ function Main() {
         text: t.alertExpired + (z ? t.expiredFine(formatFt(z.surcharge[0])) : ''),
       });
       if (!(SCHEDULES_IN_BACKGROUND && !demoSpeed)) alertUser(t.appName, t.alertExpired);
+      addNote(a.noteExpired, t.alertExpired);
       setSession({ ...session, warnedExpired: true });
     }
-  }, [session, step, t, demoSpeed]);
+  }, [session, step, t, a, demoSpeed, settings.remind, settings.remindMin]);
 
   // Valós idejű parkolásnál a telefon előre ütemezi a lejárati értesítéseket (bezárt appnál is szól)
   const endAt = session ? session.startedAt + session.durationMin * 60000 : 0;
@@ -261,15 +312,38 @@ function Main() {
     const z = session.option.zone;
     const pe = z ? paidEnd(z, new Date(session.startedAt)) : null;
     const end = pe ? Math.min(pe.getTime(), endAt) : endAt;
-    scheduleExpiry(end, t.alertSoon, t.alertExpired, t.appName);
-  }, [step, endAt, demoSpeed, t]);
+    // Kikapcsolt emlékeztetőnél csak a lejáratkor szól (a „hamarosan” időpont a múltba kerül, kimarad)
+    scheduleExpiry(end, a.soonIn(settings.remindMin), t.alertExpired, t.appName, settings.remind ? settings.remindMin : 100000);
+  }, [step, endAt, demoSpeed, t, a, settings.remind, settings.remindMin]);
 
-  const startSession = () => {
+  // Fizetési lépésnél az alapértelmezett kártya és számlázási profil
+  const payOptions = useMemo(() => [{ id: 'wallet', label: walletLabel(a) }, ...cards.map((c) => ({ id: c.id, label: cardLabel(c) }))], [cards, a]);
+  const profileOptions = useMemo(() => [{ id: 'none', label: a.noProfile }, ...profiles.map((p) => ({ id: p.id, label: profileLabel(p, a) }))], [profiles, a]);
+  useEffect(() => {
+    if (step !== 'pay') return;
+    setPayMethod(payOptions.some((o) => o.id === settings.defaultPay) ? settings.defaultPay : 'wallet');
+    setProfileId(profileOptions.some((o) => o.id === settings.defaultProfile) ? settings.defaultProfile : 'none');
+  }, [step]);
+
+  const startSession = async () => {
     const car = cars.find((c) => c.id === carId);
     if (!selected || !car) return;
+    const est = selected.zone ? priceWindow(selected.zone, new Date(), duration) : 0;
+    if (settings.biometric && BIOMETRIC_AVAILABLE && est - Math.min(credit, est) >= settings.biometricOver) {
+      if (!(await confirmBiometric(a.biometricPrompt))) {
+        setBanner({ kind: 'danger', text: a.biometricFailed });
+        return;
+      }
+    }
     requestNotify();
     setBanner(null);
+    const payLabel = payOptions.find((o) => o.id === payMethod)?.label;
+    const profLabel = profileId === 'none' ? undefined : profileOptions.find((o) => o.id === profileId)?.label;
+    const endTxt = formatClock(new Date(Date.now() + duration * 60000));
+    addNote(a.noteStartTitle, a.noteStarted(selected.zone ? `${selected.zone.id} ${t.zone}, ${car.plate}` : car.plate, endTxt));
     setSession({
+      payLabel,
+      profileLabel: profLabel,
       option: selected,
       placeName: dest ? (lang === 'en' && dest.nameEn ? dest.nameEn : dest.name) : t.hereTitle,
       plate: car.plate,
@@ -306,6 +380,10 @@ function Main() {
     if (session) {
       const z = session.option.zone;
       const minutes = Math.max(1, Math.round(Math.min(session.elapsedSec / 60, session.durationMin)));
+      const gross = chargeFor(session);
+      const used = Math.min(credit, gross);
+      if (used) setCredit((c) => c - used);
+      addNote(a.noteStopTitle, a.noteStopped(formatFt(gross - used)));
       setHistory((h) => [
         {
           id: `${session.startedAt}`,
@@ -316,7 +394,10 @@ function Main() {
           country: session.country,
           startedAt: session.startedAt,
           minutes,
-          cost: chargeFor(session),
+          cost: gross - used,
+          credit: used || undefined,
+          payLabel: session.payLabel,
+          profileLabel: session.profileLabel,
         },
         ...h,
       ]);
@@ -352,6 +433,59 @@ function Main() {
     const car = { id: `${Date.now()}`, plate, country };
     setCars((c) => [...c.filter((x) => x.id !== 'demo'), car]);
     setCarId(car.id);
+  };
+  const removeCar = (id: string) => {
+    const rest = cars.filter((c) => c.id !== id);
+    setCars(rest);
+    if (carId === id) setCarId(rest[0]?.id ?? null);
+  };
+
+  const redeemCoupon = (code: string) => {
+    const v = DEMO_COUPONS[code.toUpperCase()];
+    if (!v || usedCoupons.includes(code.toUpperCase())) return null;
+    setUsedCoupons((u) => [...u, code.toUpperCase()]);
+    setCredit((c) => c + v);
+    return v;
+  };
+
+  const saveFavorite = (slot: FavoritePlace['slot']) => {
+    if (!dest) return;
+    const name = lang === 'en' && dest.nameEn ? dest.nameEn : dest.name;
+    const fav: FavoritePlace = {
+      id: slot === 'custom' ? `${Date.now()}` : slot,
+      slot,
+      label: slot === 'home' ? a.home : slot === 'work' ? a.work : name,
+      name,
+      address: dest.address,
+      lat: dest.lat,
+      lng: dest.lng,
+    };
+    setFavorites((f) => [...f.filter((x) => x.slot === 'custom' ? !(Math.abs(x.lat - fav.lat) < 1e-5 && Math.abs(x.lng - fav.lng) < 1e-5) : x.slot !== slot), fav]);
+    setSaveOpen(false);
+    setBanner({ kind: 'good', text: a.saved });
+  };
+  const destSaved = !!dest && favorites.some((f) => Math.abs(f.lat - dest.lat) < 1e-5 && Math.abs(f.lng - dest.lng) < 1e-5);
+  const goFavorite = (slot: 'home' | 'work') => {
+    const f = favorites.find((x) => x.slot === slot);
+    if (f) pickDest({ id: `fav-${f.id}`, name: f.name, address: f.address, kind: 'address', lat: f.lat, lng: f.lng });
+    else setTab('fav');
+  };
+
+  const wipe = () => {
+    setFavorites([]);
+    setCards([]);
+    setProfiles([]);
+    setNotes([]);
+    setAccount(null);
+    setSettings(DEFAULT_SETTINGS);
+    setCredit(0);
+    setUsedCoupons([]);
+    setHistory([]);
+    setCars([]);
+    setCarId(null);
+    setSession(null);
+    setStep('search');
+    setMenuPage('home');
   };
 
   const reset = () => {
@@ -390,6 +524,62 @@ function Main() {
 
   const mapTappable = tab === 'park' && (step === 'search' || (step === 'pay' && !!hereOpt));
 
+  // Lépés- vagy fülváltáskor a panel tetejére ugrik
+  const scrollRef = useRef<{ scrollTo: (o: { y: number; animated: boolean }) => void } | null>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [step, tab, menuPage, !!hereOpt]);
+
+  const searchFocus = () => {
+    if (tab !== 'park') setTab('park');
+    if (step !== 'search' && step !== 'active') reset();
+  };
+
+  // Kereső „pirula”: telefonon a térkép tetején, asztalin a bal panel tetején (mint a BudapestGO-ban)
+  const searchPill = (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        height: 56,
+        borderRadius: 30,
+        backgroundColor: C.searchPill,
+        borderWidth: isDark ? 0 : 1.5,
+        borderColor: C.brand,
+        paddingLeft: 16,
+        paddingRight: 8,
+        gap: 10,
+        shadowColor: '#000',
+        shadowOpacity: 0.16,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 4,
+      }}
+    >
+      <Icon name="search" size={24} color={C.text} />
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        onFocus={searchFocus}
+        placeholder={a.whereTo}
+        placeholderTextColor={C.sub}
+        autoCorrect={false}
+        style={[{ flex: 1, minWidth: 0, height: 52, fontSize: 17, color: C.text }, { outlineStyle: 'none' } as object]}
+      />
+      {query ? (
+        <Pressable onPress={() => setQuery('')} hitSlop={8} style={{ padding: 8 }} accessibilityLabel={a.cancel}>
+          <Icon name="close" size={22} color={C.sub} />
+        </Pressable>
+      ) : (
+        (['home', 'work'] as const).map((k) => (
+          <Pressable key={k} onPress={() => goFavorite(k)} hitSlop={6} style={{ padding: 8 }} accessibilityLabel={k === 'home' ? a.home : a.work}>
+            <Icon name={k} size={24} color={isDark ? C.text : C.brand} />
+          </Pressable>
+        ))
+      )}
+    </View>
+  );
+
   const map = (
     <View style={{ flex: 1 }}>
       <ParkingMap
@@ -402,41 +592,18 @@ function Main() {
         onLocate={live.status === 'unavailable' ? undefined : live.start}
         controlsTop={!wide}
         zoneStreets={zoneStreets}
+        dark={dark}
       />
-      <View style={{ position: 'absolute', top: wide ? 24 : 12, right: wide ? 24 : 12, zIndex: 1100 }}>
-        <Pressable style={styles.pill} onPress={() => setMenuOpen((o) => !o)} accessibilityLabel="Menü">
-          <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, fontVariant: ['tabular-nums'] }}>{clock}</Text>
-          <View style={{ gap: 5 }}>
-            {[0, 1, 2].map((i) => (
-              <View key={i} style={{ width: 24, height: 3, borderRadius: 2, backgroundColor: C.brand }} />
-            ))}
-          </View>
-        </Pressable>
-        {menuOpen && (
-          <View style={styles.menu}>
-            {(
-              [
-                ['park', t.tabPark],
-                ['history', t.tabHistory],
-                ['info', t.tabInfo],
-              ] as [Tab, string][]
-            ).map(([k, label]) => (
-              <Pressable key={k} style={styles.menuItem} onPress={() => { setTab(k); setMenuOpen(false); }}>
-                <Text style={{ fontSize: 16, fontWeight: tab === k ? '800' : '500', color: tab === k ? C.brand : C.text }}>{label}</Text>
-                {k === 'park' && step === 'active' && <Text style={{ color: C.brand }}>●</Text>}
-              </Pressable>
-            ))}
-            <View style={{ height: 1, backgroundColor: C.line, marginVertical: 6 }} />
-            <View style={[styles.menuItem, { gap: 8, justifyContent: 'flex-start' }]}>
-              {(['hu', 'en'] as Lang[]).map((l) => (
-                <Pressable key={l} onPress={() => setLang(l)} style={[styles.chip, { paddingVertical: 6 }, lang === l && styles.chipOn]}>
-                  <Text style={{ fontWeight: '700', color: lang === l ? '#fff' : C.text }}>{l === 'hu' ? 'Magyar' : 'English'}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
-      </View>
+      {wide ? (
+        <View style={{ position: 'absolute', top: 24, right: 24, zIndex: 1100 }}>
+          <Pressable style={styles.pill} onPress={() => setTab(tab === 'menu' ? 'park' : 'menu')} accessibilityLabel={a.tabMenu}>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, fontVariant: ['tabular-nums'] }}>{clock}</Text>
+            <Icon name={tab === 'menu' ? 'close' : 'menu'} size={28} color={isDark ? C.text : C.brand} stroke={2.2} />
+          </Pressable>
+        </View>
+      ) : (
+        <View style={{ position: 'absolute', top: 12, left: 12, right: 12, zIndex: 1100 }}>{searchPill}</View>
+      )}
     </View>
   );
 
@@ -447,8 +614,8 @@ function Main() {
       {step === 'search' && !hereOpt && (
         <>
           {live.fix && (
-            <View style={[styles.card, { marginBottom: 14, gap: 4, borderColor: '#BFDBFE' }]}>
-              <Text style={{ color: '#2563EB', fontWeight: '700', fontSize: 13 }}>● {t.youAreHere}</Text>
+            <View style={[styles.card, { marginBottom: 14, gap: 4, borderColor: isDark ? C.line : '#BFDBFE' }]}>
+              <Text style={{ color: isDark ? '#93C5FD' : '#2563EB', fontWeight: '700', fontSize: 13 }}>● {t.youAreHere}</Text>
               <Text style={{ color: C.text, fontWeight: '700', fontSize: 16 }}>
                 {meDistrict ?? 'Budapest'}
                 {meZone ? ` · ${meZone.id} ${t.zone} · ${meZone.pricePerHour} Ft${t.perHour}` : ` · ${t.outsideZones}`}
@@ -459,7 +626,8 @@ function Main() {
               {meZone && <PrimaryButton text={t.startHere} onPress={useMyLocation} />}
             </View>
           )}
-          <SearchStep t={t} query={query} setQuery={setQuery} results={results} onPick={pickDest} lang={lang} hideInput={wide} />
+          {meDistrict && !query && <Text style={[styles.h1, { fontSize: 24, color: titleColor(), marginBottom: 4 }]}>{a.near(meDistrict)}</Text>}
+          <SearchStep t={t} query={query} setQuery={setQuery} results={results} onPick={pickDest} lang={lang} hideInput />
           <View style={[styles.card, { marginTop: 14, gap: 10 }]}>
             <Text style={{ color: C.sub, fontSize: 13 }}>{canLocate() ? t.orHere : t.tapMap}</Text>
             {canLocate() && !live.fix && (
@@ -505,7 +673,27 @@ function Main() {
       {step === 'options' && dest && (
         <View>
           <BackLink t={t} onPress={reset} />
-          <Text style={styles.h1}>{lang === 'en' && dest.nameEn ? dest.nameEn : dest.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+            <Text style={[styles.h1, { flex: 1 }]}>{lang === 'en' && dest.nameEn ? dest.nameEn : dest.name}</Text>
+            <Pressable
+              onPress={() => setSaveOpen((o) => !o)}
+              hitSlop={8}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: C.brandSoft, alignItems: 'center', justifyContent: 'center' }}
+              accessibilityLabel={a.savePlace}
+            >
+              <Icon name={destSaved ? 'starFill' : 'star'} size={24} color={titleColor()} />
+            </Pressable>
+          </View>
+          {saveOpen && (
+            <View style={[styles.card, { marginTop: 10, gap: 8 }]}>
+              <Text style={{ color: C.sub, fontWeight: '700' }}>{a.saveAs}</Text>
+              <View style={styles.chipRow}>
+                <Chip active={false} text={a.home} onPress={() => saveFavorite('home')} />
+                <Chip active={false} text={a.work} onPress={() => saveFavorite('work')} />
+                <Chip active={false} text={a.custom} onPress={() => saveFavorite('custom')} />
+              </View>
+            </View>
+          )}
           <Text style={styles.sub}>
             {dest.address ? `${dest.address} · ` : ''}
             <DestZone dest={dest} t={t} />
@@ -593,6 +781,16 @@ function Main() {
           setDuration={setDuration}
           payMethod={payMethod}
           setPayMethod={setPayMethod}
+          payOptions={payOptions}
+          profileOptions={profileOptions}
+          profileId={profileId}
+          setProfileId={setProfileId}
+          credit={credit}
+          onManagePay={() => {
+            setMenuPage(cards.length ? 'payment' : 'cards');
+            setTab('menu');
+          }}
+          a={a}
           onBack={() => setStep(hereOpt ? 'search' : 'navigate')}
           onPay={startSession}
         />
@@ -628,7 +826,7 @@ function Main() {
 
   const sideTop = (
     <View style={styles.sideTop}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: tab === 'park' ? 20 : 0 }}>
         <View style={styles.brandMark}>
           <Text style={{ color: C.brand, fontWeight: '900', fontSize: 13 }}>P</Text>
         </View>
@@ -637,55 +835,123 @@ function Main() {
         </Text>
         <Text style={{ color: C.sub, fontSize: 12, flex: 1, textAlign: 'right' }}>{t.tagline}</Text>
       </View>
-      <SearchInput
-        t={t}
-        query={query}
-        setQuery={setQuery}
-        onFocus={() => {
-          if (tab !== 'park') setTab('park');
-          if (step !== 'search' && step !== 'active') reset();
-        }}
-      />
+      {tab === 'park' && searchPill}
     </View>
   );
+
+  const bannerBg = banner?.kind === 'warn' ? C.warnSoft : banner?.kind === 'good' ? C.goodSoft : C.dangerSoft;
+  const bannerFg = banner?.kind === 'warn' ? C.warn : banner?.kind === 'good' ? C.good : C.danger;
   const panel = (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: wide ? 28 : 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+    <ScrollView ref={scrollRef as never} style={{ flex: 1 }} contentContainerStyle={{ padding: wide ? 28 : 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
       {banner && tab === 'park' && (
-        <View style={[styles.banner, { backgroundColor: banner.kind === 'warn' ? C.warnSoft : C.dangerSoft }]}>
-          <Text style={{ color: banner.kind === 'warn' ? C.warn : C.danger, fontWeight: '600' }}>{banner.text}</Text>
-        </View>
+        <Pressable onPress={() => banner.kind === 'good' && setBanner(null)} style={[styles.banner, { backgroundColor: bannerBg }]}>
+          <Text style={{ color: bannerFg, fontWeight: '600' }}>{banner.text}</Text>
+        </Pressable>
       )}
-      {tab !== 'park' && step === 'active' && session && (
-        <Pressable onPress={() => setTab('park')} style={[styles.banner, { backgroundColor: C.brandSoft, flexDirection: 'row', justifyContent: 'space-between' }]}>
-          <Text style={{ color: C.brand, fontWeight: '700' }}>
+      {tab !== 'park' && tab !== 'parkings' && step === 'active' && session && (
+        <Pressable onPress={() => setTab('parkings')} style={[styles.banner, { backgroundColor: C.brandSoft, flexDirection: 'row', justifyContent: 'space-between' }]}>
+          <Text style={{ color: titleColor(), fontWeight: '700' }}>
             {t.activeShort} · {formatDuration(Math.ceil(activeLeft / 60), lang)}
           </Text>
-          <Text style={{ color: C.brand, fontWeight: '700' }}>{t.open} ›</Text>
+          <Text style={{ color: titleColor(), fontWeight: '700' }}>{t.open} ›</Text>
         </Pressable>
       )}
       {tab === 'park' && parkPanel}
-      {tab === 'history' && <HistoryScreen t={t} lang={lang} items={history} />}
-      {tab === 'info' && <InfoScreen t={t} lang={lang} />}
+      {tab === 'fav' && (
+        <FavoritesScreen
+          t={t}
+          a={a}
+          lang={lang}
+          favorites={favorites}
+          setFavorites={setFavorites}
+          onGo={pickDest}
+          cars={cars}
+          carId={carId}
+          setCarId={setCarId}
+          onAddCar={addCar}
+          onRemoveCar={removeCar}
+        />
+      )}
+      {tab === 'parkings' && (
+        <ParkingsScreen
+          t={t}
+          a={a}
+          lang={lang}
+          session={step === 'active' ? session : null}
+          history={history}
+          helpBar={settings.helpBar}
+          onHideHelp={() => patchSettings({ helpBar: false })}
+          onDetails={() => setTab('park')}
+          onExtend={extend}
+          onNew={() => {
+            if (step === 'summary') reset();
+            setTab('park');
+          }}
+        />
+      )}
+      {tab === 'menu' && (
+        <MenuScreens
+          t={t}
+          a={a}
+          lang={lang}
+          setLang={setLang}
+          page={menuPage}
+          setPage={setMenuPage}
+          account={account}
+          setAccount={setAccount}
+          notes={notes}
+          setNotes={setNotes}
+          settings={settings}
+          patchSettings={patchSettings}
+          cards={cards}
+          setCards={setCards}
+          profiles={profiles}
+          setProfiles={setProfiles}
+          credit={credit}
+          redeemCoupon={redeemCoupon}
+          demoSpeed={demoSpeed}
+          setDemoSpeed={setDemoSpeed}
+          onWipe={wipe}
+        />
+      )}
       <Text style={styles.demoNote}>{t.demoBanner}</Text>
     </ScrollView>
   );
 
+  // Alsó fülsor ikonokkal; az aktív fül ikonja lekerekített négyzetben (világosban lila, sötétben fehér)
+  const TABS: [Tab, string, IconName][] = [
+    ['park', a.tabPark, 'map'],
+    ['fav', a.tabFav, 'star'],
+    ['parkings', a.tabParkings, 'ticket'],
+    ['menu', a.tabMenu, 'menu'],
+  ];
   const tabs = (
     <View style={styles.tabBar}>
-      {(
-        [
-          ['park', t.tabPark],
-          ['history', t.tabHistory],
-          ['info', t.tabInfo],
-        ] as [Tab, string][]
-      ).map(([k, label]) => (
-        <Pressable key={k} onPress={() => setTab(k)} style={[styles.tabBtn, tab === k && styles.tabBtnOn]}>
-          <Text style={{ fontWeight: '700', fontSize: 13, color: tab === k ? C.text : C.sub }}>
-            {label}
-            {k === 'park' && step === 'active' ? ' ●' : ''}
-          </Text>
-        </Pressable>
-      ))}
+      {TABS.map(([k, label, icon]) => {
+        const on = tab === k;
+        return (
+          <Pressable key={k} onPress={() => setTab(k)} style={styles.tabBtn} accessibilityRole="tab" accessibilityState={{ selected: on }}>
+            <View
+              style={{
+                width: 52,
+                height: 34,
+                borderRadius: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: on ? (isDark ? '#FFFFFF' : C.brand) : 'transparent',
+              }}
+            >
+              <Icon name={on && icon === 'star' ? 'starFill' : icon} size={24} color={on ? (isDark ? '#1C1B1F' : '#FFFFFF') : C.sub} />
+              {k === 'parkings' && step === 'active' && (
+                <View style={{ position: 'absolute', top: 2, right: 10, width: 9, height: 9, borderRadius: 5, backgroundColor: C.goodSolid, borderWidth: 1.5, borderColor: C.tabBar }} />
+              )}
+            </View>
+            <Text style={{ fontWeight: on ? '800' : '600', fontSize: 12, marginTop: 3, color: on ? C.text : C.sub }} numberOfLines={1}>
+              {label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 
@@ -693,6 +959,7 @@ function Main() {
   if (!onboarded)
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+        <StatusBar style={dark ? 'light' : 'dark'} />
         <Onboarding
           t={t}
           lang={lang}
@@ -705,29 +972,38 @@ function Main() {
       </SafeAreaView>
     );
 
-  const sheetH = tab !== 'park' ? '78%' : step === 'search' && !hereOpt ? '52%' : step === 'options' ? '60%' : '66%';
+  const sheetH = step === 'search' && !hereOpt ? '46%' : step === 'options' ? '60%' : '64%';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={wide ? ['top', 'bottom'] : ['top']}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: wide || tab !== 'park' ? C.bg : C.card }} edges={wide ? ['top', 'bottom'] : ['top']}>
+      <StatusBar style={dark ? 'light' : 'dark'} />
       {wide ? (
         <View style={{ flex: 1, flexDirection: 'row' }}>
-          <View style={{ width: 460, backgroundColor: C.bg }}>
+          <View style={{ width: 460, backgroundColor: C.bg, borderRightWidth: 1, borderColor: C.line }}>
             {sideTop}
             {panel}
+            {tabs}
           </View>
           {map}
         </View>
-      ) : (
+      ) : tab === 'park' ? (
         <View style={{ flex: 1 }}>
           {map}
           <View style={[styles.sheet, { height: sheetH }]}>
             <View style={styles.grabber} />
             {panel}
-            <SafeAreaView edges={['bottom']} style={{ backgroundColor: C.card }}>
+            <SafeAreaView edges={['bottom']} style={{ backgroundColor: C.tabBar }}>
               {tabs}
             </SafeAreaView>
           </View>
+        </View>
+      ) : (
+        // Telefonon a többi fül teljes képernyős oldal (mint a BudapestGO-ban)
+        <View style={{ flex: 1, backgroundColor: C.bg }}>
+          {panel}
+          <SafeAreaView edges={['bottom']} style={{ backgroundColor: C.tabBar }}>
+            {tabs}
+          </SafeAreaView>
         </View>
       )}
     </SafeAreaView>

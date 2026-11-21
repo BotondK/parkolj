@@ -6,7 +6,7 @@ import type { Lang, Strings } from '../i18n';
 import { formatClock, formatDuration, formatFt } from '../logic/pricing';
 import type { HistoryItem } from '../types';
 
-export default function HistoryScreen({ t, lang, items }: { t: Strings; lang: Lang; items: HistoryItem[] }) {
+export default function HistoryScreen({ t, lang, items, hideTitle }: { t: Strings; lang: Lang; items: HistoryItem[]; hideTitle?: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
   const now = new Date();
   const month = items.filter((i) => {
@@ -19,8 +19,8 @@ export default function HistoryScreen({ t, lang, items }: { t: Strings; lang: La
 
   return (
     <View>
-      <Text style={styles.h1}>{t.tabHistory}</Text>
-      <View style={[styles.card, { marginTop: 12, flexDirection: 'row', justifyContent: 'space-between' }]}>
+      {!hideTitle && <Text style={styles.h1}>{t.tabHistory}</Text>}
+      <View style={[styles.card, { marginTop: hideTitle ? 0 : 12, flexDirection: 'row', justifyContent: 'space-between' }]}>
         <View>
           <Text style={{ color: C.sub, fontSize: 13 }}>{t.thisMonth}</Text>
           <Text style={{ fontSize: 24, fontWeight: '800', color: C.text }}>{formatFt(monthTotal)}</Text>
@@ -62,6 +62,9 @@ export default function HistoryScreen({ t, lang, items }: { t: Strings; lang: La
                   k={t.duration}
                   v={`${formatClock(new Date(i.startedAt))}–${formatClock(new Date(i.startedAt + i.minutes * 60000))}`}
                 />
+                {!!i.payLabel && <Row k={t.payWith} v={i.payLabel} />}
+                {!!i.profileLabel && <Row k={t.invoice} v={i.profileLabel} />}
+                {!!i.credit && <Row k={t.creditUsed} v={`−${formatFt(i.credit)}`} />}
                 <Row k={t.total} v={formatFt(i.cost)} strong />
                 <Text style={{ color: C.sub, fontSize: 12, marginTop: 6 }}>{t.receiptNote}</Text>
               </View>

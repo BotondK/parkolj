@@ -12,6 +12,6 @@ export async function alertUser(title: string, body: string) {
 }
 
 // Weben nincs háttérbeli ütemezés push szerver nélkül; az appon belüli sáv és a böngészőértesítés szól, amíg nyitva van.
-export async function scheduleExpiry(_endAt: number, _soon: string, _expired: string, _title: string) {}
+export async function scheduleExpiry(_endAt: number, _soon: string, _expired: string, _title: string, _soonMin?: number) {}
 export async function cancelExpiry() {}
 export const SCHEDULES_IN_BACKGROUND = false;

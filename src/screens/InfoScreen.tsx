@@ -4,11 +4,11 @@ import { ZONES } from '../data/zones';
 import type { Lang, Strings } from '../i18n';
 import { formatDuration, formatFt, isCharging } from '../logic/pricing';
 
-export default function InfoScreen({ t, lang }: { t: Strings; lang: Lang }) {
+export default function InfoScreen({ t, lang, hideTitle }: { t: Strings; lang: Lang; hideTitle?: boolean }) {
   const hours = (h: [number, number] | null) => (h ? `${h[0]}–${h[1]}` : '–');
   return (
     <View>
-      <Text style={styles.h1}>{t.infoTitle}</Text>
+      {!hideTitle && <Text style={styles.h1}>{t.infoTitle}</Text>}
 
       <Text style={styles.label}>{t.infoZones}</Text>
       <View style={[styles.card, { padding: 0, overflow: 'hidden' }]}>
@@ -41,7 +41,7 @@ export default function InfoScreen({ t, lang }: { t: Strings; lang: Lang }) {
                 <Text style={{ color: C.text, fontWeight: '600', fontSize: 13 }}>
                   {z.maxMinutes ? `${t.maxStay} ${formatDuration(z.maxMinutes, lang)}` : t.noLimit}
                 </Text>
-                <Text style={{ color: now ? C.warn : '#166534', fontSize: 12, fontWeight: '600' }}>
+                <Text style={{ color: now ? C.warn : C.good, fontSize: 12, fontWeight: '600' }}>
                   {now ? `${t.infoHours} ●` : t.free}
                 </Text>
               </View>

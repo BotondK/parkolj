@@ -34,7 +34,7 @@ export default function Onboarding({
               onPress={() => setLang(l)}
               style={[styles.secondary, lang === l && { backgroundColor: C.text, borderColor: C.text }]}
             >
-              <Text style={[styles.secondaryText, { color: lang === l ? '#fff' : C.text }]}>{label}</Text>
+              <Text style={[styles.secondaryText, { color: lang === l ? C.onBrand : C.text }]}>{label}</Text>
             </Pressable>
           ))}
         </View>

@@ -25,13 +25,13 @@ export async function alertUser(title: string, body: string) {
 
 /**
  * Lejárati értesítések előre ütemezése, így akkor is szól, ha az app be van zárva:
- * 10 perccel a lejárat előtt és lejáratkor. Az előző ütemezést mindig törli.
+ * a beállított perccel (alapból 10) a lejárat előtt és lejáratkor. Az előző ütemezést mindig törli.
  */
-export async function scheduleExpiry(endAt: number, soon: string, expired: string, title: string) {
+export async function scheduleExpiry(endAt: number, soon: string, expired: string, title: string, soonMin = 10) {
   await cancelExpiry();
   const now = Date.now();
   const plan: [number, string][] = [
-    [endAt - 10 * 60000, soon],
+    [endAt - soonMin * 60000, soon],
     [endAt, expired],
   ];
   for (const [at, body] of plan) {

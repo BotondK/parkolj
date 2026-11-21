@@ -26,6 +26,8 @@ export type ParkingMapProps = {
   controlsTop?: boolean;
   /** Utcaszintű zónák (OSM), ha betöltődtek */
   zoneStreets?: ZoneStreet[];
+  /** Sötét mód: sötét alaptérkép és gombok */
+  dark?: boolean;
 };
 
 export const MARKER_COLORS: Record<MarkerKind, string> = {

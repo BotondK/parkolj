@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { MARKER_COLORS } from '../components/mapTypes';
+import { Icon } from '../components/icons';
 import { BackLink, C, Chip, Meta, PrimaryButton, styles } from '../components/ui';
 import type { Place } from '../data/places';
 import { zoneAt } from '../logic/geo';
@@ -8,6 +9,7 @@ import { ZONE_CODES } from '../data/zoneCodes';
 import { chargeableMinutes, formatClock, formatDuration, formatFt, isCharging, paidEnd, priceWindow } from '../logic/pricing';
 import type { ParkingOption } from '../logic/recommend';
 import type { Lang, Strings } from '../i18n';
+import type { AccStrings } from '../i18nAccount';
 import { COUNTRIES, plateValid, type Car, type Session } from '../types';
 
 export function chargeFor(s: Session) {
@@ -77,21 +79,35 @@ export function SearchStep({
   );
 }
 
-export function SearchInput({ t, query, setQuery, onFocus }: { t: Strings; query: string; setQuery: (s: string) => void; onFocus?: () => void }) {
+export function SearchInput({
+  t,
+  query,
+  setQuery,
+  onFocus,
+  placeholder,
+  autoFocus,
+}: {
+  t: Strings;
+  query: string;
+  setQuery: (s: string) => void;
+  onFocus?: () => void;
+  placeholder?: string;
+  autoFocus?: boolean;
+}) {
   return (
     <View>
       <TextInput
         value={query}
         onChangeText={setQuery}
         onFocus={onFocus}
-        placeholder={t.searchPlaceholder}
-        placeholderTextColor="#6B6A73"
+        autoFocus={autoFocus}
+        placeholder={placeholder ?? t.searchPlaceholder}
+        placeholderTextColor={C.sub}
         style={styles.search}
         autoCorrect={false}
       />
-      <View pointerEvents="none" style={{ position: 'absolute', left: 17, top: 17 }}>
-        <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 2.5, borderColor: C.text }} />
-        <View style={{ position: 'absolute', left: 13, top: 14, width: 8, height: 2.5, borderRadius: 2, backgroundColor: C.text, transform: [{ rotate: '45deg' }] }} />
+      <View pointerEvents="none" style={{ position: 'absolute', left: 14, top: 15 }}>
+        <Icon name="search" size={26} color={C.text} />
       </View>
     </View>
   );
@@ -155,7 +171,7 @@ export function OptionCard({
         {o.kind === 'garage' && o.garage?.bookable && <Meta text={t.bookable} tone="good" />}
       </View>
       {over && <Text style={{ color: C.warn, fontSize: 12, marginTop: 8 }}>{t.rule3h}</Text>}
-      {o.freeFrom && <Text style={{ color: '#166534', fontSize: 12, marginTop: 8 }}>{t.freeFrom(o.freeFrom)}</Text>}
+      {o.freeFrom && <Text style={{ color: C.good, fontSize: 12, marginTop: 8 }}>{t.freeFrom(o.freeFrom)}</Text>}
     </Pressable>
   );
 }
@@ -172,6 +188,13 @@ export function PayStep({
   setDuration,
   payMethod,
   setPayMethod,
+  payOptions,
+  profileOptions,
+  profileId,
+  setProfileId,
+  credit,
+  onManagePay,
+  a,
   onBack,
   onPay,
 }: {
@@ -184,8 +207,18 @@ export function PayStep({
   onAddCar: (plate: string, country: string) => void;
   duration: number;
   setDuration: (n: number) => void;
-  payMethod: 'apple' | 'google' | 'card';
-  setPayMethod: (m: 'apple' | 'google' | 'card') => void;
+  payMethod: string;
+  setPayMethod: (m: string) => void;
+  /** Mentett kártyák + Apple/Google Pay */
+  payOptions: { id: string; label: string }[];
+  /** Számlázási profilok (magán / céges) + „nyugta” */
+  profileOptions: { id: string; label: string }[];
+  profileId: string;
+  setProfileId: (id: string) => void;
+  /** Kuponjóváírás (Ft), levonjuk a díjból */
+  credit: number;
+  onManagePay: () => void;
+  a: AccStrings;
   onBack: () => void;
   onPay: () => void;
 }) {
@@ -201,6 +234,7 @@ export function PayStep({
   const smsNumber = code ? `+3630763${code}` : '';
   const end = new Date(Date.now() + duration * 60000);
   const plate = cars.find((c) => c.id === carId)?.plate ?? '';
+  const used = Math.min(credit, price);
   return (
     <View>
       <BackLink t={t} onPress={onBack} />
@@ -214,8 +248,8 @@ export function PayStep({
       )}
       {!charging && <Text style={[styles.sub, { marginTop: 8 }]}>{t.notCharging}</Text>}
       {endsFree && pe && (
-        <View style={[styles.banner, { backgroundColor: '#DCFCE7', marginTop: 10, marginBottom: 0 }]}>
-          <Text style={{ color: '#166534', fontWeight: '600' }}>{t.autoStopNote(formatClock(pe), formatDuration(paidMin, lang))}</Text>
+        <View style={[styles.banner, { backgroundColor: C.goodSoft, marginTop: 10, marginBottom: 0 }]}>
+          <Text style={{ color: C.good, fontWeight: '600' }}>{t.autoStopNote(formatClock(pe), formatDuration(paidMin, lang))}</Text>
         </View>
       )}
 
@@ -242,15 +276,28 @@ export function PayStep({
       </View>
       {z?.maxMinutes && <Text style={{ color: C.warn, fontSize: 12, marginTop: 8 }}>{t.rule3h}</Text>}
 
-      <Text style={styles.label}>{t.payWith}</Text>
-      <View style={styles.chipRow}>
-        <Chip text="Apple Pay" active={payMethod === 'apple'} onPress={() => setPayMethod('apple')} />
-        <Chip text="Google Pay" active={payMethod === 'google'} onPress={() => setPayMethod('google')} />
-        <Chip text="Visa •••• 4242" active={payMethod === 'card'} onPress={() => setPayMethod('card')} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <Text style={styles.label}>{a.payMethod}</Text>
+        <Pressable onPress={onManagePay} hitSlop={8}>
+          <Text style={{ color: C.brand, fontWeight: '700' }}>{a.manage} ›</Text>
+        </Pressable>
       </View>
+      <View style={styles.chipRow}>
+        {payOptions.map((o) => (
+          <Chip key={o.id} text={o.label} active={payMethod === o.id} onPress={() => setPayMethod(o.id)} />
+        ))}
+        <Chip text={a.addPayment} active={false} onPress={onManagePay} />
+      </View>
+      <Text style={styles.label}>{a.invoiceTo}</Text>
+      <View style={styles.chipRow}>
+        {profileOptions.map((o) => (
+          <Chip key={o.id} text={o.label} active={profileId === o.id} onPress={() => setProfileId(o.id)} />
+        ))}
+      </View>
+      {used > 0 && <Text style={{ color: C.good, fontWeight: '600', marginTop: 6 }}>{a.creditApplied(formatFt(used))}</Text>}
       <Text style={[styles.sub, { fontSize: 12 }]}>{t.demoPay}</Text>
 
-      <PrimaryButton text={price === 0 ? t.startFree : `${t.payAndStart} · ${formatFt(price)}`} onPress={onPay} disabled={!plate} />
+      <PrimaryButton text={price === 0 ? t.startFree : `${t.payAndStart} · ${formatFt(price - used)}`} onPress={onPay} disabled={!plate} />
 
       {z && (
         <View style={[styles.card, { marginTop: 18 }]}>
@@ -259,8 +306,8 @@ export function PayStep({
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 8 }}>
             {ZONE_CODES[z.id].map(([c, d]) => (
               <Pressable key={c} onPress={() => setCode(c)} style={[styles.countryChip, code === c && styles.chipOn]}>
-                <Text style={{ fontWeight: '700', color: code === c ? '#fff' : C.text }}>{c}</Text>
-                <Text style={{ fontSize: 10, color: code === c ? '#fff' : C.sub, textAlign: 'center' }}>{d}.</Text>
+                <Text style={{ fontWeight: '700', color: code === c ? C.onBrand : C.text }}>{c}</Text>
+                <Text style={{ fontSize: 10, color: code === c ? C.onBrand : C.sub, textAlign: 'center' }}>{d}.</Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -368,32 +415,38 @@ export function CarPicker({
   carId,
   setCarId,
   onAddCar,
+  formOnly,
+  onCancel,
 }: {
   t: Strings;
   cars: Car[];
   carId: string | null;
   setCarId: (id: string) => void;
   onAddCar: (plate: string, country: string) => void;
+  /** Csak az új autó űrlapja (Kedvenceim › Autók) */
+  formOnly?: boolean;
+  onCancel?: () => void;
 }) {
-  const [adding, setAdding] = useState(cars.length === 0);
+  const [addingS, setAdding] = useState(cars.length === 0);
+  const adding = formOnly || addingS;
   const [plate, setPlate] = useState('');
   const [country, setCountry] = useState('H');
   const valid = plateValid(plate, country);
   return (
     <View>
-      <View style={styles.chipRow}>
+      {!formOnly && <View style={styles.chipRow}>
         {cars.map((c) => (
           <Chip key={c.id} active={c.id === carId && !adding} onPress={() => { setCarId(c.id); setAdding(false); }} text={`${c.country} · ${c.plate}`} />
         ))}
         {!adding && <Chip active={false} onPress={() => setAdding(true)} text={t.addCar} />}
-      </View>
+      </View>}
       {adding && (
         <View style={[styles.card, { gap: 10 }]}>
           <Text style={{ color: C.sub, fontSize: 13 }}>{t.country}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
             {COUNTRIES.map((c) => (
               <Pressable key={c} onPress={() => setCountry(c)} style={[styles.countryChip, country === c && styles.chipOn]}>
-                <Text style={{ fontWeight: '700', color: country === c ? '#fff' : C.text }}>{c}</Text>
+                <Text style={{ fontWeight: '700', color: country === c ? C.onBrand : C.text }}>{c}</Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -406,30 +459,31 @@ export function CarPicker({
               value={plate}
               onChangeText={(v) => setPlate(v.toUpperCase())}
               placeholder={country === 'H' ? 'ABC-123' : 'B-AB 1234'}
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={C.sub}
               autoCapitalize="characters"
               autoCorrect={false}
-              style={[styles.search, { flex: 1, minWidth: 0, width: '100%', fontWeight: '800', letterSpacing: 2, fontSize: 18, paddingVertical: 10 }]}
+              style={[styles.search, { flex: 1, minWidth: 0, width: '100%', fontWeight: '800', letterSpacing: 2, fontSize: 18, paddingVertical: 10, paddingLeft: 14, borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: C.card, shadowOpacity: 0, elevation: 0 }]}
             />
           </View>
           {plate.length > 0 && !valid && <Text style={{ color: C.warn, fontSize: 12 }}>{t.plateInvalid}</Text>}
           {country !== 'H' && <Text style={{ color: C.sub, fontSize: 12 }}>{t.foreignHint}</Text>}
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            {cars.length > 0 && (
-              <Pressable style={[styles.secondary, { paddingVertical: 10 }]} onPress={() => setAdding(false)}>
+            {(cars.length > 0 || onCancel) && (
+              <Pressable style={[styles.secondary, { paddingVertical: 10 }]} onPress={() => (onCancel ? onCancel() : setAdding(false))}>
                 <Text style={styles.secondaryText}>{t.cancel}</Text>
               </Pressable>
             )}
             <Pressable
-              style={[styles.secondary, { paddingVertical: 10, backgroundColor: C.brand, borderColor: C.brand }, !valid && { opacity: 0.4 }]}
+              style={[styles.secondary, { paddingVertical: 10, backgroundColor: C.primary, borderColor: C.primary }, !valid && { opacity: 0.4 }]}
               onPress={() => {
                 if (!valid) return;
                 onAddCar(plate.trim(), country);
                 setPlate('');
                 setAdding(false);
+                onCancel?.();
               }}
             >
-              <Text style={[styles.secondaryText, { color: '#fff' }]}>{t.save}</Text>
+              <Text style={[styles.secondaryText, { color: C.onPrimary }]}>{t.save}</Text>
             </Pressable>
           </View>
         </View>

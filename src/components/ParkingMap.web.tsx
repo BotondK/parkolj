@@ -9,13 +9,13 @@ import { MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
 
 // Vektoros alaptérkép: MapLibre GL + OpenFreeMap (ingyenes, kulcs és regisztráció nélkül, üzleti célra is).
 // Ugyanaz az OpenMapTiles adatséma, amit a városi közlekedési appok is használnak.
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/bright';
+const STYLE_URL = { light: 'https://tiles.openfreemap.org/styles/bright', dark: 'https://tiles.openfreemap.org/styles/dark' };
 // Ha az alaptérkép nem érhető el (offline, beágyazott demó), akkor is látszanak a zónák és a pontok
-const FALLBACK: StyleSpecification = {
+const fallback = (dark?: boolean): StyleSpecification => ({
   version: 8,
   sources: {},
-  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#F2EFE6' } }],
-};
+  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': dark ? '#1E1D22' : '#F2EFE6' } }],
+});
 
 const GARAGE_COLOR = '#4A1466';
 const ZONE_COLOR = Object.fromEntries(ZONES.map((z) => [z.id, z.color])) as Record<string, string>;
@@ -82,7 +82,7 @@ function circle(lat: number, lng: number, radiusM: number) {
   return pts;
 }
 
-export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress, me, onLocate, controlsTop, zoneStreets }: ParkingMapProps) {
+export default function ParkingMap({ markers, selectedId, onSelect, focus, onMapPress, me, onLocate, controlsTop, zoneStreets, dark }: ParkingMapProps) {
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const domMarkers = useRef<maplibregl.Marker[]>([]);
@@ -102,7 +102,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
     if (!el || map.current) return;
     const m = new maplibregl.Map({
       container: el,
-      style: FALLBACK,
+      style: fallback(dark),
       center: [19.0402, 47.4979],
       zoom: 13,
       maxZoom: 19,
@@ -174,11 +174,6 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
     m.on('style.load', addOverlays);
     if (m.isStyleLoaded()) addOverlays();
 
-    // Valódi alaptérkép betöltése; ha nem sikerül, marad a háttér + saját rétegek
-    fetch(STYLE_URL)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((style: StyleSpecification) => map.current === m && m.setStyle(style))
-      .catch(() => {});
 
     // Kerületszámok (HTML címkék, nem függnek a stílus betűkészletétől)
     DISTRICT_CENTERS.forEach((c) => {
@@ -218,6 +213,20 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
       map.current = null;
     };
   }, []);
+
+  // Valódi alaptérkép (világos vagy sötét); ha nem érhető el, marad a háttér + saját rétegek
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+    let live = true;
+    fetch(STYLE_URL[dark ? 'dark' : 'light'])
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((style: StyleSpecification) => live && map.current === m && m.setStyle(style))
+      .catch(() => live && map.current === m && m.setStyle(fallback(dark)));
+    return () => {
+      live = false;
+    };
+  }, [dark]);
 
   useEffect(() => {
     if (map.current && map.current.getSource('zones')) applyVisibility(map.current, layers);
@@ -293,7 +302,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
 
   // Kerek fehér térképgombok (mint a városi közlekedési appokban)
   const btn: React.CSSProperties = {
-    width: 52, height: 52, borderRadius: 26, border: 'none', background: '#fff', color: '#1C1B1F',
+    width: 52, height: 52, borderRadius: 26, border: 'none', background: dark ? '#242328' : '#fff', color: dark ? '#F5F4F7' : '#1C1B1F',
     font: '400 30px system-ui,sans-serif', boxShadow: '0 2px 8px rgba(0,0,0,.2)', cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
   };
@@ -307,18 +316,18 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
   return (
     <div style={{ position: 'relative', flex: 1, width: '100%', height: '100%', minHeight: 0 }}>
       <style>{`.maplibregl-ctrl-attrib{font-size:11px}.maplibregl-popup-content{border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.18);padding:10px 12px}`}</style>
-      <div ref={host} style={{ position: 'absolute', inset: 0, backgroundColor: '#F2EFE6' }} />
+      <div ref={host} style={{ position: 'absolute', inset: 0, backgroundColor: dark ? '#1E1D22' : '#F2EFE6' }} />
       {/* Rétegválasztó (jobbra fent, az óra mellett / alatt) */}
       <div style={{ position: 'absolute', zIndex: 1000, ...(controlsTop ? { right: 12, top: 80 } : { right: 192, top: 26 }) }}>
         <button aria-label="Térképrétegek" style={{ ...btn, ...(controlsTop ? { width: 44, height: 44 } : {}) }} onClick={() => setLayersOpen((o) => !o)}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#1C1B1F" aria-hidden>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill={dark ? '#F5F4F7' : '#1C1B1F'} aria-hidden>
             <path d="M12 2 1 8l11 6 11-6-11-6Zm0 14.2L3.2 11.4 1 12.6 12 18.6l11-6-2.2-1.2L12 16.2Zm0 4.6-8.8-4.8L1 17.2 12 23l11-5.8-2.2-1.2L12 20.8Z" />
           </svg>
         </button>
         {layersOpen && (
-          <div style={{ position: 'absolute', top: controlsTop ? 52 : 60, right: 0, width: 270, background: '#fff', borderRadius: 14, padding: '8px 0', boxShadow: '0 4px 16px rgba(0,0,0,.18)', font: '14px system-ui,sans-serif' }}>
+          <div style={{ position: 'absolute', top: controlsTop ? 52 : 60, right: 0, width: 270, background: dark ? '#242328' : '#fff', borderRadius: 14, padding: '8px 0', boxShadow: '0 4px 16px rgba(0,0,0,.18)', font: '14px system-ui,sans-serif' }}>
             {legend.map(([k, label, color]) => (
-              <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', cursor: 'pointer', color: '#1C1B1F' }}>
+              <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', cursor: 'pointer', color: dark ? '#F5F4F7' : '#1C1B1F' }}>
                 <input type="checkbox" checked={layers[k]} onChange={() => toggle(k)} style={{ accentColor: '#4A1466', width: 18, height: 18 }} />
                 <span style={{ width: 12, height: 12, borderRadius: 6, background: color, flex: 'none' }} />
                 {label}
@@ -335,7 +344,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
         }}
       >
         {onLocate && (
-          <button aria-label="Saját helyzetem" style={{ ...btn, fontSize: 24, color: me ? '#2563EB' : '#4A1466' }} onClick={locateMe}>◎</button>
+          <button aria-label="Saját helyzetem" style={{ ...btn, fontSize: 24, color: me ? '#2563EB' : dark ? '#C9A9DC' : '#4A1466' }} onClick={locateMe}>◎</button>
         )}
         <button aria-label="Nagyítás" style={btn} onClick={() => map.current?.zoomIn()}>+</button>
         <button aria-label="Kicsinyítés" style={btn} onClick={() => map.current?.zoomOut()}>−</button>
