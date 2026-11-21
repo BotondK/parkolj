@@ -1080,7 +1080,7 @@ function Main() {
   const sheetH = step === 'search' && !hereOpt ? '46%' : step === 'options' ? '60%' : '64%';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: wide || tab !== 'park' ? C.bg : C.card }} edges={wide ? ['top', 'bottom'] : ['top']}>
+    <SafeAreaView testID="app-root" style={{ flex: 1, backgroundColor: wide || tab !== 'park' ? C.bg : C.card }} edges={wide ? ['top', 'bottom'] : ['top']}>
       <StatusBar style={dark ? 'light' : 'dark'} />
       {wide ? (
         <View style={{ flex: 1, flexDirection: 'row' }}>

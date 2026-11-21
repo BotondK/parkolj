@@ -1,0 +1,101 @@
+import { expect, test, type Page } from '@playwright/test';
+
+// Külső szolgáltatások (térképcsempék, címkereső) nélkül is működnie kell: tartalékokkal
+test.beforeEach(async ({ page }) => {
+  await page.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  (page as Page & { errors: string[] }).errors = errors;
+  await page.goto('./');
+  await page.getByText('Kezdjük').click();
+});
+
+test.afterEach(async ({ page }) => {
+  expect((page as Page & { errors: string[] }).errors).toEqual([]);
+});
+
+const tab = (page: Page, name: string) => page.getByRole('tab', { name });
+
+test('célpont → 3 javaslat → navigáció → fizetés → aktív jegy → leállítás → nyugta', async ({ page }) => {
+  await page.getByPlaceholder('Hova szeretnél menni?').fill('opera');
+  await page.getByText('Magyar Állami Operaház').first().click();
+  await expect(page.getByText('A 3 legjobb lehetőség')).toBeVisible();
+  await expect(page.getByText(/zóna · \d+ Ft\/óra/).first()).toBeVisible();
+
+  await page.getByText('Navigálj oda').click();
+  await expect(page.getByText('Google Maps')).toBeVisible();
+  await page.getByText(/Megérkeztem/).click();
+
+  await expect(page.getByText('Parkolás indítása')).toBeVisible();
+  await page.getByText(/Fizetés és indítás|Indítás \(most/).click();
+  await expect(page.getByText('Aktív parkolás')).toBeVisible();
+
+  await tab(page, 'Parkolásaim').click();
+  await expect(page.getByText(/Érvényes|Lejárt/)).toBeVisible();
+  await page.getByText('+15 perc', { exact: true }).click();
+  await page.getByText('Részletek', { exact: true }).click();
+  await page.getByText('Parkolás leállítása').click();
+  await expect(page.getByText('Parkolás leállítva')).toBeVisible();
+  await page.getByText('Kész').click();
+
+  await tab(page, 'Parkolásaim').click();
+  await page.getByText('Lezárt').click();
+  await expect(page.getByText('Magyar Állami Operaház').first()).toBeVisible();
+
+  await tab(page, 'Menü').click();
+  await page.getByText('Értesítéseim').click();
+  await expect(page.getByText('Parkolás elindult')).toBeVisible();
+  await expect(page.getByText('Parkolás lezárva')).toBeVisible();
+});
+
+test('kedvenc hely mentése csillaggal, majd indítás a Kedvenceimből', async ({ page }) => {
+  await page.getByPlaceholder('Hova szeretnél menni?').fill('vígszínház');
+  await page.getByText('Vígszínház').first().click();
+  await page.getByLabel('Hely mentése').click();
+  await page.getByText('Munkahely', { exact: true }).click();
+  await expect(page.getByText('Elmentve a Kedvenceim közé')).toBeVisible();
+
+  await tab(page, 'Kedvenceim').click();
+  await expect(page.getByText(/Vígszínház · [A-D] zóna/)).toBeVisible();
+  await page.getByText('Munkahely').click();
+  await expect(page.getByText('A 3 legjobb lehetőség')).toBeVisible();
+});
+
+test('bankkártya: hibás szám elutasítva, jó szám csak utolsó 4 számjeggyel tárolva; kupon', async ({ page }) => {
+  await tab(page, 'Menü').click();
+  await page.getByText('Vásárlás és fizetés').click();
+  await page.getByText('Bankkártyáim').click();
+  // Üres listánál az új kártya űrlapja eleve nyitva van
+  if (await page.getByText('Kártya hozzáadása').isVisible()) await page.getByText('Kártya hozzáadása').click();
+  const number = page.getByPlaceholder('4242 4242 4242 4242');
+  await number.fill('4242424242424241');
+  await expect(page.getByText('Hibás kártyaszám.')).toBeVisible();
+  await number.fill('4242424242424242');
+  await page.getByPlaceholder('12/29').fill('1230');
+  await page.getByText('Mentés', { exact: true }).click();
+  await expect(page.getByText('Visa •••• 4242')).toBeVisible();
+  const stored = await page.evaluate(() => JSON.stringify(Object.entries(localStorage)));
+  expect(stored).not.toContain('4242424242424242');
+
+  await page.getByLabel('Vissza').click();
+  await page.getByText('Kuponbeváltás').click();
+  await page.getByPlaceholder('PARKOLJ500').fill('PARKOLJ500');
+  await page.getByText('Beváltás', { exact: true }).click();
+  await expect(page.getByText(/Beváltva: 500/)).toBeVisible();
+  await page.getByPlaceholder('PARKOLJ500').fill('PARKOLJ500');
+  await page.getByText('Beváltás', { exact: true }).click();
+  await expect(page.getByText('Ismeretlen vagy már beváltott kód.')).toBeVisible();
+});
+
+test('beállítások: sötét/világos mód és nyelvváltás', async ({ page }) => {
+  await tab(page, 'Menü').click();
+  await page.getByText('Beállítások').click();
+  await page.getByText('Sötét', { exact: true }).click();
+  const bg = () => page.evaluate(() => getComputedStyle(document.querySelector('[data-testid="app-root"]') ?? document.body).backgroundColor);
+  await expect.poll(bg).toBe('rgb(20, 20, 20)');
+  await page.getByText('Világos', { exact: true }).click();
+  await expect.poll(bg).toBe('rgb(241, 238, 243)');
+  await page.getByText('English', { exact: true }).click();
+  await expect(page.getByText('Settings')).toBeVisible();
+  await expect(tab(page, 'Favourites')).toBeVisible();
+});
