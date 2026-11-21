@@ -5,9 +5,21 @@ import type { BillingProfile, Car, FavoritePlace, HistoryItem, PaymentCard, Sett
 
 export type CloudConfig = { url: string; anonKey: string };
 
+/** Elnéző URL-beolvasás: elfogadja a teljes címet, a https:// nélkülit, a puszta projektazonosítót
+ *  és a Dashboard linkjét is; levágja a szóközt, a záró perjelet és a véletlenül bemásolt /rest/v1-et. */
+export function normalizeSupabaseUrl(raw: string): string {
+  let s = raw.trim().replace(/^["']|["']$/g, '');
+  if (!s) return '';
+  const dash = /supabase\.com\/dashboard\/project\/([a-z0-9]+)/i.exec(s);
+  if (dash) return `https://${dash[1].toLowerCase()}.supabase.co`;
+  if (/^[a-z0-9]{15,30}$/i.test(s)) return `https://${s.toLowerCase()}.supabase.co`;
+  if (!/^https?:\/\//i.test(s)) s = `https://${s}`;
+  return s.replace(/\/+$/, '').replace(/\/(rest|auth)\/v1$/, '');
+}
+
 export const CLOUD: CloudConfig | null = (() => {
-  const url = (process.env.EXPO_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
-  const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+  const url = normalizeSupabaseUrl(process.env.EXPO_PUBLIC_SUPABASE_URL || '');
+  const anonKey = (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '').trim();
   return url && anonKey ? { url, anonKey } : null;
 })();
 
@@ -38,16 +50,23 @@ export class CloudError extends Error {
 }
 
 export function makeCloud(cfg: CloudConfig, f: Fetch = fetch) {
+  // Az új formátumú (sb_publishable_…) kulcs nem JWT: csak az apikey fejlécbe mehet, Authorization-be csak a felhasználó tokenje.
+  // A régi (eyJ…) anon kulcsnál a Supabase mindkét módot elfogadja.
   const base = (token?: string): Record<string, string> => ({
     apikey: cfg.anonKey,
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${token ?? cfg.anonKey}`,
+    ...(token ? { Authorization: `Bearer ${token}` } : cfg.anonKey.startsWith('eyJ') ? { Authorization: `Bearer ${cfg.anonKey}` } : {}),
   });
   const call = async <T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> => {
     const r = await f(`${cfg.url}${path}`, { ...init, headers: { ...base(init.token), ...(init.headers as Record<string, string>) } });
     const text = await r.text();
-    const body = text ? JSON.parse(text) : null;
-    if (!r.ok) throw new CloudError(r.status, body?.msg || body?.error_description || body?.message || `HTTP ${r.status}`);
+    let body: any = null;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      body = { message: text.slice(0, 200) };
+    }
+    if (!r.ok) throw new CloudError(r.status, `${r.status}: ${body?.msg || body?.error_description || body?.message || body?.error || 'hiba'}`);
     return body as T;
   };
   const toSession = (b: { access_token: string; refresh_token: string; expires_in: number; user: { id: string; email: string } }): AuthSession => ({

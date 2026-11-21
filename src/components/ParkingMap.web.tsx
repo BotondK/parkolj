@@ -239,6 +239,10 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
       setReady((n) => n + 1);
     };
     m.on('style.load', addOverlays);
+    // Az alaptérkép néhány díszítő mintája (pl. erdő) nincs a stílusban: üres képpel pótoljuk, ne legyen figyelmeztetés
+    m.on('styleimagemissing', (e) => {
+      if (!m.hasImage(e.id)) m.addImage(e.id, { width: 1, height: 1, data: new Uint8Array(4) });
+    });
     if (m.isStyleLoaded()) addOverlays();
 
 

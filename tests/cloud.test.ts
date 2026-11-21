@@ -66,12 +66,12 @@ test('összefésülés belépéskor: unió azonosító szerint, ütközésnél a
   assert.equal(m.name, 'Helyi');
 });
 
-test('felhő: visszajelzés küldése belépés nélkül az anon kulccsal', async () => {
+test('felhő: visszajelzés küldése belépés nélkül (csak apikey)', async () => {
   const log: { url: string; init: RequestInit }[] = [];
   const c = makeCloud(cfg, fake({}, log));
   await c.sendFeedback({ at: 0, rating: 4, message: 'jó', meta: { platform: 'web' } });
   assert.equal(log[0].url, 'https://x.supabase.co/rest/v1/feedback');
-  assert.equal((log[0].init.headers as Record<string, string>).Authorization, 'Bearer anon');
+  assert.equal((log[0].init.headers as Record<string, string>).Authorization, undefined);
   const b = JSON.parse(log[0].init.body as string);
   assert.equal(b.rating, 4);
   assert.equal(b.meta.platform, 'web');
@@ -91,4 +91,24 @@ test('felhő: belépő link – visszairányítási cím, majd munkamenet az URL
   assert.equal((log[1].init.headers as Record<string, string>).Authorization, 'Bearer AT');
   assert.deepEqual(await c.sessionFromUrl('#error=access_denied&error_description=Email+link+is+invalid+or+has+expired'), { error: 'Email link is invalid or has expired' });
   assert.equal(await c.sessionFromUrl(''), null);
+});
+
+test('Supabase URL elnéző beolvasása', async () => {
+  const { normalizeSupabaseUrl: n } = await import('../src/logic/cloud');
+  const want = 'https://mnpbboufqvhbhxiquaiy.supabase.co';
+  assert.equal(n('mnpbboufqvhbhxiquaiy.supabase.co'), want);
+  assert.equal(n(' https://mnpbboufqvhbhxiquaiy.supabase.co/ '), want);
+  assert.equal(n('mnpbboufqvhbhxiquaiy'), want);
+  assert.equal(n('https://mnpbboufqvhbhxiquaiy.supabase.co/rest/v1/'), want);
+  assert.equal(n('https://supabase.com/dashboard/project/mnpbboufqvhbhxiquaiy/auth/templates'), want);
+  assert.equal(n(''), '');
+});
+
+test('új formátumú (sb_publishable_) kulcs nem kerül az Authorization fejlécbe', async () => {
+  const log: { url: string; init: RequestInit }[] = [];
+  const c = makeCloud({ url: 'https://x.supabase.co', anonKey: 'sb_publishable_abc' }, fake({}, log));
+  await c.sendCode('a@b.hu');
+  const h = log[0].init.headers as Record<string, string>;
+  assert.equal(h.apikey, 'sb_publishable_abc');
+  assert.equal(h.Authorization, undefined);
 });

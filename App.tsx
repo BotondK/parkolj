@@ -313,9 +313,9 @@ function Main() {
         saveJSON('pendingName', name);
         const back = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin + window.location.pathname : undefined;
         await cloud!.sendCode(email, back);
-        return true;
-      } catch {
-        return false;
+        return null;
+      } catch (e) {
+        return e instanceof Error ? e.message : String(e);
       }
     },
     verify: async (email: string, code: string, name: string) => {
