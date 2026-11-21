@@ -4,7 +4,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 export type IconName =
   | 'map' | 'star' | 'starFill' | 'ticket' | 'menu' | 'home' | 'work' | 'search' | 'bell' | 'gear' | 'card' | 'info'
   | 'user' | 'chevron' | 'back' | 'car' | 'pin' | 'trash' | 'plus' | 'receipt' | 'users' | 'finger' | 'coupon'
-  | 'moon' | 'globe' | 'help' | 'logout' | 'close' | 'check' | 'clock' | 'external';
+  | 'moon' | 'globe' | 'help' | 'logout' | 'close' | 'check' | 'clock' | 'external' | 'parking';
 
 export function Icon({ name, size = 24, color = '#000', stroke = 1.8 }: { name: IconName; size?: number; color?: string; stroke?: number }) {
   const p = { stroke: color, strokeWidth: stroke, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
@@ -152,6 +152,14 @@ export function Icon({ name, size = 24, color = '#000', stroke = 1.8 }: { name: 
           <>
             <Circle {...p} cx="12" cy="12" r="9" />
             <Path {...p} d="M12 7v5l3.5 2" />
+          </>
+        );
+      case 'parking':
+        // Parkolás tábla: lekerekített négyzet, benne „P”
+        return (
+          <>
+            <Rect {...p} x="3.5" y="3.5" width="17" height="17" rx="4" />
+            <Path {...p} strokeWidth={stroke + 0.5} d="M10 17V7.5h3a2.75 2.75 0 0 1 0 5.5h-3" />
           </>
         );
       case 'external':

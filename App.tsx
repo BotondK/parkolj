@@ -920,7 +920,7 @@ function Main() {
 
   // Alsó fülsor ikonokkal; az aktív fül ikonja lekerekített négyzetben (világosban lila, sötétben fehér)
   const TABS: [Tab, string, IconName][] = [
-    ['park', a.tabPark, 'map'],
+    ['park', a.tabPark, 'parking'],
     ['fav', a.tabFav, 'star'],
     ['parkings', a.tabParkings, 'ticket'],
     ['menu', a.tabMenu, 'menu'],
