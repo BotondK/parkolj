@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, TextInput, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, Text, TextInput, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ParkingMap from './src/components/ParkingMap';
 import type { MapMarker } from './src/components/mapTypes';
@@ -49,7 +49,7 @@ import {
 } from './src/types';
 import { useZoneStreets } from './src/logic/loadZoneStreets';
 import { remoteExtend, remoteStart, remoteStop } from './src/logic/api';
-import { cloud, freshSession, mergeData, type AuthSession, type CloudData } from './src/logic/cloud';
+import { cloud, freshSession, mergeData, type AuthSession, type CloudData, type Feedback } from './src/logic/cloud';
 
 type Step = 'search' | 'options' | 'navigate' | 'pay' | 'active' | 'summary';
 type Tab = 'park' | 'fav' | 'parkings' | 'menu';
@@ -251,6 +251,30 @@ function Main() {
     }, 1500);
     return () => clearTimeout(id);
   }, [cars, favorites, cards, profiles, history, settings, account?.name, loaded, !!authSession, pulled]);
+
+  // Visszajelzés: ha nincs kapcsolat vagy fiókszerver, sorba kerül, és később megy el
+  const flushFeedback = async (extra: Feedback[] = []) => {
+    const queue = [...(await loadJSON<Feedback[]>('feedbackQueue', [])), ...extra];
+    if (!queue.length) return true;
+    const left: Feedback[] = [];
+    for (const fb of queue) {
+      try {
+        if (!cloud) throw new Error('no cloud');
+        await cloud.sendFeedback(fb, await withToken().catch(() => null));
+      } catch {
+        left.push(fb);
+      }
+    }
+    await saveJSON('feedbackQueue', left);
+    return left.length === 0;
+  };
+  useEffect(() => {
+    if (loaded && cloud) flushFeedback();
+  }, [loaded]);
+  const sendFeedback = (rating: number | null, message: string) =>
+    flushFeedback([
+      { at: Date.now(), rating, message, meta: { version: '0.3', platform: Platform.OS, lang, width: String(Math.round(width)), theme: dark ? 'dark' : 'light' } },
+    ]);
 
   const auth = {
     cloud: !!cloud,
@@ -1016,6 +1040,7 @@ function Main() {
           demoSpeed={demoSpeed}
           setDemoSpeed={setDemoSpeed}
           onWipe={wipe}
+          onFeedback={sendFeedback}
           auth={auth}
         />
       )}

@@ -29,6 +29,15 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 21. Telefonon ütemezett lejárati értesítés, bezárt appnál is
 22. Telepíthető webapp (Hozzáadás a kezdőképernyőhöz), saját ikon
 23. „Vissza az autómhoz” gyalogos navigáció
+24. BudapestGO-szerű felület: alsó fülsor (Parkolás, Kedvenceim, Parkolásaim, Menü), kereső a térkép tetején, világos és sötét mód
+25. Valódi mélygarázsok (OSM) és elektromos töltők a térképen ikonokkal, rétegválasztó; pontos zónahatárok a BKK zónatérképből és utcaszinten
+26. Kedvenceim: Otthon, Munkahely, mentett helyek, autók alapértelmezettel
+27. Parkolásaim: aktív parkolás „jegy” kártyaként, lezárt parkolások nyugtával
+28. Menü: fiók, értesítésnapló, beállítások (emlékeztető 5/10/15 perc), mentett bankkártyák (csak utolsó 4 számjegy), magán/céges számlázási profil, biometrikus jóváhagyás, kupon
+29. Fiók és szinkron minden eszközre: e-mailes belépés kóddal (Supabase; beállítás: [docs/FIOK.md](docs/FIOK.md))
+30. Visszajelzés küldése az appból (zárt bétához), kapcsolat nélkül sorba kerül
+
+Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 
 Szerver (API, alfa váz): [docs/API.md](docs/API.md)
 

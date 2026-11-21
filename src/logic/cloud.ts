@@ -26,6 +26,8 @@ export type CloudData = {
 
 type Fetch = typeof fetch;
 
+export type Feedback = { at: number; rating: number | null; message: string; meta: Record<string, string> };
+
 export class CloudError extends Error {
   constructor(
     public status: number,
@@ -76,6 +78,14 @@ export function makeCloud(cfg: CloudConfig, f: Fetch = fetch) {
         token: s.accessToken,
         headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
         body: JSON.stringify({ user_id: s.userId, data, updated_at: new Date().toISOString() }),
+      }),
+    /** Visszajelzés küldése (be nem lépve is); belépve a fiókhoz kötve */
+    sendFeedback: (fb: Feedback, s?: AuthSession | null) =>
+      call<unknown>('/rest/v1/feedback', {
+        method: 'POST',
+        token: s?.accessToken,
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ rating: fb.rating, message: fb.message, meta: { ...fb.meta, at: new Date(fb.at).toISOString() } }),
       }),
     /** Fiók és minden adat végleges törlése (adatbázis-függvény, csak a saját fiókra) */
     deleteAccount: (s: AuthSession) => call<unknown>('/rest/v1/rpc/delete_my_account', { method: 'POST', token: s.accessToken, body: '{}' }),

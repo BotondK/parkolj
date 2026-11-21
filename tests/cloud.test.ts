@@ -65,3 +65,14 @@ test('összefésülés belépéskor: unió azonosító szerint, ütközésnél a
   assert.deepEqual(m.settings, { remindMin: 15, helpBar: false });
   assert.equal(m.name, 'Helyi');
 });
+
+test('felhő: visszajelzés küldése belépés nélkül az anon kulccsal', async () => {
+  const log: { url: string; init: RequestInit }[] = [];
+  const c = makeCloud(cfg, fake({}, log));
+  await c.sendFeedback({ at: 0, rating: 4, message: 'jó', meta: { platform: 'web' } });
+  assert.equal(log[0].url, 'https://x.supabase.co/rest/v1/feedback');
+  assert.equal((log[0].init.headers as Record<string, string>).Authorization, 'Bearer anon');
+  const b = JSON.parse(log[0].init.body as string);
+  assert.equal(b.rating, 4);
+  assert.equal(b.meta.platform, 'web');
+});

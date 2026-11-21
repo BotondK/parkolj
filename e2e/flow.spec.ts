@@ -99,3 +99,14 @@ test('beállítások: sötét/világos mód és nyelvváltás', async ({ page })
   await expect(page.getByText('Settings')).toBeVisible();
   await expect(tab(page, 'Favourites')).toBeVisible();
 });
+
+test('visszajelzés: fiókszerver nélkül sorba kerül, nem vész el', async ({ page }) => {
+  await tab(page, 'Menü').click();
+  await page.getByText('Visszajelzés küldése').click();
+  await page.getByLabel('4/5').click();
+  await page.getByPlaceholder('Írd le a tapasztalatod…').fill('Nagyon jó, de kellene több garázs.');
+  await page.getByText('Küldés', { exact: true }).click();
+  await expect(page.getByText(/Elmentettük|Megkaptuk/)).toBeVisible();
+  const queue = await page.evaluate(() => Object.entries(localStorage).find(([k]) => k.includes('feedbackQueue'))?.[1] ?? '');
+  expect(queue).toContain('több garázs');
+});

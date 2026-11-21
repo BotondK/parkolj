@@ -37,3 +37,17 @@ end;
 $$;
 revoke all on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
+
+-- Visszajelzések a zárt bétából: bárki küldhet (be nem lépve is), olvasni csak a Dashboardon lehet
+create table if not exists public.feedback (
+  id bigserial primary key,
+  created_at timestamptz not null default now(),
+  user_id uuid default auth.uid() references auth.users (id) on delete set null,
+  rating smallint check (rating between 1 and 5),
+  message text not null check (char_length(message) between 1 and 4000),
+  meta jsonb not null default '{}'::jsonb
+);
+alter table public.feedback enable row level security;
+drop policy if exists "visszajelzes kuldese" on public.feedback;
+create policy "visszajelzes kuldese" on public.feedback for insert to anon, authenticated
+  with check (user_id is null or user_id = auth.uid());

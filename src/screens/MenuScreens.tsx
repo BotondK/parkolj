@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { Icon } from '../components/icons';
 import { EmptyState, Field, ListRow, PageHeader, PillButton, Section, Segmented, ToggleRow, titleColor } from '../components/kit';
 import { C, isDark, PrimaryButton, styles } from '../components/ui';
@@ -20,7 +20,7 @@ import {
 } from '../types';
 import InfoScreen from './InfoScreen';
 
-export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info';
+export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback';
 
 export type MenuProps = {
   t: Strings;
@@ -44,6 +44,8 @@ export type MenuProps = {
   demoSpeed: boolean;
   setDemoSpeed: (b: boolean) => void;
   onWipe: () => void;
+  /** Visszajelzés küldése; true = elküldve, false = sorba téve (később megy el) */
+  onFeedback: (rating: number | null, message: string) => Promise<boolean>;
   /** Felhős fiók (Supabase), ha be van állítva */
   auth: {
     cloud: boolean;
@@ -76,6 +78,8 @@ export default function MenuScreens(p: MenuProps) {
       return <ProfilesPage {...p} onBack={back('payment')} />;
     case 'coupon':
       return <CouponPage {...p} onBack={back('payment')} />;
+    case 'feedback':
+      return <FeedbackPage {...p} onBack={back()} />;
     case 'info':
       return (
         <View>
@@ -116,9 +120,57 @@ function MenuHome({ a, account, setPage, notes }: MenuProps) {
         <ListRow icon="bell" label={a.notifications} onPress={() => setPage('notes')} right={notes.length ? <Badge n={notes.length} /> : undefined} />
         <ListRow icon="gear" label={a.settings} onPress={() => setPage('settings')} />
         <ListRow icon="card" label={a.purchase} onPress={() => setPage('payment')} />
-        <ListRow icon="help" label={a.infoHelp} onPress={() => setPage('info')} last />
+        <ListRow icon="help" label={a.infoHelp} onPress={() => setPage('info')} />
+        <ListRow icon="chat" label={a.feedback} onPress={() => setPage('feedback')} last />
       </Section>
       <Text style={{ color: C.sub, fontSize: 12, textAlign: 'center' }}>{a.appVersion}</Text>
+    </View>
+  );
+}
+
+function FeedbackPage({ a, onFeedback, onBack }: MenuProps & { onBack: () => void }) {
+  const [rating, setRating] = useState<number | null>(null);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  return (
+    <View>
+      <PageHeader title={a.feedback} onBack={onBack} />
+      {done ? (
+        <EmptyState icon="check" text={done} />
+      ) : (
+        <View style={styles.card}>
+          <Text style={{ color: C.text, fontSize: 15, lineHeight: 21 }}>{a.feedbackIntro}</Text>
+          <Text style={styles.label}>{a.feedbackRate}</Text>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Pressable key={n} onPress={() => setRating(n)} hitSlop={4} accessibilityLabel={`${n}/5`}>
+                <Icon name={rating && n <= rating ? 'starFill' : 'star'} size={36} color={rating && n <= rating ? '#F5B301' : C.sub} />
+              </Pressable>
+            ))}
+          </View>
+          <TextInput
+            value={msg}
+            onChangeText={setMsg}
+            placeholder={a.feedbackPlaceholder}
+            placeholderTextColor={C.sub}
+            multiline
+            maxLength={4000}
+            style={{ marginTop: 16, minHeight: 130, borderWidth: 1, borderColor: C.line, borderRadius: 12, padding: 12, fontSize: 16, color: C.text, backgroundColor: C.card, textAlignVertical: 'top' }}
+          />
+          <Text style={{ color: C.sub, fontSize: 12, marginTop: 8 }}>{a.feedbackMeta}</Text>
+          <PrimaryButton
+            text={a.feedbackSend}
+            disabled={!msg.trim() || busy}
+            onPress={async () => {
+              setBusy(true);
+              const sent = await onFeedback(rating, msg.trim());
+              setBusy(false);
+              setDone(sent ? a.feedbackThanks : a.feedbackQueued);
+            }}
+          />
+        </View>
+      )}
     </View>
   );
 }
