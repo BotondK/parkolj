@@ -15,7 +15,7 @@ test('Plusz: automatikus hosszabbítás csak a lejárat előtti 2 percben, a ker
 
 test('Plusz: CSV kimutatás pontosvesszővel, idézőjelezéssel', () => {
   const csv = historyCsv([
-    { id: '1', placeName: 'Váci utca; belváros', zoneId: 'A', pricePerHour: 600, plate: 'ABC123', country: 'H', startedAt: Date.UTC(2026, 10, 3, 9, 5), minutes: 60, cost: 600, plusFee: 39, credit: 100, payLabel: 'Visa •••• 4242', profileLabel: 'Cég Kft.' },
+    { id: '1', placeName: 'Váci utca; belváros', zoneId: 'A', pricePerHour: 600, plate: 'ABC123', country: 'H', startedAt: new Date(2026, 10, 3, 9, 5).getTime(), minutes: 60, cost: 600, plusFee: 39, credit: 100, payLabel: 'Visa •••• 4242', profileLabel: 'Cég Kft.' },
   ]);
   assert.ok(csv.startsWith('﻿Kezdés;Hely;Zóna'));
   const [, row] = csv.split('\r\n');
