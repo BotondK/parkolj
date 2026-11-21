@@ -44,6 +44,14 @@ export type MenuProps = {
   demoSpeed: boolean;
   setDemoSpeed: (b: boolean) => void;
   onWipe: () => void;
+  /** Felhős fiók (Supabase), ha be van állítva */
+  auth: {
+    cloud: boolean;
+    sync: 'off' | 'saving' | 'saved' | 'error';
+    sendCode: (email: string) => Promise<boolean>;
+    verify: (email: string, code: string, name: string) => Promise<boolean>;
+    logout: () => void;
+  };
 };
 
 export const walletLabel = (a: AccStrings) => (Platform.OS === 'ios' ? a.walletIos : Platform.OS === 'android' ? a.walletAndroid : a.walletWeb);
@@ -126,10 +134,15 @@ function Badge({ n }: { n: number }) {
   );
 }
 
-function AccountPage({ a, account, setAccount, onWipe, onBack }: MenuProps & { onBack: () => void }) {
+function AccountPage({ a, account, setAccount, onWipe, onBack, auth }: MenuProps & { onBack: () => void }) {
   const [name, setName] = useState(account?.name ?? '');
   const [email, setEmail] = useState(account?.email ?? '');
   const [confirm, setConfirm] = useState(false);
+  const [code, setCode] = useState('');
+  const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const syncText = auth.sync === 'saving' ? a.syncSaving : auth.sync === 'saved' ? a.syncSaved : auth.sync === 'error' ? a.syncError : null;
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   return (
     <View>
@@ -137,8 +150,51 @@ function AccountPage({ a, account, setAccount, onWipe, onBack }: MenuProps & { o
       {account ? (
         <Section>
           <ListRow icon="user" label={account.name} sub={account.email} />
-          <ListRow icon="logout" label={a.logout} onPress={() => setAccount(null)} last />
+          {syncText && <ListRow icon={auth.sync === 'error' ? 'info' : 'check'} label={syncText} />}
+          <ListRow icon="logout" label={a.logout} onPress={() => (auth.cloud ? auth.logout() : setAccount(null))} last />
         </Section>
+      ) : auth.cloud ? (
+        <View style={[styles.card, { marginBottom: 18 }]}>
+          {!codeSentTo ? (
+            <>
+              <Field label={a.name} value={name} onChange={setName} autoCap="words" />
+              <Field label={a.email} value={email} onChange={setEmail} keyboard="email-address" />
+              <Text style={{ color: C.sub, fontSize: 12 }}>{a.cloudNote}</Text>
+              <PrimaryButton
+                text={a.sendCode}
+                disabled={!emailOk || busy}
+                onPress={async () => {
+                  setBusy(true);
+                  setErr(null);
+                  const ok = await auth.sendCode(email.trim().toLowerCase());
+                  setBusy(false);
+                  if (ok) setCodeSentTo(email.trim().toLowerCase());
+                  else setErr(a.sendFailed);
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <Text style={{ color: C.text, marginBottom: 12 }}>{a.codeSent(codeSentTo)}</Text>
+              <Field label={a.code} value={code} onChange={(s) => setCode(s.replace(/\D/g, '').slice(0, 8))} keyboard="number-pad" placeholder="123456" />
+              <PrimaryButton
+                text={a.verify}
+                disabled={code.length < 6 || busy}
+                onPress={async () => {
+                  setBusy(true);
+                  setErr(null);
+                  const ok = await auth.verify(codeSentTo, code, name.trim());
+                  setBusy(false);
+                  if (!ok) setErr(a.loginFailed);
+                }}
+              />
+              <Pressable onPress={() => { setCodeSentTo(null); setCode(''); }} style={{ alignSelf: 'center', marginTop: 14 }}>
+                <Text style={{ color: titleColor(), fontWeight: '700' }}>{a.changeEmail}</Text>
+              </Pressable>
+            </>
+          )}
+          {err && <Text style={{ color: C.danger, marginTop: 10 }}>{err}</Text>}
+        </View>
       ) : (
         <View style={[styles.card, { marginBottom: 18 }]}>
           <Field label={a.name} value={name} onChange={setName} autoCap="words" />

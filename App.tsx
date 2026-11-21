@@ -49,6 +49,7 @@ import {
 } from './src/types';
 import { useZoneStreets } from './src/logic/loadZoneStreets';
 import { remoteExtend, remoteStart, remoteStop } from './src/logic/api';
+import { cloud, freshSession, mergeData, type AuthSession, type CloudData } from './src/logic/cloud';
 
 type Step = 'search' | 'options' | 'navigate' | 'pay' | 'active' | 'summary';
 type Tab = 'park' | 'fav' | 'parkings' | 'menu';
@@ -107,6 +108,8 @@ function Main() {
   const [credit, setCredit] = useState(0);
   const [usedCoupons, setUsedCoupons] = useState<string[]>([]);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const [sync, setSync] = useState<'off' | 'saving' | 'saved' | 'error'>('off');
   const patchSettings = (p: Partial<Settings>) => setSettings((s) => ({ ...s, ...p }));
   const addNote = (title: string, body: string) =>
     setNotes((n) => [{ id: `${Date.now()}-${n.length}`, at: Date.now(), title, body }, ...n].slice(0, 50));
@@ -149,6 +152,7 @@ function Main() {
       setSettings({ ...DEFAULT_SETTINGS, ...st });
       setCredit(cr);
       setUsedCoupons(uc);
+      if (cloud) setAuthSession(await loadJSON<AuthSession | null>('auth', null));
       setOnboarded(await loadJSON<boolean>('onboarded', false));
       if (c) {
         setCars(c);
@@ -188,6 +192,101 @@ function Main() {
     saveJSON('coupons', usedCoupons);
     saveJSON('defaultCar', carId);
   }, [favorites, cards, profiles, notes, account, settings, credit, usedCoupons, carId, loaded]);
+
+  // --- Felhős fiók (Supabase): belépés kóddal, adatok szinkronja minden eszközre ---
+  const authRef = useRef(authSession);
+  // Csak a felhőből való első letöltés után mentünk, különben egy régi helyi állapot felülírná a másik eszköz változásait
+  const [pulled, setPulled] = useState(false);
+  authRef.current = authSession;
+  const cloudData = (): CloudData => ({ name: account?.name, cars, favorites, cards, profiles, history, settings });
+  const applyData = (d: CloudData) => {
+    if (d.cars) {
+      setCars(d.cars);
+      setCarId((id) => (d.cars!.some((c) => c.id === id) ? id : d.cars![0]?.id ?? null));
+    }
+    if (d.favorites) setFavorites(d.favorites);
+    if (d.cards) setCards(d.cards);
+    if (d.profiles) setProfiles(d.profiles);
+    if (d.history) setHistory(d.history);
+    if (d.settings) setSettings((s) => ({ ...s, ...d.settings }));
+  };
+  const withToken = async () => {
+    const s0 = authRef.current;
+    if (!cloud || !s0) return null;
+    const s = await freshSession(cloud, s0);
+    if (s !== s0) {
+      setAuthSession(s);
+      saveJSON('auth', s);
+    }
+    return s;
+  };
+  // Indításkor (ha be van lépve) a felhőből frissít
+  useEffect(() => {
+    if (!loaded || !cloud || !authSession) return;
+    (async () => {
+      try {
+        const s = await withToken();
+        if (!s) return;
+        const remote = await cloud!.load(s);
+        if (remote) applyData(mergeData(cloudData(), remote));
+        setPulled(true);
+        setSync('saved');
+      } catch {
+        setSync('error');
+      }
+    })();
+  }, [loaded, !!authSession]);
+  // Változáskor 1,5 mp késleltetéssel menti a fiókba
+  useEffect(() => {
+    if (!loaded || !cloud || !authSession || !pulled) return;
+    setSync('saving');
+    const id = setTimeout(async () => {
+      try {
+        const s = await withToken();
+        if (s) await cloud!.save(s, cloudData());
+        setSync('saved');
+      } catch {
+        setSync('error');
+      }
+    }, 1500);
+    return () => clearTimeout(id);
+  }, [cars, favorites, cards, profiles, history, settings, account?.name, loaded, !!authSession, pulled]);
+
+  const auth = {
+    cloud: !!cloud,
+    sync: authSession ? sync : ('off' as const),
+    sendCode: async (email: string) => {
+      try {
+        await cloud!.sendCode(email);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    verify: async (email: string, code: string, name: string) => {
+      try {
+        const s = await cloud!.verifyCode(email, code);
+        const remote = await cloud!.load(s);
+        const merged = mergeData({ ...cloudData(), name: name || undefined }, remote);
+        applyData(merged);
+        setAccount({ name: merged.name || email.split('@')[0], email: s.email });
+        saveJSON('auth', s);
+        setPulled(true);
+        setAuthSession(s);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    logout: () => {
+      if (authSession) cloud?.signOut(authSession);
+      setAuthSession(null);
+      saveJSON('auth', null);
+      setAccount(null);
+      setPulled(false);
+      setSync('off');
+    },
+  };
   useEffect(() => {
     if (loaded) saveJSON('lang', lang);
   }, [lang, loaded]);
@@ -472,6 +571,11 @@ function Main() {
   };
 
   const wipe = () => {
+    if (cloud && authSession) {
+      withToken().then((s) => s && cloud!.deleteAccount(s)).catch(() => {});
+      setAuthSession(null);
+      saveJSON('auth', null);
+    }
     setFavorites([]);
     setCards([]);
     setProfiles([]);
@@ -912,6 +1016,7 @@ function Main() {
           demoSpeed={demoSpeed}
           setDemoSpeed={setDemoSpeed}
           onWipe={wipe}
+          auth={auth}
         />
       )}
       <Text style={styles.demoNote}>{t.demoBanner}</Text>

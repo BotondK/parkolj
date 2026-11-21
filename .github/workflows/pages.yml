@@ -32,6 +32,8 @@ jobs:
         env:
           # Repo → Settings → Secrets and variables → Actions → Variables → API_URL (üresen: nincs szerverszinkron)
           EXPO_PUBLIC_API_URL: ${{ vars.API_URL }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
       # SPA: ismeretlen útvonalon is az app töltődjön be
       - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3

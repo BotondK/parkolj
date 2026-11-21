@@ -6,3 +6,4 @@ dist/
 # Cloudflare helyi titkok
 server/.dev.vars
 server/.wrangler/
+.env
