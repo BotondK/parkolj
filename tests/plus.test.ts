@@ -35,3 +35,12 @@ test('Városnak: mintaadat, hőtérkép, zónaösszesítő, CSV', async () => {
   const csv = cityCsv([{ zone_id: 'A', dow: 2, hour: 18, sessions: 6, users: 3, avg_minutes: 45, total_ft: 3600 }]);
   assert.equal(csv.split('\r\n')[1], 'A;2;18;6;3;45;3600');
 });
+
+test('statisztika: csak rövid kategóriaértékek, a sor legfeljebb 200 elem', async () => {
+  const { cleanProps, enqueue } = await import('../src/logic/analyticsCore');
+  assert.deepEqual(cleanProps({ zone: 'A', minutes: 60, plus: true, plate: 'ABC-123 nagyon hosszú szabad szöveg ide', obj: { x: 1 } }), { zone: 'A', minutes: 60, plus: true });
+  let q: Parameters<typeof enqueue>[0] = [];
+  for (let i = 0; i < 250; i++) q = enqueue(q, { sid: 's', name: 'app_open', at: String(i), lang: 'hu', platform: 'web', props: {} });
+  assert.equal(q.length, 200);
+  assert.equal(q[0].at, '50');
+});

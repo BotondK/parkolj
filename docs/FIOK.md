@@ -55,3 +55,7 @@ A `service_role` / secret kulcsot **soha** ne tedd az appba.
 ## Városi adatok (2026-11-22)
 
 A „Városnak” oldal (`?varos`) a `city_stats()` adatbázis-függvényből olvas. Ehhez a `supabase/schema.sql`-t még egyszer le kell futtatni a Supabase SQL Editorban (biztonságosan újrafuttatható). A függvény csak olyan csoportot ad vissza, amelyben legalább 5 parkolás és 3 különböző felhasználó van; amíg nincs legalább 10 ilyen csoport, az oldal jelölt mintaadatot mutat.
+
+## Névtelen használati statisztika (2026-11-22)
+
+Az app névtelen eseményeket küld az `events` táblába (keresés, navigáció, indítás, leállítás stb.), felhasználói azonosító, rendszám és pontos hely nélkül; a Beállításokban kikapcsolható. Ehhez is újra kell futtatni a `supabase/schema.sql`-t. A napi tölcsér a Supabase SQL Editorban: `select * from public.funnel_daily;` (kívülről nem olvasható).

@@ -75,3 +75,34 @@ language sql stable security definer set search_path = '' as $$
 $$;
 revoke all on function public.city_stats() from public;
 grant execute on function public.city_stats() to anon, authenticated;
+
+-- Névtelen használati statisztika a zárt bétához: nincs felhasználói azonosító; bárki beküldhet, olvasni csak a Dashboardon lehet.
+create table if not exists public.events (
+  id bigserial primary key,
+  received_at timestamptz not null default now(),
+  sid uuid not null,
+  name text not null check (name in ('app_open','dest_selected','here_selected','navigate','start','extend','auto_extend','stop','sms_open','plus_subscribe','feedback')),
+  at timestamptz not null,
+  lang text check (char_length(lang) <= 5),
+  platform text check (char_length(platform) <= 10),
+  props jsonb not null default '{}'::jsonb check (pg_column_size(props) < 1000)
+);
+alter table public.events enable row level security;
+drop policy if exists "esemeny kuldese" on public.events;
+create policy "esemeny kuldese" on public.events for insert to anon, authenticated with check (true);
+create index if not exists events_at_idx on public.events (at);
+grant insert on public.events to anon, authenticated;
+grant usage on sequence public.events_id_seq to anon, authenticated;
+
+-- Napi tölcsér (Dashboard → SQL: select * from public.funnel_daily;): hány alkalom jutott el az egyes lépésekig
+create or replace view public.funnel_daily with (security_invoker = true) as
+select (at at time zone 'Europe/Budapest')::date as nap,
+       count(distinct sid) filter (where name = 'app_open') as megnyitas,
+       count(distinct sid) filter (where name in ('dest_selected','here_selected')) as celpont,
+       count(distinct sid) filter (where name = 'navigate') as navigacio,
+       count(distinct sid) filter (where name = 'start') as inditas,
+       count(distinct sid) filter (where name = 'stop') as leallitas,
+       count(*) filter (where name = 'sms_open') as sms,
+       count(*) filter (where name = 'plus_subscribe') as plusz_elofizetes
+from public.events group by 1 order by 1 desc;
+revoke all on public.funnel_daily from anon, authenticated;

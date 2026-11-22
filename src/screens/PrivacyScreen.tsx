@@ -17,6 +17,7 @@ const HU: { title: string; draft: string; blocks: Block[] } = {
       'Fiók nélkül minden adat csak a készülékeden marad. Ha belépsz, ezek kerülnek a fiókodba: e-mail cím, név, autók (rendszám, országkód), kedvenc helyek, parkolási előzmények (hely, zóna, idő, díj), az aktív parkolás, beállítások, számlázási profilok (név, cím, céges adószám). Bankkártyából csak a márkát, az utolsó 4 számjegyet és a lejáratot tároljuk, a teljes számot és a CVC-t soha.',
     ],
     ['Helyadatok', 'A GPS-helyzetedet csak a készüléken használjuk (térkép, „Parkolás itt”, vissza az autóhoz). A szerverre csak az a hely kerül, ahol parkolást indítasz.'],
+    ['Névtelen használati statisztika', 'A zárt béta alatt névtelenül számoljuk, hány keresésből lesz navigáció, indítás és leállítás (esemény neve, ideje, nyelv, platform, zóna betűjele, időtartam). Nincs benne név, e-mail, rendszám vagy pontos hely, és nem kötjük a fiókodhoz; egy alkalmon belül egy véletlen azonosító köti össze a lépéseket. A Beállításokban kikapcsolható. Jogalap: jogos érdek (az app fejlesztése).'],
     ['Visszajelzés', 'Ha visszajelzést küldesz, a szöveget, az értékelést és néhány technikai adatot (verzió, platform, nyelv, képernyőszélesség, téma) tárolunk. Belépve a fiókodhoz kötjük.'],
     [
       'Miért és milyen jogalapon?',
@@ -44,6 +45,7 @@ const EN: typeof HU = {
       'Without an account everything stays on your device. When you sign in, your account holds: email, name, cars (plate, country code), favourite places, parking history (place, zone, time, fee), the active parking, settings and billing profiles (name, address, company tax number). For bank cards we only keep the brand, the last 4 digits and the expiry date, never the full number or the CVC.',
     ],
     ['Location', 'Your GPS position is used on your device only (map, “Park here”, back to my car). Only the place where you start a parking is sent to the server.'],
+    ['Anonymous usage statistics', 'During the closed beta we anonymously count how many searches turn into navigation, start and stop (event name, time, language, platform, zone letter, duration). It contains no name, email, plate or exact location and is not linked to your account; a random ID connects the steps within one visit. You can turn it off in Settings. Legal basis: legitimate interest (improving the app).'],
     ['Feedback', 'If you send feedback we store the text, the rating and some technical details (version, platform, language, screen width, theme). When signed in it is linked to your account.'],
     ['Why and on what legal basis', 'The account and sync are needed to provide the service (contract, GDPR Art. 6(1)(b)). Feedback is voluntary and used to improve the app (legitimate interest, Art. 6(1)(f)). Billing data is kept as required by accounting law.'],
     [
@@ -68,6 +70,7 @@ const DE: typeof HU = {
       'Ohne Konto bleiben alle Daten auf deinem Gerät. Wenn du dich anmeldest, enthält dein Konto: E-Mail, Name, Autos (Kennzeichen, Ländercode), Lieblingsorte, Parkverlauf (Ort, Zone, Zeit, Gebühr), den aktiven Parkvorgang, Einstellungen und Rechnungsprofile (Name, Adresse, Steuernummer der Firma). Von Bankkarten speichern wir nur Marke, die letzten 4 Ziffern und das Ablaufdatum, nie die vollständige Nummer oder die CVC.',
     ],
     ['Standort', 'Deine GPS-Position wird nur auf deinem Gerät verwendet (Karte, „Hier parken“, zurück zum Auto). An den Server geht nur der Ort, an dem du einen Parkvorgang startest.'],
+    ['Anonyme Nutzungsstatistik', 'Während der geschlossenen Beta zählen wir anonym, wie viele Suchen zu Navigation, Start und Ende führen (Ereignisname, Zeit, Sprache, Plattform, Zonenbuchstabe, Dauer). Sie enthält keinen Namen, keine E-Mail, kein Kennzeichen und keinen genauen Ort und wird nicht mit deinem Konto verknüpft; eine zufällige ID verbindet die Schritte innerhalb eines Besuchs. In den Einstellungen abschaltbar. Rechtsgrundlage: berechtigtes Interesse (Verbesserung der App).'],
     ['Feedback', 'Wenn du Feedback sendest, speichern wir Text, Bewertung und einige technische Angaben (Version, Plattform, Sprache, Bildschirmbreite, Design). Angemeldet wird es mit deinem Konto verknüpft.'],
     ['Warum und auf welcher Rechtsgrundlage', 'Konto und Synchronisierung sind für den Dienst nötig (Vertrag, DSGVO Art. 6 Abs. 1 lit. b). Feedback ist freiwillig und dient der Verbesserung der App (berechtigtes Interesse, Art. 6 Abs. 1 lit. f). Rechnungsdaten bewahren wir nach dem Rechnungslegungsrecht auf.'],
     [

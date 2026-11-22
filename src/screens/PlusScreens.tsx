@@ -1,3 +1,4 @@
+import { track } from '../logic/analytics';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, Share, Text, TextInput, View } from 'react-native';
 import { Icon, type IconName } from '../components/icons';
@@ -79,7 +80,7 @@ export function PlusPage({
             <Text style={{ color: C.sub, fontWeight: '700' }}>{a.plusMonthly}</Text>
             <Text style={{ fontSize: 26, fontWeight: '900', color: titleColor() }}>{a.plusMonthlyPrice(formatFt(PLUS_MONTHLY_FT))}</Text>
             <Text style={{ color: C.sub }}>{a.plusMonthlySub}</Text>
-            <PrimaryButton text={a.plusSubscribe} onPress={() => patchSettings({ plus: 'monthly', plusSince: Date.now() })} />
+            <PrimaryButton text={a.plusSubscribe} onPress={() => (track('plus_subscribe'), patchSettings({ plus: 'monthly', plusSince: Date.now() }))} />
             <Text style={{ color: C.sub, fontSize: 12, marginTop: 8 }}>
               {payLabel} · {a.plusDemo}
             </Text>

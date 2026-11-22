@@ -105,6 +105,8 @@ export type Settings = {
   /** Plusz: automatikus hosszabbítás lejárat előtt, legfeljebb ennyi extra percig */
   autoExtend: boolean;
   autoExtendMax: 30 | 60 | 120;
+  /** Névtelen használati statisztika (zárt béta), kikapcsolható */
+  stats: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -120,6 +122,7 @@ export const DEFAULT_SETTINGS: Settings = {
   plusSince: 0,
   autoExtend: true,
   autoExtendMax: 60,
+  stats: true,
 };
 
 /** Parkolj Plusz árak (a bevételi modell szerint, a Simple Pro 69 Ft-ja alatt) */

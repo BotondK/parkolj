@@ -53,27 +53,30 @@ export function ListRow({
   danger?: boolean;
 }) {
   const color = danger ? C.danger : C.text;
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 14,
-        paddingHorizontal: 16,
-        paddingVertical: 15,
-        borderBottomWidth: last ? 0 : 1,
-        borderColor: C.line,
-        backgroundColor: pressed ? C.soft : 'transparent',
-      })}
-    >
+  const base = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    borderBottomWidth: last ? 0 : 1,
+    borderColor: C.line,
+  };
+  const body = (
+    <>
       {icon && <Icon name={icon} size={24} color={danger ? C.danger : isDark ? C.text : C.brand} />}
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 17, fontWeight: '600', color }}>{label}</Text>
         {!!sub && <Text style={{ fontSize: 13, color: C.sub, marginTop: 2 }}>{sub}</Text>}
       </View>
       {right ?? (onPress ? <Icon name="chevron" size={20} color={C.sub} /> : null)}
+    </>
+  );
+  // Kattintás nélküli sor sima nézet: így a benne lévő kapcsolót a képernyőolvasó nem jelzi letiltottnak
+  if (!onPress) return <View style={base}>{body}</View>;
+  return (
+    <Pressable onPress={onPress} role="button" style={({ pressed }) => ({ ...base, backgroundColor: pressed ? C.soft : 'transparent' })}>
+      {body}
     </Pressable>
   );
 }

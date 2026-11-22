@@ -1,3 +1,4 @@
+import { track } from '../logic/analytics';
 import { useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { MARKER_COLORS } from '../components/mapTypes';
@@ -323,7 +324,7 @@ export function PayStep({
             {plate} → {smsNumber}
           </Text>
           <Pressable
-            onPress={() => Linking.openURL(`sms:${smsNumber}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(plate)}`)}
+            onPress={() => (track('sms_open', { zone: z?.id ?? 'none' }), Linking.openURL(`sms:${smsNumber}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(plate)}`))}
             style={[styles.navBtn, { marginTop: 10 }]}
           >
             <Text style={styles.navBtnText}>{t.smsSend}</Text>

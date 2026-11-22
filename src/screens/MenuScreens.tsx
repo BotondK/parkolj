@@ -375,6 +375,7 @@ function SettingsPage({ t, a, lang, setLang, settings, patchSettings, demoSpeed,
           </View>
         )}
         <ToggleRow icon="info" label={a.helpBar} value={settings.helpBar} onChange={(helpBar) => patchSettings({ helpBar })} />
+        <ToggleRow icon="chat" label={a.stats} sub={a.statsSub} value={settings.stats !== false} onChange={(stats) => patchSettings({ stats })} />
         <ToggleRow icon="clock" label={a.demoClock} sub={t.demoSpeed.replace(/^Dem[oó]: [^(]*/, '')} value={demoSpeed} onChange={setDemoSpeed} last />
       </Section>
     </View>

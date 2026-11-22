@@ -128,6 +128,9 @@ export function makeCloud(cfg: CloudConfig, f: Fetch = fetch) {
       }),
     /** Fiók és minden adat végleges törlése (adatbázis-függvény, csak a saját fiókra) */
     deleteAccount: (s: AuthSession) => call<unknown>('/rest/v1/rpc/delete_my_account', { method: 'POST', token: s.accessToken, body: '{}' }),
+    /** Névtelen használati események (zárt béta); felhasználói azonosító nélkül, belépve sem kötjük a fiókhoz */
+    sendEvents: (events: { sid: string; name: string; at: string; lang: string; platform: string; props: Record<string, unknown> }[]) =>
+      call<unknown>('/rest/v1/events', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(events.map((e) => ({ sid: e.sid, name: e.name, at: e.at, lang: e.lang, platform: e.platform, props: e.props }))) }),
     /** A városnak: anonim összesítés (legalább 5 parkolás és 3 felhasználó csoportonként), belépés nélkül is */
     cityStats: () => call<CityRow[]>('/rest/v1/rpc/city_stats', { method: 'POST', body: '{}' }),
   };

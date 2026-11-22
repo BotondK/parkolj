@@ -27,6 +27,7 @@ import { PlusActivePanel, PlusOnPay } from './src/screens/PlusScreens';
 import CityScreen from './src/screens/CityScreen';
 import { registerServiceWorker, useOnline } from './src/logic/offline';
 import { eventStay } from './src/logic/event';
+import { configureStats, track } from './src/logic/analytics';
 import Onboarding from './src/screens/Onboarding';
 import {
   ActiveStep,
@@ -134,7 +135,11 @@ function Main() {
   const [demoSpeed, setDemoSpeed] = useState(true);
   const [banner, setBanner] = useState<{ kind: 'warn' | 'danger' | 'good'; text: string } | null>(null);
   const online = useOnline();
+  useEffect(() => configureStats({ enabled: settings.stats !== false, lang }), [settings.stats, lang]);
   const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    if (loaded) track('app_open');
+  }, [loaded]);
   const [onboarded, setOnboarded] = useState(true);
 
   // --- Helyi tárolás: autók, előzmények, aktív parkolás, nyelv ---
@@ -332,10 +337,12 @@ function Main() {
   useEffect(() => {
     if (loaded && cloud) flushFeedback();
   }, [loaded]);
-  const sendFeedback = (rating: number | null, message: string) =>
-    flushFeedback([
+  const sendFeedback = (rating: number | null, message: string) => {
+    track('feedback', { rating: rating ?? 0 });
+    return flushFeedback([
       { at: Date.now(), rating, message, meta: { version: '0.3', platform: Platform.OS, lang, width: String(Math.round(width)), theme: dark ? 'dark' : 'light' } },
     ]);
+  };
 
   const finishLogin = async (s: AuthSession, name: string) => {
     const remote = await cloud!.load(s);
@@ -429,6 +436,7 @@ function Main() {
   const results = usePlaceSearch(query);
 
   const pickDest = (p: Place) => {
+    track('dest_selected', { kind: p.kind });
     setHere(null);
     setDest(p);
     setArriveOffset(0);
@@ -439,6 +447,7 @@ function Main() {
   };
 
   const pickHere = useCallback((pt: LatLng) => {
+    track('here_selected');
     setDest(null);
     setLocMsg(null);
     setHere(pt);
@@ -506,6 +515,7 @@ function Main() {
       setSession({ ...session, durationMin, autoExtMin: (session.autoExtMin ?? 0) + AUTO_EXT_STEP_MIN, warnedSoon: false, warnedExpired: false });
       if (session.remoteId) remoteExtend(session.remoteId, AUTO_EXT_STEP_MIN);
       setBanner({ kind: 'good', text: a.autoExtended(end) });
+      track('auto_extend');
       addNote(a.autoExtendedNote, a.autoExtended(end));
       return;
     }
@@ -586,6 +596,7 @@ function Main() {
         if (id) setSession((cur) => (cur && cur.startedAt <= startedAt + 5000 ? { ...cur, remoteId: id } : cur));
       });
     }
+    track('start', { option: selected.kind, zone: selected.zone?.id ?? 'garage', minutes: duration, plus: settings.plus === 'monthly' || plusOnce });
     setStep('active');
   };
 
@@ -597,12 +608,14 @@ function Main() {
       return;
     }
     setBanner(null);
+    track('extend');
     setSession({ ...session, durationMin: session.durationMin + 15, warnedSoon: false, warnedExpired: false });
     if (session.remoteId) remoteExtend(session.remoteId, 15);
   };
 
   const stopSession = () => {
     if (session?.remoteId) remoteStop(session.remoteId);
+    if (session) track('stop', { zone: session.option.zone?.id ?? 'none', minutes: Math.round(Math.min(session.elapsedSec / 60, session.durationMin) / 15) * 15 });
     if (session) {
       const z = session.option.zone;
       const minutes = Math.max(1, Math.round(Math.min(session.elapsedSec / 60, session.durationMin)));
@@ -1005,6 +1018,7 @@ function Main() {
             text={t.navigate}
             onPress={() => {
               if (!selected) return;
+              track('navigate', { option: selected.kind, zone: selected.zone?.id ?? 'garage' });
               setDuration(Math.min(stay, selected.maxMinutes ?? stay));
               setStep('navigate');
             }}

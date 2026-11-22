@@ -180,3 +180,21 @@ test('garázsjavaslat valódi helyről becsült árral; adatkezelési tájékozt
   await expect(page.getByText('Milyen adatokat tárolunk?')).toBeVisible();
   await expect(page.getByText(/a teljes számot és a CVC-t soha/)).toBeVisible();
 });
+
+test('névtelen statisztika: lépések sorba kerülnek személyes adat nélkül, kikapcsolva törlődnek', async ({ page }) => {
+  await page.getByPlaceholder('Hova szeretnél menni?').fill('opera');
+  await page.getByText('Magyar Állami Operaház').first().click();
+  await page.getByText('Navigálj oda').click();
+  await page.getByText(/Megérkeztem/).click();
+  await page.getByText(/Fizetés és indítás|Indítás \(most/).click();
+  const queue = () => page.evaluate(() => JSON.parse(localStorage.getItem('parkolj:statsQueue') || '[]') as { name: string; props: object }[]);
+  await expect.poll(async () => (await queue()).map((e) => e.name), { timeout: 10_000 }).toEqual(expect.arrayContaining(['app_open', 'dest_selected', 'navigate', 'start']));
+  const raw = JSON.stringify(await queue());
+  expect(raw).not.toContain('ABC');
+  expect(raw).not.toMatch(/47\.\d{3}/);
+
+  await tab(page, 'Menü').click();
+  await page.getByText('Beállítások').click();
+  await page.getByRole('switch', { name: 'Névtelen használati statisztika' }).click();
+  await expect.poll(async () => (await queue()).length).toBe(0);
+});

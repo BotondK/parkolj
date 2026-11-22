@@ -45,6 +45,7 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 37. Internet nélkül is működik (service worker): egyszeri betöltés után az app, a zónák és a már látott térkép offline is betölt, az aktív jegy és az autó helye látszik, „Nincs internet” jelzés. Build: `npm run build:web`
 38. Német nyelv (Deutsch) a magyar és angol mellé, a készülék nyelve alapján előválasztva; német adatkezelési tájékoztató
 39. „Előadás végéig”: színház, koncert, mozi, meccs célpontnál a parkolási idő az esemény várható végéhez igazodik (kezdés a következő félórára, jellemző hossz, visszaséta); ha a 3 órás szabály miatt nem fér bele, a javaslat jelzi, és ott a garázs
+40. Névtelen használati statisztika a zárt bétához (keresés → navigáció → indítás → leállítás tölcsér), felhasználói azonosító, rendszám és pontos hely nélkül; kikapcsolható; napi összesítő: `select * from public.funnel_daily;` a Supabase SQL Editorban
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 
