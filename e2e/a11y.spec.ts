@@ -40,3 +40,18 @@ test('akadálymentesség: fő képernyők', async ({ page }) => {
   console.log(all.join('\n'));
   expect(all).toEqual([]);
 });
+
+test('Városnak oldal: mintaadat, szűrő, CSV, akadálymentes', async ({ page }) => {
+  await page.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+  await page.goto('./?varos');
+  await expect(page.getByText('Parkolj – adatok a városnak')).toBeVisible();
+  await expect(page.getByText(/Mintaadat/)).toBeVisible();
+  await page.getByRole('radio', { name: 'Hétvége' }).click();
+  await expect(page.getByRole('radio', { name: 'Hétvége' })).toBeChecked();
+  await page.getByLabel(/A zóna, 19:00–20:00/).click();
+  await expect(page.getByText(/^A zóna, 19:00–20:00: \d+ parkolás$/)).toBeVisible();
+  const dl = page.waitForEvent('download');
+  await page.getByText('CSV letöltése').click();
+  expect((await dl).suggestedFilename()).toBe('parkolj-varosi-adatok-minta.csv');
+  expect(await scan(page, 'városnak')).toEqual([]);
+});

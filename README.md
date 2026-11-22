@@ -41,6 +41,7 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 33. A garázsjavaslat valódi helyekből (OSM, nyilvános, névvel), becsült óradíjjal, férőhellyel, nyitvatartással; Parkl-foglalás link a Parkl üzemeltetésű garázsoknál
 34. Adatkezelési tájékoztató (tervezet a zárt bétához, jogi átnézés előtt) a Menüben és a belépésnél
 35. Akadálymentesség (WCAG 2.1 AA): képernyőolvasó-nevek és szerepek, AA kontraszt világos és sötét módban; automatikus axe-vizsgálat minden feltöltésnél (`e2e/a11y.spec.ts`)
+36. „Városnak” oldal (https://botondk.github.io/parkolj/?varos): anonim összesítés zóna × nap × óra szerint (csoportonként legalább 5 parkolás és 3 felhasználó), hőtérkép, zónánkénti összesítő, CSV; amíg kevés a béta-adat, jelölt mintaadat
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 

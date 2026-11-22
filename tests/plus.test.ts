@@ -21,3 +21,17 @@ test('Plusz: CSV kimutatás pontosvesszővel, idézőjelezéssel', () => {
   const [, row] = csv.split('\r\n');
   assert.equal(row, '2026-11-03 09:05;"Váci utca; belváros";A;H ABC123;60;600;39;100;Visa •••• 4242;Cég Kft.');
 });
+
+test('Városnak: mintaadat, hőtérkép, zónaösszesítő, CSV', async () => {
+  const { sampleCityRows, heat, byZone, cityCsv } = await import('../src/logic/city');
+  const rows = sampleCityRows();
+  assert.ok(rows.every((r) => r.sessions >= 5 && r.users >= 3), 'a mintában is csak anonim csoportok');
+  const h = heat(rows, 'weekday');
+  assert.ok(h.m.A[19] > h.m.A[7], 'esti csúcs');
+  assert.equal(h.max, Math.max(...Object.values(h.m).flatMap((x) => Object.values(x))));
+  const z = byZone(rows, 'all');
+  assert.equal(z.length, 4);
+  assert.ok(z[0].sessions > z[3].sessions);
+  const csv = cityCsv([{ zone_id: 'A', dow: 2, hour: 18, sessions: 6, users: 3, avg_minutes: 45, total_ft: 3600 }]);
+  assert.equal(csv.split('\r\n')[1], 'A;2;18;6;3;45;3600');
+});

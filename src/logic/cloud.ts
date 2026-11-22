@@ -40,6 +40,8 @@ export type CloudData = {
 
 type Fetch = typeof fetch;
 
+export type CityRow = { zone_id: string; dow: number; hour: number; sessions: number; users: number; avg_minutes: number; total_ft: number };
+
 export type Feedback = { at: number; rating: number | null; message: string; meta: Record<string, string> };
 
 export class CloudError extends Error {
@@ -126,6 +128,8 @@ export function makeCloud(cfg: CloudConfig, f: Fetch = fetch) {
       }),
     /** Fiók és minden adat végleges törlése (adatbázis-függvény, csak a saját fiókra) */
     deleteAccount: (s: AuthSession) => call<unknown>('/rest/v1/rpc/delete_my_account', { method: 'POST', token: s.accessToken, body: '{}' }),
+    /** A városnak: anonim összesítés (legalább 5 parkolás és 3 felhasználó csoportonként), belépés nélkül is */
+    cityStats: () => call<CityRow[]>('/rest/v1/rpc/city_stats', { method: 'POST', body: '{}' }),
   };
 }
 

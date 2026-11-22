@@ -51,3 +51,27 @@ alter table public.feedback enable row level security;
 drop policy if exists "visszajelzes kuldese" on public.feedback;
 create policy "visszajelzes kuldese" on public.feedback for insert to anon, authenticated
   with check (user_id is null or user_id = auth.uid());
+
+-- A városnak: anonim összesítés a lezárt parkolásokból (zóna × hét napja × óra, Budapest idő szerint).
+-- Csak az a csoport látszik, amelyben legalább 5 parkolás és legalább 3 különböző felhasználó van; egyedi út nem azonosítható.
+create or replace function public.city_stats()
+returns table (zone_id text, dow int, hour int, sessions int, users int, avg_minutes int, total_ft bigint)
+language sql stable security definer set search_path = '' as $$
+  with h as (
+    select u.user_id,
+           x->>'zoneId' as zone_id,
+           (to_timestamp((x->>'startedAt')::double precision / 1000) at time zone 'Europe/Budapest') as t,
+           coalesce((x->>'minutes')::int, 0) as minutes,
+           coalesce((x->>'cost')::int, 0) as cost
+    from public.user_data u, jsonb_array_elements(coalesce(u.data->'history', '[]'::jsonb)) x
+    where x->>'zoneId' is not null and x->>'startedAt' is not null
+  )
+  select zone_id, extract(isodow from t)::int, extract(hour from t)::int,
+         count(*)::int, count(distinct user_id)::int, round(avg(minutes))::int, sum(cost)::bigint
+  from h
+  group by 1, 2, 3
+  having count(*) >= 5 and count(distinct user_id) >= 3
+  order by 1, 2, 3;
+$$;
+revoke all on function public.city_stats() from public;
+grant execute on function public.city_stats() to anon, authenticated;

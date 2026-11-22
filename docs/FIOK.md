@@ -51,3 +51,7 @@ A `service_role` / secret kulcsot **soha** ne tedd az appba.
 - A token magától frissül, a belépés megmarad az app újraindítása után is.
 - Fiók törlése: a fiók és minden adat véglegesen törlődik a szerverről is.
 - A kód: `src/logic/cloud.ts` (külső csomag nélkül, a Supabase REST API-ján), tesztek: `tests/cloud.test.ts`.
+
+## Városi adatok (2026-11-22)
+
+A „Városnak” oldal (`?varos`) a `city_stats()` adatbázis-függvényből olvas. Ehhez a `supabase/schema.sql`-t még egyszer le kell futtatni a Supabase SQL Editorban (biztonságosan újrafuttatható). A függvény csak olyan csoportot ad vissza, amelyben legalább 5 parkolás és 3 különböző felhasználó van; amíg nincs legalább 10 ilyen csoport, az oldal jelölt mintaadatot mutat.

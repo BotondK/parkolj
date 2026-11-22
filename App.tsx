@@ -24,6 +24,7 @@ import FavoritesScreen from './src/screens/FavoritesScreen';
 import MenuScreens, { cardLabel, profileLabel, walletLabel, type MenuPage } from './src/screens/MenuScreens';
 import ParkingsScreen from './src/screens/ParkingsScreen';
 import { PlusActivePanel, PlusOnPay } from './src/screens/PlusScreens';
+import CityScreen from './src/screens/CityScreen';
 import Onboarding from './src/screens/Onboarding';
 import {
   ActiveStep,
@@ -61,10 +62,12 @@ type Tab = 'park' | 'fav' | 'parkings' | 'menu';
 const STAY_CHOICES = [30, 60, 120, 180, 240];
 
 
+const CITY_PAGE = Platform.OS === 'web' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('varos');
+
 export default function App() {
   return (
     <SafeAreaProvider>
-      <Main />
+      {CITY_PAGE ? <CityScreen /> : <Main />}
     </SafeAreaProvider>
   );
 }
