@@ -40,6 +40,7 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 32. Parkolj Plusz (590 Ft/hó vagy 39 Ft/parkolás, demó fizetés): automatikus hosszabbítás a 3 órás szabályon belül, havi kimutatás profilonként CSV-exporttal, „hol hagytam az autót” jegyzet
 33. A garázsjavaslat valódi helyekből (OSM, nyilvános, névvel), becsült óradíjjal, férőhellyel, nyitvatartással; Parkl-foglalás link a Parkl üzemeltetésű garázsoknál
 34. Adatkezelési tájékoztató (tervezet a zárt bétához, jogi átnézés előtt) a Menüben és a belépésnél
+35. Akadálymentesség (WCAG 2.1 AA): képernyőolvasó-nevek és szerepek, AA kontraszt világos és sötét módban; automatikus axe-vizsgálat minden feltöltésnél (`e2e/a11y.spec.ts`)
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 

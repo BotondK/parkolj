@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Icon } from '../components/icons';
 import { EmptyState, PageHeader, PillButton, SegTabs, titleColor } from '../components/kit';
-import { C, isDark } from '../components/ui';
+import { bgForWhite, C, isDark } from '../components/ui';
 import type { Lang, Strings } from '../i18n';
 import type { AccStrings } from '../i18nAccount';
 import { formatClock, formatDuration, formatFt } from '../logic/pricing';
@@ -57,7 +57,7 @@ export default function ParkingsScreen({
             <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: C.brandSoft, borderRadius: 14, padding: 12, marginBottom: 14 }}>
               <Icon name="info" size={22} color={titleColor()} />
               <Text style={{ flex: 1, color: C.text, fontSize: 14, lineHeight: 20 }}>{a.helpBarText}</Text>
-              <Pressable onPress={onHideHelp} hitSlop={10} accessibilityLabel={a.hide}>
+              <Pressable onPress={onHideHelp} hitSlop={10} role="button" accessibilityLabel={a.hide}>
                 <Icon name="close" size={18} color={C.sub} />
               </Pressable>
             </View>
@@ -81,7 +81,7 @@ function Ticket({ t, a, lang, s, onDetails, onExtend }: { t: Strings; a: AccStri
   const leftSec = Math.max(0, s.durationMin * 60 - s.elapsedSec);
   const ok = leftSec > 0;
   const end = new Date(s.startedAt + s.durationMin * 60000);
-  const color = z?.color ?? '#7C3AED';
+  const color = bgForWhite(z?.color ?? '#7C3AED');
   return (
     <View style={{ backgroundColor: C.card, borderRadius: 20, borderWidth: isDark ? 0 : 1, borderColor: C.line, overflow: 'hidden' }}>
       {/* Felső sáv: zóna színe, mint egy jegy fejléce */}
@@ -91,7 +91,7 @@ function Ticket({ t, a, lang, s, onDetails, onExtend }: { t: Strings; a: AccStri
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 17 }}>{z ? `${z.id} ${t.zone}` : t.garage}</Text>
-          <Text style={{ color: 'rgba(255,255,255,.9)', fontSize: 13 }}>{z ? `${z.pricePerHour} Ft${t.perHour} · SMS ${z.smsCode}` : ''}</Text>
+          <Text style={{ color: '#fff', fontSize: 13 }}>{z ? `${z.pricePerHour} Ft${t.perHour} · SMS ${z.smsCode}` : ''}</Text>
         </View>
         <View style={{ backgroundColor: ok ? C.goodSolid : '#B91C1C', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <Icon name={ok ? 'check' : 'close'} size={14} color="#fff" stroke={2.4} />

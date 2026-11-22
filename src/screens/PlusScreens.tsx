@@ -195,6 +195,7 @@ export function PlusActivePanel({
       <Text style={{ fontWeight: '700', color: C.text }}>{a.spotTitle}</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <TextInput
+          accessibilityLabel={a.spotTitle}
           value={draft}
           onChangeText={setDraft}
           placeholder={a.spotPlaceholder}

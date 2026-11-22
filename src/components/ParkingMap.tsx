@@ -127,7 +127,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
       })}
     </MapView>
       <View style={{ position: 'absolute', right: 12, top: 80, gap: 10, alignItems: 'flex-end' }}>
-        <Pressable onPress={() => setLayersOpen((o) => !o)} accessibilityLabel="Térképrétegek" style={[btn, { backgroundColor: dark ? '#242328' : '#fff' }]}>
+        <Pressable onPress={() => setLayersOpen((o) => !o)} role="button" accessibilityLabel="Térképrétegek" style={[btn, { backgroundColor: dark ? '#242328' : '#fff' }]}>
           <Text style={{ fontSize: 20, color: dark ? '#F5F4F7' : '#1C1B1F' }}>☰</Text>
         </Pressable>
         {layersOpen && (
@@ -150,7 +150,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
           </View>
         )}
         {onLocate && (
-          <Pressable onPress={locateMe} accessibilityLabel="Saját helyzetem" style={[btn, { backgroundColor: dark ? '#242328' : '#fff' }]}>
+          <Pressable onPress={locateMe} role="button" accessibilityLabel="Saját helyzetem" style={[btn, { backgroundColor: dark ? '#242328' : '#fff' }]}>
             <Text style={{ fontSize: 22, color: me ? '#2563EB' : dark ? '#C9A9DC' : '#4A1466' }}>◎</Text>
           </Pressable>
         )}

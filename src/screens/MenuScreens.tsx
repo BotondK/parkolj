@@ -170,12 +170,13 @@ function FeedbackPage({ a, onFeedback, onBack }: MenuProps & { onBack: () => voi
           <Text style={styles.label}>{a.feedbackRate}</Text>
           <View style={{ flexDirection: 'row', gap: 6 }}>
             {[1, 2, 3, 4, 5].map((n) => (
-              <Pressable key={n} onPress={() => setRating(n)} hitSlop={4} accessibilityLabel={`${n}/5`}>
+              <Pressable key={n} onPress={() => setRating(n)} hitSlop={4} role="button" accessibilityLabel={`${n}/5`}>
                 <Icon name={rating && n <= rating ? 'starFill' : 'star'} size={36} color={rating && n <= rating ? '#F5B301' : C.sub} />
               </Pressable>
             ))}
           </View>
           <TextInput
+            accessibilityLabel={a.feedback}
             value={msg}
             onChangeText={setMsg}
             placeholder={a.feedbackPlaceholder}

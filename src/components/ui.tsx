@@ -19,8 +19,8 @@ const LIGHT = {
   onBrand: '#FFFFFF',
   good: '#166534',
   goodSoft: '#DCFCE7',
-  goodSolid: '#0E8A4F',
-  warn: '#B45309',
+  goodSolid: '#0B7A45',
+  warn: '#9A4A06',
   warnSoft: '#FEF3C7',
   danger: '#B91C1C',
   dangerSoft: '#FEE2E2',
@@ -42,7 +42,7 @@ const DARK: typeof LIGHT = {
   onBrand: '#2C0A3D',
   good: '#6EE7A0',
   goodSoft: '#16392A',
-  goodSolid: '#0E8A4F',
+  goodSolid: '#0B7A45',
   warn: '#F5B85A',
   warnSoft: '#3D2E12',
   danger: '#FF8A8A',
@@ -83,7 +83,7 @@ export function Chip({ text, active, onPress }: { text: string; active: boolean;
 
 export function PrimaryButton({ text, onPress, disabled }: { text: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable onPress={disabled ? undefined : onPress} style={[styles.primary, disabled && { opacity: 0.4 }]}>
+    <Pressable role="button" aria-disabled={!!disabled} disabled={disabled} onPress={disabled ? undefined : onPress} style={[styles.primary, disabled && { opacity: 0.4 }]}>
       <Text style={styles.primaryText}>{text}</Text>
     </Pressable>
   );
@@ -182,7 +182,7 @@ const buildStyles = () =>
   tabBar: { flexDirection: 'row', backgroundColor: C.tabBar, borderTopWidth: 1, borderColor: C.line, paddingHorizontal: 6, paddingTop: 8, paddingBottom: 6, gap: 2 },
   tabBtn: { flex: 1, alignItems: 'center', paddingVertical: 2 },
   tabBtnOn: { backgroundColor: C.brandSoft },
-  demoNote: { marginTop: 24, color: C.sub, opacity: 0.8, fontSize: 12, textAlign: 'center' },
+  demoNote: { marginTop: 24, color: C.sub, fontSize: 12, textAlign: 'center' },
   // Asztali elrendezés: bal oldali panel
   sideTop: { backgroundColor: C.card, paddingHorizontal: 28, paddingTop: 28, paddingBottom: 20 },
   sideTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24 },
@@ -225,3 +225,34 @@ export function applyTheme(dark: boolean) {
 }
 
 
+
+// ── Kontraszt (WCAG AA, 4.5:1) ──
+const lum = (hex: string) => {
+  const n = parseInt(hex.replace('#', '').slice(0, 6), 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+};
+export const contrast = (a: string, b: string) => {
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+};
+const mix = (hex: string, to: number, f: number) => {
+  const n = parseInt(hex.replace('#', '').slice(0, 6), 16);
+  return `#${[(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(v + (to - v) * f).toString(16).padStart(2, '0')).join('')}`;
+};
+/** A színt sötétíti (világos háttéren) vagy világosítja (sötéten), amíg olvasható nem lesz a háttéren */
+export function readable(color: string, bg: string, min = 4.5) {
+  const toward = lum(bg) > 0.4 ? 0 : 255;
+  for (let f = 0; f <= 1; f += 0.05) {
+    const c = mix(color, toward, f);
+    if (contrast(c, bg) >= min) return c;
+  }
+  return toward ? '#ffffff' : '#000000';
+}
+/** Színes háttér, amin a fehér szöveg olvasható */
+export const bgForWhite = (color: string) => readable(color, '#ffffff');
+/** Zónaszín szövegként: a háttéren és a kártyán is olvasható */
+export const zoneText = (color: string) => readable(readable(color, C.bg, 5), C.card, 5);

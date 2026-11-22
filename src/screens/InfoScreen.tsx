@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native';
-import { C, styles } from '../components/ui';
+import { bgForWhite, C, styles } from '../components/ui';
 import { ZONES } from '../data/zones';
 import type { Lang, Strings } from '../i18n';
 import { formatDuration, formatFt, isCharging } from '../logic/pricing';
@@ -26,7 +26,7 @@ export default function InfoScreen({ t, lang, hideTitle }: { t: Strings; lang: L
                 borderColor: C.line,
               }}
             >
-              <View style={[styles.badge, { borderRadius: 10, backgroundColor: z.color }]}>
+              <View style={[styles.badge, { borderRadius: 10, backgroundColor: bgForWhite(z.color) }]}>
                 <Text style={{ color: '#fff', fontWeight: '800' }}>{z.id}</Text>
               </View>
               <View style={{ flex: 1 }}>

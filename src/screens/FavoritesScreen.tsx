@@ -119,7 +119,7 @@ export default function FavoritesScreen({
                 last={i === 1}
                 right={
                   f ? (
-                    <Pressable hitSlop={10} onPress={() => remove(f.id)} accessibilityLabel={a.remove}>
+                    <Pressable hitSlop={10} onPress={() => remove(f.id)} role="button" accessibilityLabel={a.remove}>
                       <Icon name="close" size={20} color={C.sub} />
                     </Pressable>
                   ) : (
@@ -142,7 +142,7 @@ export default function FavoritesScreen({
                   onPress={() => go(f)}
                   last={i === custom.length - 1}
                   right={
-                    <Pressable hitSlop={10} onPress={() => remove(f.id)} accessibilityLabel={a.remove}>
+                    <Pressable hitSlop={10} onPress={() => remove(f.id)} role="button" accessibilityLabel={a.remove}>
                       <Icon name="trash" size={20} color={C.sub} />
                     </Pressable>
                   }
@@ -169,7 +169,7 @@ export default function FavoritesScreen({
                   right={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                       {c.id === carId && <Icon name="check" size={20} color={C.good} />}
-                      <Pressable hitSlop={10} onPress={() => onRemoveCar(c.id)} accessibilityLabel={a.remove}>
+                      <Pressable hitSlop={10} onPress={() => onRemoveCar(c.id)} role="button" accessibilityLabel={a.remove}>
                         <Icon name="trash" size={20} color={C.sub} />
                       </Pressable>
                     </View>

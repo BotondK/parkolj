@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { MARKER_COLORS } from '../components/mapTypes';
 import { Icon } from '../components/icons';
-import { BackLink, C, Chip, Meta, PrimaryButton, styles } from '../components/ui';
+import { BackLink, C, Chip, Meta, PrimaryButton, styles, zoneText } from '../components/ui';
 import type { Place } from '../data/places';
 import { zoneAt } from '../logic/geo';
 import { ZONE_CODES } from '../data/zoneCodes';
@@ -117,7 +117,7 @@ export function DestZone({ dest, t }: { dest: Place; t: Strings }) {
   const z = zoneAt(dest);
   if (!z) return <Text>{t.outsideZones}</Text>;
   return (
-    <Text style={{ color: z.color, fontWeight: '700' }}>
+    <Text style={{ color: zoneText(z.color), fontWeight: '700' }}>
       {z.id} {t.zone} · {formatFt(z.pricePerHour)}
       {t.perHour}
     </Text>
@@ -248,7 +248,7 @@ export function PayStep({
       <Text style={styles.h1}>{t.startParking}</Text>
       {z && (
         <View style={[styles.zonePill, { backgroundColor: `${z.color}22` }]}>
-          <Text style={{ color: z.color, fontWeight: '800' }}>
+          <Text style={{ color: zoneText(z.color), fontWeight: '800' }}>
             {z.id} {t.zone} · {z.pricePerHour} Ft{t.perHour} · {z.maxMinutes ? `${t.maxStay} ${formatDuration(z.maxMinutes, lang)}` : t.noLimit}
           </Text>
         </View>
@@ -413,7 +413,7 @@ export function ActiveStep({
       </Pressable>
       <View style={styles.demoRow}>
         <Text style={{ color: C.sub, flex: 1, fontSize: 13 }}>{t.demoSpeed}</Text>
-        <Switch value={demoSpeed} onValueChange={setDemoSpeed} />
+        <Switch accessibilityLabel={t.demoSpeed} value={demoSpeed} onValueChange={setDemoSpeed} />
       </View>
     </View>
   );
@@ -467,6 +467,7 @@ export function CarPicker({
               <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{country}</Text>
             </View>
             <TextInput
+              accessibilityLabel={t.plate}
               value={plate}
               onChangeText={(v) => setPlate(v.toUpperCase())}
               placeholder={country === 'H' ? 'ABC-123' : 'B-AB 1234'}

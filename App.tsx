@@ -6,7 +6,7 @@ import ParkingMap from './src/components/ParkingMap';
 import type { MapMarker } from './src/components/mapTypes';
 import { Icon, type IconName } from './src/components/icons';
 import { ListRow, Section, titleColor } from './src/components/kit';
-import { applyTheme, BackLink, C, Chip, isDark, PrimaryButton, Row, styles } from './src/components/ui';
+import { applyTheme, BackLink, C, Chip, isDark, PrimaryButton, Row, styles, zoneText } from './src/components/ui';
 import type { Place } from './src/data/places';
 import type { LatLng } from './src/data/zones';
 import { STRINGS, type Lang } from './src/i18n';
@@ -791,12 +791,12 @@ function Main() {
         style={[{ flex: 1, minWidth: 0, height: 52, fontSize: 17, color: C.text }, { outlineStyle: 'none' } as object]}
       />
       {query ? (
-        <Pressable onPress={() => setQuery('')} hitSlop={8} style={{ padding: 8 }} accessibilityLabel={a.cancel}>
+        <Pressable onPress={() => setQuery('')} hitSlop={8} style={{ padding: 8 }} role="button" accessibilityLabel={a.cancel}>
           <Icon name="close" size={22} color={C.sub} />
         </Pressable>
       ) : (
         (['home', 'work'] as const).map((k) => (
-          <Pressable key={k} onPress={() => goFavorite(k)} hitSlop={6} style={{ padding: 8 }} accessibilityLabel={k === 'home' ? a.home : a.work}>
+          <Pressable key={k} onPress={() => goFavorite(k)} hitSlop={6} style={{ padding: 8 }} role="button" accessibilityLabel={k === 'home' ? a.home : a.work}>
             <Icon name={k} size={24} color={isDark ? C.text : C.brand} />
           </Pressable>
         ))
@@ -896,7 +896,7 @@ function Main() {
           {districtAt(hereOpt.coord) && <Text style={styles.sub}>{districtAt(hereOpt.coord)}</Text>}
           {hereOpt.zone ? (
             <View style={[styles.zonePill, { backgroundColor: `${hereOpt.zone.color}22` }]}>
-              <Text style={{ color: hereOpt.zone.color, fontWeight: '800' }}>
+              <Text style={{ color: zoneText(hereOpt.zone.color), fontWeight: '800' }}>
                 {hereOpt.zone.id} {t.zone} · {hereOpt.zone.pricePerHour} Ft{t.perHour} ·{' '}
                 {hereOpt.zone.maxMinutes ? `${t.maxStay} ${formatDuration(hereOpt.zone.maxMinutes, lang)}` : t.noLimit}
               </Text>
@@ -927,7 +927,7 @@ function Main() {
               onPress={() => setSaveOpen((o) => !o)}
               hitSlop={8}
               style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: C.brandSoft, alignItems: 'center', justifyContent: 'center' }}
-              accessibilityLabel={a.savePlace}
+              role="button" accessibilityLabel={a.savePlace}
             >
               <Icon name={destSaved ? 'starFill' : 'star'} size={24} color={titleColor()} />
             </Pressable>
@@ -1193,11 +1193,11 @@ function Main() {
     ['menu', a.tabMenu, 'menu'],
   ];
   const tabs = (
-    <View style={styles.tabBar}>
+    <View style={styles.tabBar} role="tablist">
       {TABS.map(([k, label, icon]) => {
         const on = tab === k;
         return (
-          <Pressable key={k} onPress={() => setTab(k)} style={styles.tabBtn} accessibilityRole="tab" accessibilityState={{ selected: on }}>
+          <Pressable key={k} onPress={() => setTab(k)} style={styles.tabBtn} role="tab" aria-selected={on}>
             <View
               style={{
                 width: 52,

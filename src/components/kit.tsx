@@ -9,7 +9,7 @@ export function PageHeader({ title, onBack, right }: { title: string; onBack?: (
   return (
     <View style={{ marginBottom: 14 }}>
       {onBack && (
-        <Pressable onPress={onBack} hitSlop={12} style={{ alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 6 }} accessibilityLabel="Vissza">
+        <Pressable onPress={onBack} hitSlop={12} style={{ alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 6 }} role="button" accessibilityLabel="Vissza">
           <Icon name="back" size={26} color={C.text} />
         </Pressable>
       )}
@@ -87,6 +87,7 @@ export function ToggleRow({ icon, label, sub, value, onChange, last, disabled }:
       last={last}
       right={
         <Switch
+          accessibilityLabel={label}
           value={value}
           disabled={disabled}
           onValueChange={onChange}
@@ -102,11 +103,11 @@ export function ToggleRow({ icon, label, sub, value, onChange, last, disabled }:
 /** Két-három fül aláhúzással (Helyek / Autók, Aktív / Lezárt) */
 export function SegTabs<T extends string>({ tabs, value, onChange }: { tabs: [T, string][]; value: T; onChange: (v: T) => void }) {
   return (
-    <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: C.line, marginBottom: 16 }}>
+    <View role="tablist" style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: C.line, marginBottom: 16 }}>
       {tabs.map(([k, label]) => {
         const on = k === value;
         return (
-          <Pressable key={k} onPress={() => onChange(k)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12 }}>
+          <Pressable key={k} role="tab" aria-selected={on} onPress={() => onChange(k)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12 }}>
             <Text style={{ fontSize: 16, fontWeight: on ? '800' : '600', color: on ? titleColor() : C.sub }}>{label}</Text>
             <View style={{ position: 'absolute', bottom: -1, left: 12, right: 12, height: 3, borderRadius: 2, backgroundColor: on ? titleColor() : 'transparent' }} />
           </Pressable>
@@ -139,6 +140,7 @@ export function Field({
     <View style={{ marginBottom: 12 }}>
       <Text style={{ fontSize: 13, fontWeight: '700', color: C.sub, marginBottom: 6 }}>{label}</Text>
       <TextInput
+        accessibilityLabel={label}
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
@@ -203,11 +205,11 @@ export function EmptyState({ icon, text }: { icon: IconName; text: string }) {
 /** Kis választó gombsor (Rendszer / Világos / Sötét) */
 export function Segmented<T extends string | number>({ options, value, onChange }: { options: [T, string][]; value: T; onChange: (v: T) => void }) {
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: isDark ? C.soft : '#E7E1EC', borderWidth: isDark ? 0 : 1, borderColor: '#D9D0E0', borderRadius: 14, padding: 4, gap: 4 }}>
+    <View role="radiogroup" style={{ flexDirection: 'row', backgroundColor: isDark ? C.soft : '#E7E1EC', borderWidth: isDark ? 0 : 1, borderColor: '#D9D0E0', borderRadius: 14, padding: 4, gap: 4 }}>
       {options.map(([k, label]) => {
         const on = k === value;
         return (
-          <Pressable key={String(k)} onPress={() => onChange(k)} style={{ flex: 1, minHeight: 44, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.primary : 'transparent' }}>
+          <Pressable key={String(k)} role="radio" aria-checked={on} onPress={() => onChange(k)} style={{ flex: 1, minHeight: 44, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.primary : 'transparent' }}>
             <Text testID="seg-label" style={{ fontWeight: '700', fontSize: 15, color: on ? C.onPrimary : C.text, textAlign: 'center' }} numberOfLines={1}>
               {label}
             </Text>

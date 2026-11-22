@@ -1,0 +1,42 @@
+import AxeBuilder from '@axe-core/playwright';
+import { expect, test, type Page } from '@playwright/test';
+
+// Akadálymentességi vizsgálat (WCAG 2.1 A/AA) a fő képernyőkön. A térkép vásznát kihagyjuk (külön szöveges lista van).
+const scan = async (page: Page, name: string) => {
+  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).exclude('.maplibregl-map').analyze();
+  const v = r.violations.map((x) => `${name}: ${x.id} (${x.impact}) ×${x.nodes.length} → ${x.nodes.slice(0, 4).map((n) => (x.id === 'label' ? n.html.slice(0, 200) : x.id === 'color-contrast' ? `"${(n.html.match(/>([^<]{1,40})</) || [])[1] ?? n.html.slice(0, 60)}" ${n.any[0]?.message.match(/contrast of [\d.]+ \(foreground color: #\w+, background color: #\w+/)?.[0]}` : n.target.join(' '))).join(' | ')}`);
+  return v;
+};
+
+test('akadálymentesség: fő képernyők', async ({ page }) => {
+  await page.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+  await page.goto('./');
+  const all: string[] = [];
+  all.push(...(await scan(page, 'bemutató')));
+  await page.getByText('Kezdjük').click();
+  all.push(...(await scan(page, 'parkolás')));
+  await page.getByPlaceholder('Hova szeretnél menni?').fill('opera');
+  await page.getByText('Magyar Állami Operaház').first().click();
+  all.push(...(await scan(page, 'javaslatok')));
+  await page.getByText('Navigálj oda').click();
+  await page.getByText(/Megérkeztem/).click();
+  all.push(...(await scan(page, 'fizetés')));
+  await page.getByText(/Fizetés és indítás|Indítás \(most/).click();
+  all.push(...(await scan(page, 'aktív')));
+  await page.getByRole('tab', { name: 'Parkolásaim' }).click();
+  all.push(...(await scan(page, 'parkolásaim')));
+  await page.getByRole('tab', { name: 'Kedvenceim' }).click();
+  all.push(...(await scan(page, 'kedvencek')));
+  await page.getByRole('tab', { name: 'Menü' }).click();
+  all.push(...(await scan(page, 'menü')));
+  for (const p of ['Beállítások', 'Parkolj Plusz', 'Fizetés és számlázás', 'Visszajelzés küldése', 'Fiók']) {
+    const row = page.getByText(p, { exact: true }).first();
+    if (!(await row.isVisible().catch(() => false))) continue;
+    await row.click();
+    all.push(...(await scan(page, p)));
+    await page.getByRole('tab', { name: 'Menü' }).click();
+    await page.getByRole('tab', { name: 'Menü' }).click();
+  }
+  console.log(all.join('\n'));
+  expect(all).toEqual([]);
+});

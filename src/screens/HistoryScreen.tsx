@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { C, Row, styles } from '../components/ui';
+import { bgForWhite, C, Row, styles } from '../components/ui';
 import { zoneById, type ZoneId } from '../data/zones';
 import type { Lang, Strings } from '../i18n';
 import { formatClock, formatDuration, formatFt } from '../logic/pricing';
@@ -40,7 +40,7 @@ export default function HistoryScreen({ t, lang, items, hideTitle }: { t: String
         return (
           <Pressable key={i.id} onPress={() => setOpen(isOpen ? null : i.id)} style={[styles.card, { marginTop: 10 }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <View style={[styles.badge, { borderRadius: 10, backgroundColor: z ? z.color : C.sub }]}>
+              <View style={[styles.badge, { borderRadius: 10, backgroundColor: z ? bgForWhite(z.color) : C.sub }]}>
                 <Text style={{ color: '#fff', fontWeight: '800' }}>{i.zoneId ?? '–'}</Text>
               </View>
               <View style={{ flex: 1 }}>
