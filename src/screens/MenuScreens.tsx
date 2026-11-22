@@ -479,7 +479,7 @@ function CardsPage({ a, cards, setCards, settings, patchSettings, onBack }: Menu
             <Pressable style={styles.secondary} onPress={() => setAdding(false)}>
               <Text style={styles.secondaryText}>{a.cancel}</Text>
             </Pressable>
-            <Pressable style={[styles.secondary, { backgroundColor: C.primary, borderColor: C.primary }, !(numOk && expOk) && { opacity: 0.4 }]} onPress={numOk && expOk ? add : undefined}>
+            <Pressable role="button" aria-disabled={!(numOk && expOk)} style={[styles.secondary, { backgroundColor: C.primary, borderColor: C.primary }, !(numOk && expOk) && { opacity: 0.4 }]} onPress={numOk && expOk ? add : undefined}>
               <Text style={[styles.secondaryText, { color: C.onPrimary }]}>{a.save}</Text>
             </Pressable>
           </View>
@@ -558,7 +558,7 @@ function ProfilesPage({ a, profiles, setProfiles, settings, patchSettings, onBac
             <Pressable style={styles.secondary} onPress={() => setKind(null)}>
               <Text style={styles.secondaryText}>{a.cancel}</Text>
             </Pressable>
-            <Pressable style={[styles.secondary, { backgroundColor: C.primary, borderColor: C.primary }, !ok && { opacity: 0.4 }]} onPress={save}>
+            <Pressable role="button" aria-disabled={!ok} style={[styles.secondary, { backgroundColor: C.primary, borderColor: C.primary }, !ok && { opacity: 0.4 }]} onPress={save}>
               <Text style={[styles.secondaryText, { color: C.onPrimary }]}>{a.save}</Text>
             </Pressable>
           </View>

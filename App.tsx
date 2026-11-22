@@ -26,6 +26,7 @@ import ParkingsScreen from './src/screens/ParkingsScreen';
 import { PlusActivePanel, PlusOnPay } from './src/screens/PlusScreens';
 import CityScreen from './src/screens/CityScreen';
 import { registerServiceWorker, useOnline } from './src/logic/offline';
+import { eventStay } from './src/logic/event';
 import Onboarding from './src/screens/Onboarding';
 import {
   ActiveStep,
@@ -408,6 +409,12 @@ function Main() {
     const first = 30 - (now.getMinutes() % 30);
     return [0, first, first + 30, first + 60, first + 90];
   }, [dest]);
+  // Színház, koncert, mozi, meccs: a parkolás az esemény várható végéig (+ visszaséta)
+  const ev = useMemo(() => (dest ? eventStay(dest.kind, new Date(Date.now() + arriveOffset * 60000)) : null), [dest, arriveOffset]);
+  useEffect(() => {
+    if (ev) setStay(ev.minutes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dest?.id, ev?.minutes]);
   const options = useMemo(
     () => (dest ? recommend(dest, stay, new Date(Date.now() + arriveOffset * 60000)) : []),
     [dest, stay, arriveOffset],
@@ -969,10 +976,16 @@ function Main() {
 
           <Text style={styles.label}>{t.plannedStay}</Text>
           <View style={styles.chipRow}>
+            {ev && dest && <Chip active={stay === ev.minutes} onPress={() => setStay(ev.minutes)} text={t.untilEnd(dest.kind, formatClock(ev.end))} />}
             {STAY_CHOICES.map((m) => (
-              <Chip key={m} active={stay === m} onPress={() => setStay(m)} text={formatDuration(m, lang)} />
+              <Chip key={m} active={stay === m && !(ev && stay === ev.minutes)} onPress={() => setStay(m)} text={formatDuration(m, lang)} />
             ))}
           </View>
+          {ev && stay === ev.minutes && (
+            <Text style={[styles.sub, { marginTop: 6 }]}>
+              {formatDuration(ev.minutes, lang)} · {t.untilEndNote(formatClock(ev.start), formatClock(ev.end))}
+            </Text>
+          )}
 
           <Text style={styles.label}>{t.options}</Text>
           {options.map((o) => (

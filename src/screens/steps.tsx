@@ -384,8 +384,8 @@ export function ActiveStep({
         </Text>
       </View>
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-        <Pressable style={[styles.secondary, atLimit && { opacity: 0.4 }]} onPress={onExtend}>
-          <Text style={styles.secondaryText}>{t.extend}</Text>
+        <Pressable role="button" style={[styles.secondary, atLimit && { borderColor: C.line }]} onPress={onExtend}>
+          <Text style={[styles.secondaryText, atLimit && { color: C.sub }]}>{t.extend}</Text>
         </Pressable>
         <Pressable style={[styles.secondary, { borderColor: C.danger }]} onPress={onStop}>
           <Text style={[styles.secondaryText, { color: C.danger }]}>{t.stop}</Text>
@@ -486,6 +486,8 @@ export function CarPicker({
               </Pressable>
             )}
             <Pressable
+              role="button"
+              aria-disabled={!valid}
               style={[styles.secondary, { paddingVertical: 10, backgroundColor: C.primary, borderColor: C.primary }, !valid && { opacity: 0.4 }]}
               onPress={() => {
                 if (!valid) return;

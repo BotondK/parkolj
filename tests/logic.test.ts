@@ -182,3 +182,14 @@ test('helynevek és zónafelirat a felület nyelvén', async () => {
   assert.equal(STRINGS.de.zoneOf('A'), 'Zone A');
   if (typeof searchPlaces === 'function') assert.ok((searchPlaces as (q: string) => { name: string }[])('staatsoper').some((p) => p.name === 'Magyar Állami Operaház'));
 });
+
+test('előadás végéig: kezdés a következő félórára, hossz típus szerint, visszasétával, 15 percre kerekítve', async () => {
+  const { eventStay } = await import('../src/logic/event');
+  const arrive = new Date(Date.UTC(2026, 10, 20, 17, 40)); // 18:40 Budapest
+  const e = eventStay('theatre', arrive)!;
+  assert.equal(e.start.toISOString(), '2026-11-20T18:00:00.000Z'); // 19:00
+  assert.equal(e.end.toISOString(), '2026-11-20T21:00:00.000Z'); // 22:00
+  assert.equal(e.minutes, 225); // 18:40 → 22:15 (215 perc), 15-re felkerekítve 3 ó 45 p
+  assert.equal(eventStay('cinema', arrive)!.minutes, 195);
+  assert.equal(eventStay('sight', arrive), null);
+});
