@@ -7,6 +7,7 @@ export const DISTRICT_PLACES: Place[] = DISTRICT_CENTERS.map((d) => ({
   id: `district-${d.name}`,
   name: d.name,
   nameEn: `District ${d.name.split('.')[0]}`,
+  nameDe: `${d.name.split('.')[0]}. Bezirk`,
   address: 'Budapest',
   kind: 'address',
   lat: d.lat,

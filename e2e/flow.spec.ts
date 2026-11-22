@@ -102,7 +102,10 @@ test('beállítások: sötét/világos mód és nyelvváltás', async ({ page })
   await expect(page.getByText('Einstellungen')).toBeVisible();
   await expect(tab(page, 'Favoriten')).toBeVisible();
   await page.getByRole('tab', { name: 'Parken', exact: true }).click();
-  await expect(page.getByPlaceholder('Wohin möchtest du?')).toBeVisible();
+  await page.getByPlaceholder('Wohin möchtest du?').fill('staatsoper');
+  await page.getByText('Ungarische Staatsoper').first().click();
+  await expect(page.getByText(/Zone A · 800 Ft\/Std\./).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Kartenebenen' })).toBeVisible();
 });
 
 test('visszajelzés: fiókszerver nélkül sorba kerül, nem vész el', async ({ page }) => {

@@ -7,7 +7,7 @@ import type { MapMarker } from './src/components/mapTypes';
 import { Icon, type IconName } from './src/components/icons';
 import { ListRow, Section, titleColor } from './src/components/kit';
 import { applyTheme, BackLink, C, Chip, isDark, PrimaryButton, Row, styles, zoneText } from './src/components/ui';
-import type { Place } from './src/data/places';
+import { placeName, type Place } from './src/data/places';
 import type { LatLng } from './src/data/zones';
 import { STRINGS, type Lang } from './src/i18n';
 import { ACC, DEMO_COUPONS } from './src/i18nAccount';
@@ -558,13 +558,13 @@ function Main() {
     const payLabel = payOptions.find((o) => o.id === payMethod)?.label;
     const profLabel = profileId === 'none' ? undefined : profileOptions.find((o) => o.id === profileId)?.label;
     const endTxt = formatClock(new Date(Date.now() + duration * 60000));
-    addNote(a.noteStartTitle, a.noteStarted(selected.zone ? `${selected.zone.id} ${t.zone}, ${car.plate}` : car.plate, endTxt));
+    addNote(a.noteStartTitle, a.noteStarted(selected.zone ? `${t.zoneOf(selected.zone.id)}, ${car.plate}` : car.plate, endTxt));
     setSession({
       payLabel,
       profileLabel: profLabel,
       plusOnce: settings.plus !== 'monthly' && plusOnce,
       option: selected,
-      placeName: dest ? (lang !== 'hu' && dest.nameEn ? dest.nameEn : dest.name) : t.hereTitle,
+      placeName: dest ? placeName(dest, lang) : t.hereTitle,
       plate: car.plate,
       country: car.country,
       durationMin: duration,
@@ -671,7 +671,7 @@ function Main() {
 
   const saveFavorite = (slot: FavoritePlace['slot']) => {
     if (!dest) return;
-    const name = lang !== 'hu' && dest.nameEn ? dest.nameEn : dest.name;
+    const name = placeName(dest, lang);
     const fav: FavoritePlace = {
       id: slot === 'custom' ? `${Date.now()}` : slot,
       slot,
@@ -824,6 +824,7 @@ function Main() {
         controlsTop={!wide}
         zoneStreets={zoneStreets}
         dark={dark}
+        lang={lang}
       />
       {wide ? (
         <View style={{ position: 'absolute', top: 24, right: 24, zIndex: 1100 }}>
@@ -849,7 +850,7 @@ function Main() {
               <Text style={{ color: isDark ? '#93C5FD' : '#2563EB', fontWeight: '700', fontSize: 13 }}>● {t.youAreHere}</Text>
               <Text style={{ color: C.text, fontWeight: '700', fontSize: 16 }}>
                 {meDistrict ?? 'Budapest'}
-                {meZone ? ` · ${meZone.id} ${t.zone} · ${meZone.pricePerHour} Ft${t.perHour}` : ` · ${t.outsideZones}`}
+                {meZone ? ` · ${t.zoneOf(meZone.id)} · ${meZone.pricePerHour} Ft${t.perHour}` : ` · ${t.outsideZones}`}
               </Text>
               <Text style={{ color: C.sub, fontSize: 12 }}>
                 ±{Math.round(live.fix.accuracy)} m{meZone && !isCharging(meZone) ? ` · ${t.free}` : ''}
@@ -904,7 +905,7 @@ function Main() {
           {hereOpt.zone ? (
             <View style={[styles.zonePill, { backgroundColor: `${hereOpt.zone.color}22` }]}>
               <Text style={{ color: zoneText(hereOpt.zone.color), fontWeight: '800' }}>
-                {hereOpt.zone.id} {t.zone} · {hereOpt.zone.pricePerHour} Ft{t.perHour} ·{' '}
+                {t.zoneOf(hereOpt.zone.id)} · {hereOpt.zone.pricePerHour} Ft{t.perHour} ·{' '}
                 {hereOpt.zone.maxMinutes ? `${t.maxStay} ${formatDuration(hereOpt.zone.maxMinutes, lang)}` : t.noLimit}
               </Text>
             </View>
@@ -929,7 +930,7 @@ function Main() {
         <View>
           <BackLink t={t} onPress={reset} />
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-            <Text style={[styles.h1, { flex: 1 }]}>{lang !== 'hu' && dest.nameEn ? dest.nameEn : dest.name}</Text>
+            <Text style={[styles.h1, { flex: 1 }]}>{placeName(dest, lang)}</Text>
             <Pressable
               onPress={() => setSaveOpen((o) => !o)}
               hitSlop={8}
@@ -1084,7 +1085,7 @@ function Main() {
           <Text style={styles.h1}>{t.stopped}</Text>
           <View style={[styles.card, { marginTop: 12 }]}>
             <Row k={t.plate} v={`${session.country} · ${session.plate}`} />
-            <Row k={t.zone.charAt(0).toUpperCase() + t.zone.slice(1)} v={session.option.zone ? `${session.option.zone.id} ${t.zone}` : '—'} />
+            <Row k={t.zone.charAt(0).toUpperCase() + t.zone.slice(1)} v={session.option.zone ? `${t.zoneOf(session.option.zone.id)}` : '—'} />
             <Row k={t.duration} v={formatDuration(Math.min(session.elapsedSec / 60, session.durationMin), lang)} />
             <Row k={t.charged} v={formatFt(chargeFor(session))} strong />
           </View>

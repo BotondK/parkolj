@@ -1,3 +1,4 @@
+import type { Lang } from '../i18n';
 import type { LatLng } from '../data/zones';
 import type { Fix } from '../logic/liveLocationTypes';
 import type { ZoneStreet } from '../logic/zoneStreets';
@@ -28,6 +29,8 @@ export type ParkingMapProps = {
   zoneStreets?: ZoneStreet[];
   /** Sötét mód: sötét alaptérkép és gombok */
   dark?: boolean;
+  /** A feliratok nyelve */
+  lang?: Lang;
 };
 
 export const MARKER_COLORS: Record<MarkerKind, string> = {

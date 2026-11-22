@@ -3,7 +3,7 @@ import { Linking, Platform, Pressable, ScrollView, Switch, Text, TextInput, View
 import { MARKER_COLORS } from '../components/mapTypes';
 import { Icon } from '../components/icons';
 import { BackLink, C, Chip, Meta, PrimaryButton, styles, zoneText } from '../components/ui';
-import type { Place } from '../data/places';
+import { placeName, type Place } from '../data/places';
 import { zoneAt } from '../logic/geo';
 import { ZONE_CODES } from '../data/zoneCodes';
 import { chargeableMinutes, formatClock, formatDuration, formatFt, isCharging, paidEnd, priceWindow } from '../logic/pricing';
@@ -69,7 +69,7 @@ export function SearchStep({
         <Pressable key={p.id} style={styles.result} onPress={() => onPick(p)}>
           <Text style={{ fontSize: 22 }}>{icon[p.kind]}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontWeight: '600', color: C.text, fontSize: 15 }}>{lang !== 'hu' && p.nameEn ? p.nameEn : p.name}</Text>
+            <Text style={{ fontWeight: '600', color: C.text, fontSize: 15 }}>{placeName(p, lang)}</Text>
             <Text style={{ color: C.sub, fontSize: 13 }}>{p.address}</Text>
           </View>
           <Text style={{ color: C.sub }}>›</Text>
@@ -118,7 +118,7 @@ export function DestZone({ dest, t }: { dest: Place; t: Strings }) {
   if (!z) return <Text>{t.outsideZones}</Text>;
   return (
     <Text style={{ color: zoneText(z.color), fontWeight: '700' }}>
-      {z.id} {t.zone} · {formatFt(z.pricePerHour)}
+      {t.zoneOf(z.id)} · {formatFt(z.pricePerHour)}
       {t.perHour}
     </Text>
   );
@@ -166,7 +166,7 @@ export function OptionCard({
         ) : (
           <Meta text={`${Math.round(o.availability * 100)}% ${t.chance}`} tone={o.availability > 0.6 ? 'good' : o.availability > 0.4 ? 'mid' : 'bad'} />
         )}
-        {o.zone && <Meta text={`${o.zone.id} ${t.zone} · ${o.zone.pricePerHour} Ft${t.perHour}`} />}
+        {o.zone && <Meta text={`${t.zoneOf(o.zone.id)} · ${o.zone.pricePerHour} Ft${t.perHour}`} />}
         {o.kind === 'garage' && <Meta text={t.approxPerHour(o.garage?.pricePerHour ?? 0)} />}
         {o.kind === 'garage' && o.garage?.hours === '24/7' && <Meta text={t.open247} />}
         {o.kind === 'garage' && o.garage?.customersOnly && <Meta text={t.customersOnly} tone="mid" />}
@@ -249,7 +249,7 @@ export function PayStep({
       {z && (
         <View style={[styles.zonePill, { backgroundColor: `${z.color}22` }]}>
           <Text style={{ color: zoneText(z.color), fontWeight: '800' }}>
-            {z.id} {t.zone} · {z.pricePerHour} Ft{t.perHour} · {z.maxMinutes ? `${t.maxStay} ${formatDuration(z.maxMinutes, lang)}` : t.noLimit}
+            {t.zoneOf(z.id)} · {z.pricePerHour} Ft{t.perHour} · {z.maxMinutes ? `${t.maxStay} ${formatDuration(z.maxMinutes, lang)}` : t.noLimit}
           </Text>
         </View>
       )}
@@ -369,7 +369,7 @@ export function ActiveStep({
     <View>
       <Text style={styles.h1}>{t.active}</Text>
       <Text style={styles.sub}>
-        {s.plate} · {s.option.zone ? `${s.option.zone.id} ${t.zone}` : ''} · {t.endsAt} {formatClock(endAt)}
+        {s.plate} · {s.option.zone ? `${t.zoneOf(s.option.zone.id)}` : ''} · {t.endsAt} {formatClock(endAt)}
       </Text>
       <View style={[styles.card, { alignItems: 'center', marginTop: 14, paddingVertical: 24 }]}>
         <Text style={{ fontSize: 48, fontWeight: '800', color, fontVariant: ['tabular-nums'] }}>

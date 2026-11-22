@@ -169,3 +169,16 @@ test('garázsok: valódi (OSM) helyek, becsült ár, Parkl-foglalás csak a Park
   assert.equal(estimateGaragePrice({ lat: 47.43, lng: 19.2 }), 400);
   assert.equal(estimateGaragePrice({ lat: 47.43, lng: 19.2 }, 'no'), 0);
 });
+
+test('helynevek és zónafelirat a felület nyelvén', async () => {
+  const { placeName, searchPlaces } = await import('../src/data/places');
+  const { STRINGS } = await import('../src/i18n');
+  const opera = { name: 'Magyar Állami Operaház', nameEn: 'Hungarian State Opera', nameDe: 'Ungarische Staatsoper' };
+  assert.equal(placeName(opera, 'hu'), 'Magyar Állami Operaház');
+  assert.equal(placeName(opera, 'en'), 'Hungarian State Opera');
+  assert.equal(placeName(opera, 'de'), 'Ungarische Staatsoper');
+  assert.equal(placeName({ name: 'Müpa', nameEn: 'Müpa Budapest' }, 'de'), 'Müpa Budapest');
+  assert.equal(STRINGS.hu.zoneOf('A'), 'A zóna');
+  assert.equal(STRINGS.de.zoneOf('A'), 'Zone A');
+  if (typeof searchPlaces === 'function') assert.ok((searchPlaces as (q: string) => { name: string }[])('staatsoper').some((p) => p.name === 'Magyar Állami Operaház'));
+});

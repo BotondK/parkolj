@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Icon } from '../components/icons';
 import { EmptyState, ListRow, PageHeader, PillButton, Section, SegTabs } from '../components/kit';
 import { C, isDark, styles } from '../components/ui';
-import type { Place } from '../data/places';
+import { placeName, type Place } from '../data/places';
 import type { Lang, Strings } from '../i18n';
 import type { AccStrings } from '../i18nAccount';
 import { zoneAt } from '../logic/geo';
@@ -49,7 +49,7 @@ export default function FavoritesScreen({
   const custom = favorites.filter((f) => f.slot === 'custom');
 
   const save = (slot: Slot, p: Place) => {
-    const name = lang !== 'hu' && p.nameEn ? p.nameEn : p.name;
+    const name = placeName(p, lang);
     const fav: FavoritePlace = {
       id: slot === 'custom' ? `${Date.now()}` : slot,
       slot,
@@ -67,7 +67,7 @@ export default function FavoritesScreen({
   const go = (f: FavoritePlace) => onGo({ id: `fav-${f.id}`, name: f.name, address: f.address, kind: 'address', lat: f.lat, lng: f.lng });
   const sub = (f: FavoritePlace) => {
     const z = zoneAt(f);
-    return [f.slot === 'custom' ? f.address : f.name, z ? `${z.id} ${t.zone} · ${z.pricePerHour} Ft${t.perHour}` : t.outsideZones].filter(Boolean).join(' · ');
+    return [f.slot === 'custom' ? f.address : f.name, z ? `${t.zoneOf(z.id)} · ${z.pricePerHour} Ft${t.perHour}` : t.outsideZones].filter(Boolean).join(' · ');
   };
 
   if (picking) {
@@ -82,7 +82,7 @@ export default function FavoritesScreen({
           <Pressable key={p.id} style={styles.result} onPress={() => save(picking, p)}>
             <Icon name="pin" size={22} color={isDark ? C.text : C.brand} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '600', color: C.text, fontSize: 15 }}>{lang !== 'hu' && p.nameEn ? p.nameEn : p.name}</Text>
+              <Text style={{ fontWeight: '600', color: C.text, fontSize: 15 }}>{placeName(p, lang)}</Text>
               <Text style={{ color: C.sub, fontSize: 13 }}>{p.address}</Text>
             </View>
             <Icon name="plus" size={20} color={C.sub} />

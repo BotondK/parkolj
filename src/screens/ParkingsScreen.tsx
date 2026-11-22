@@ -90,7 +90,7 @@ function Ticket({ t, a, lang, s, onDetails, onExtend }: { t: Strings; a: AccStri
           <Text style={{ color: '#fff', fontWeight: '900', fontSize: 20 }}>{z?.id ?? 'P'}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 17 }}>{z ? `${z.id} ${t.zone}` : t.garage}</Text>
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 17 }}>{z ? `${t.zoneOf(z.id)}` : t.garage}</Text>
           <Text style={{ color: '#fff', fontSize: 13 }}>{z ? `${z.pricePerHour} Ft${t.perHour} · SMS ${z.smsCode}` : ''}</Text>
         </View>
         <View style={{ backgroundColor: ok ? C.goodSolid : '#B91C1C', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
