@@ -11,6 +11,8 @@ export default defineConfig({
     locale: 'hu-HU',
     timezoneId: 'Europe/Budapest',
     trace: 'off',
+    // A service worker csak az offline tesztben fut (máshol zavarná a hálózati elfogást)
+    serviceWorkers: 'block',
     // A konténerben előre telepített Chromium (CI-ben a Playwright sajátja)
     launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
   },

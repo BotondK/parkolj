@@ -25,6 +25,7 @@ import MenuScreens, { cardLabel, profileLabel, walletLabel, type MenuPage } from
 import ParkingsScreen from './src/screens/ParkingsScreen';
 import { PlusActivePanel, PlusOnPay } from './src/screens/PlusScreens';
 import CityScreen from './src/screens/CityScreen';
+import { registerServiceWorker, useOnline } from './src/logic/offline';
 import Onboarding from './src/screens/Onboarding';
 import {
   ActiveStep,
@@ -63,6 +64,8 @@ const STAY_CHOICES = [30, 60, 120, 180, 240];
 
 
 const CITY_PAGE = Platform.OS === 'web' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('varos');
+
+registerServiceWorker();
 
 export default function App() {
   return (
@@ -129,6 +132,7 @@ function Main() {
   const [session, setSession] = useState<Session | null>(null);
   const [demoSpeed, setDemoSpeed] = useState(true);
   const [banner, setBanner] = useState<{ kind: 'warn' | 'danger' | 'good'; text: string } | null>(null);
+  const online = useOnline();
   const [loaded, setLoaded] = useState(false);
   const [onboarded, setOnboarded] = useState(true);
 
@@ -1109,6 +1113,11 @@ function Main() {
   const bannerFg = banner?.kind === 'warn' ? C.warn : banner?.kind === 'good' ? C.good : C.danger;
   const panel = (
     <ScrollView ref={scrollRef as never} style={{ flex: 1 }} contentContainerStyle={{ padding: wide ? 28 : 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      {!online && (
+        <View role="status" style={[styles.banner, { backgroundColor: C.warnSoft }]}>
+          <Text style={{ color: C.warn, fontWeight: '700' }}>{a.offline}</Text>
+        </View>
+      )}
       {banner && tab === 'park' && (
         <Pressable onPress={() => banner.kind === 'good' && setBanner(null)} style={[styles.banner, { backgroundColor: bannerBg }]}>
           <Text style={{ color: bannerFg, fontWeight: '600' }}>{banner.text}</Text>
