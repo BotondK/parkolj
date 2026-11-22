@@ -40,10 +40,11 @@ export const formatFt = (n: number) =>
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} Ft`;
 
-export const formatDuration = (min: number, lang: 'hu' | 'en') => {
+export const formatDuration = (min: number, lang: 'hu' | 'en' | 'de') => {
   const h = Math.floor(min / 60);
   const m = Math.round(min % 60);
   if (lang === 'hu') return h ? (m ? `${h} ó ${m} p` : `${h} óra`) : `${m} perc`;
+  if (lang === 'de') return h ? (m ? `${h} Std. ${m} Min.` : `${h} Std.`) : `${m} Min.`;
   return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
 };
 

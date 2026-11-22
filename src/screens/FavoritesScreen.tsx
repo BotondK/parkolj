@@ -49,7 +49,7 @@ export default function FavoritesScreen({
   const custom = favorites.filter((f) => f.slot === 'custom');
 
   const save = (slot: Slot, p: Place) => {
-    const name = lang === 'en' && p.nameEn ? p.nameEn : p.name;
+    const name = lang !== 'hu' && p.nameEn ? p.nameEn : p.name;
     const fav: FavoritePlace = {
       id: slot === 'custom' ? `${Date.now()}` : slot,
       slot,
@@ -82,7 +82,7 @@ export default function FavoritesScreen({
           <Pressable key={p.id} style={styles.result} onPress={() => save(picking, p)}>
             <Icon name="pin" size={22} color={isDark ? C.text : C.brand} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '600', color: C.text, fontSize: 15 }}>{lang === 'en' && p.nameEn ? p.nameEn : p.name}</Text>
+              <Text style={{ fontWeight: '600', color: C.text, fontSize: 15 }}>{lang !== 'hu' && p.nameEn ? p.nameEn : p.name}</Text>
               <Text style={{ color: C.sub, fontSize: 13 }}>{p.address}</Text>
             </View>
             <Icon name="plus" size={20} color={C.sub} />

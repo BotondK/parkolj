@@ -27,6 +27,7 @@ export default function Onboarding({
             [
               ['hu', 'Magyar'],
               ['en', 'English'],
+              ['de', 'Deutsch'],
             ] as [Lang, string][]
           ).map(([l, label]) => (
             <Pressable

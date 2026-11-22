@@ -98,6 +98,11 @@ test('beállítások: sötét/világos mód és nyelvváltás', async ({ page })
   await page.getByText('English', { exact: true }).click();
   await expect(page.getByText('Settings')).toBeVisible();
   await expect(tab(page, 'Favourites')).toBeVisible();
+  await page.getByText('Deutsch', { exact: true }).click();
+  await expect(page.getByText('Einstellungen')).toBeVisible();
+  await expect(tab(page, 'Favoriten')).toBeVisible();
+  await page.getByRole('tab', { name: 'Parken', exact: true }).click();
+  await expect(page.getByPlaceholder('Wohin möchtest du?')).toBeVisible();
 });
 
 test('visszajelzés: fiókszerver nélkül sorba kerül, nem vész el', async ({ page }) => {

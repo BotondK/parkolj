@@ -176,7 +176,7 @@ function Main() {
         // Első indításkor a készülék nyelve alapján: magyar, különben angol (turisták)
         try {
           const loc = Intl.DateTimeFormat().resolvedOptions().locale || '';
-          setLang(loc.toLowerCase().startsWith('hu') ? 'hu' : 'en');
+          setLang(loc.toLowerCase().startsWith('hu') ? 'hu' : loc.toLowerCase().startsWith('de') ? 'de' : 'en');
         } catch {}
       }
       if (s) {
@@ -564,7 +564,7 @@ function Main() {
       profileLabel: profLabel,
       plusOnce: settings.plus !== 'monthly' && plusOnce,
       option: selected,
-      placeName: dest ? (lang === 'en' && dest.nameEn ? dest.nameEn : dest.name) : t.hereTitle,
+      placeName: dest ? (lang !== 'hu' && dest.nameEn ? dest.nameEn : dest.name) : t.hereTitle,
       plate: car.plate,
       country: car.country,
       durationMin: duration,
@@ -671,7 +671,7 @@ function Main() {
 
   const saveFavorite = (slot: FavoritePlace['slot']) => {
     if (!dest) return;
-    const name = lang === 'en' && dest.nameEn ? dest.nameEn : dest.name;
+    const name = lang !== 'hu' && dest.nameEn ? dest.nameEn : dest.name;
     const fav: FavoritePlace = {
       id: slot === 'custom' ? `${Date.now()}` : slot,
       slot,
@@ -929,7 +929,7 @@ function Main() {
         <View>
           <BackLink t={t} onPress={reset} />
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-            <Text style={[styles.h1, { flex: 1 }]}>{lang === 'en' && dest.nameEn ? dest.nameEn : dest.name}</Text>
+            <Text style={[styles.h1, { flex: 1 }]}>{lang !== 'hu' && dest.nameEn ? dest.nameEn : dest.name}</Text>
             <Pressable
               onPress={() => setSaveOpen((o) => !o)}
               hitSlop={8}

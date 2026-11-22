@@ -43,6 +43,7 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 35. Akadálymentesség (WCAG 2.1 AA): képernyőolvasó-nevek és szerepek, AA kontraszt világos és sötét módban; automatikus axe-vizsgálat minden feltöltésnél (`e2e/a11y.spec.ts`)
 36. „Városnak” oldal (https://botondk.github.io/parkolj/?varos): anonim összesítés zóna × nap × óra szerint (csoportonként legalább 5 parkolás és 3 felhasználó), hőtérkép, zónánkénti összesítő, CSV; amíg kevés a béta-adat, jelölt mintaadat
 37. Internet nélkül is működik (service worker): egyszeri betöltés után az app, a zónák és a már látott térkép offline is betölt, az aktív jegy és az autó helye látszik, „Nincs internet” jelzés. Build: `npm run build:web`
+38. Német nyelv (Deutsch) a magyar és angol mellé, a készülék nyelve alapján előválasztva; német adatkezelési tájékoztató
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 

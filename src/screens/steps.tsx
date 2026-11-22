@@ -69,7 +69,7 @@ export function SearchStep({
         <Pressable key={p.id} style={styles.result} onPress={() => onPick(p)}>
           <Text style={{ fontSize: 22 }}>{icon[p.kind]}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontWeight: '600', color: C.text, fontSize: 15 }}>{lang === 'en' && p.nameEn ? p.nameEn : p.name}</Text>
+            <Text style={{ fontWeight: '600', color: C.text, fontSize: 15 }}>{lang !== 'hu' && p.nameEn ? p.nameEn : p.name}</Text>
             <Text style={{ color: C.sub, fontSize: 13 }}>{p.address}</Text>
           </View>
           <Text style={{ color: C.sub }}>›</Text>

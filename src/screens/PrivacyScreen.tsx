@@ -58,8 +58,32 @@ const EN: typeof HU = {
   ],
 };
 
+const DE: typeof HU = {
+  title: 'Datenschutzhinweis',
+  draft: 'Entwurf für die geschlossene Beta, vor rechtlicher Prüfung. Zuletzt geändert: 21. November 2026.',
+  blocks: [
+    ['Wer verarbeitet deine Daten?', 'Parkolj wird betrieben von [Firmenname, Sitz, Handelsregisternummer]. Kontakt: [E-Mail-Adresse], auch für Datenschutzfragen.'],
+    [
+      'Was wir speichern',
+      'Ohne Konto bleiben alle Daten auf deinem Gerät. Wenn du dich anmeldest, enthält dein Konto: E-Mail, Name, Autos (Kennzeichen, Ländercode), Lieblingsorte, Parkverlauf (Ort, Zone, Zeit, Gebühr), den aktiven Parkvorgang, Einstellungen und Rechnungsprofile (Name, Adresse, Steuernummer der Firma). Von Bankkarten speichern wir nur Marke, die letzten 4 Ziffern und das Ablaufdatum, nie die vollständige Nummer oder die CVC.',
+    ],
+    ['Standort', 'Deine GPS-Position wird nur auf deinem Gerät verwendet (Karte, „Hier parken“, zurück zum Auto). An den Server geht nur der Ort, an dem du einen Parkvorgang startest.'],
+    ['Feedback', 'Wenn du Feedback sendest, speichern wir Text, Bewertung und einige technische Angaben (Version, Plattform, Sprache, Bildschirmbreite, Design). Angemeldet wird es mit deinem Konto verknüpft.'],
+    ['Warum und auf welcher Rechtsgrundlage', 'Konto und Synchronisierung sind für den Dienst nötig (Vertrag, DSGVO Art. 6 Abs. 1 lit. b). Feedback ist freiwillig und dient der Verbesserung der App (berechtigtes Interesse, Art. 6 Abs. 1 lit. f). Rechnungsdaten bewahren wir nach dem Rechnungslegungsrecht auf.'],
+    [
+      'Wer hat Zugriff (Auftragsverarbeiter)',
+      'Supabase (Datenbank und Anmeldung, EU-Server in Frankfurt). GitHub Pages (Hosting der Web-App). OpenFreeMap (Kartenkacheln). Photon / komoot (Adresssuche: erhält deine Eingabe). Im Echtbetrieb der Zahlungsdienstleister und NMFR. Wir verkaufen keine Daten und nutzen kein Werbe-Tracking.',
+    ],
+    ['Wie lange', 'Solange dein Konto besteht. Beim Löschen des Kontos (Menü → Mein Konto → Konto löschen) werden alle deine Daten sofort gelöscht, außer was das Rechnungslegungsrecht aufzubewahren verlangt (8 Jahre).'],
+    [
+      'Deine Rechte',
+      'Du kannst Auskunft, Berichtigung oder Löschung deiner Daten verlangen, die Verarbeitung einschränken oder widersprechen. Deinen Parkverlauf kannst du als CSV aus dem Plus-Monatsbericht herunterladen. Beschwerden kannst du bei der ungarischen Datenschutzbehörde (NAIH, naih.hu) einreichen oder vor Gericht bringen.',
+    ],
+  ],
+};
+
 export default function PrivacyScreen({ lang, onBack }: { lang: Lang; onBack: () => void }) {
-  const d = lang === 'en' ? EN : HU;
+  const d = lang === 'en' ? EN : lang === 'de' ? DE : HU;
   return (
     <View>
       <PageHeader title={d.title} onBack={onBack} />

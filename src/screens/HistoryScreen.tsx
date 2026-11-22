@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { bgForWhite, C, Row, styles } from '../components/ui';
 import { zoneById, type ZoneId } from '../data/zones';
-import type { Lang, Strings } from '../i18n';
+import { LOCALE, type Lang, type Strings } from '../i18n';
 import { formatClock, formatDuration, formatFt } from '../logic/pricing';
 import type { HistoryItem } from '../types';
 
@@ -15,7 +15,7 @@ export default function HistoryScreen({ t, lang, items, hideTitle }: { t: String
   });
   const monthTotal = month.reduce((a, i) => a + i.cost + (i.plusFee ?? 0), 0);
   const dateFmt = (ms: number) =>
-    new Date(ms).toLocaleDateString(lang === 'hu' ? 'hu-HU' : 'en-GB', { month: 'short', day: 'numeric' });
+    new Date(ms).toLocaleDateString(LOCALE[lang], { month: 'short', day: 'numeric' });
 
   return (
     <View>

@@ -3,7 +3,7 @@ import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { Icon } from '../components/icons';
 import { EmptyState, Field, ListRow, PageHeader, PillButton, Section, Segmented, ToggleRow, titleColor } from '../components/kit';
 import { C, isDark, PrimaryButton, styles } from '../components/ui';
-import type { Lang, Strings } from '../i18n';
+import { LOCALE, type Lang, type Strings } from '../i18n';
 import type { AccStrings } from '../i18nAccount';
 import { BIOMETRIC_AVAILABLE } from '../logic/biometric';
 import { formatClock, formatFt } from '../logic/pricing';
@@ -308,7 +308,7 @@ function AccountPage({ a, account, setAccount, onWipe, onBack, auth, setPage }: 
 
 function NotesPage({ a, lang, notes, setNotes, onBack }: MenuProps & { onBack: () => void }) {
   const [tip, setTip] = useState(true);
-  const fmt = (ms: number) => `${new Date(ms).toLocaleDateString(lang === 'hu' ? 'hu-HU' : 'en-GB', { month: 'short', day: 'numeric' })} ${formatClock(new Date(ms))}`;
+  const fmt = (ms: number) => `${new Date(ms).toLocaleDateString(LOCALE[lang], { month: 'short', day: 'numeric' })} ${formatClock(new Date(ms))}`;
   return (
     <View>
       <PageHeader title={a.notifications} onBack={onBack} />
@@ -356,6 +356,7 @@ function SettingsPage({ t, a, lang, setLang, settings, patchSettings, demoSpeed,
         options={[
           ['hu', 'Magyar'],
           ['en', 'English'],
+          ['de', 'Deutsch'],
         ]}
         value={lang}
         onChange={setLang}

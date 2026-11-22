@@ -3,7 +3,7 @@ import { Platform, Pressable, Share, Text, TextInput, View } from 'react-native'
 import { Icon, type IconName } from '../components/icons';
 import { PageHeader, PillButton, Segmented, ToggleRow, Section, titleColor } from '../components/kit';
 import { C, isDark, PrimaryButton, styles } from '../components/ui';
-import type { Lang } from '../i18n';
+import { LOCALE, type Lang } from '../i18n';
 import type { AccStrings } from '../i18nAccount';
 import { formatFt } from '../logic/pricing';
 import { historyCsv, PLUS_MONTHLY_FT, PLUS_ONCE_FT, type HistoryItem, type Session, type Settings } from '../types';
@@ -41,7 +41,7 @@ export function PlusPage({
     ['receipt', a.plusF2, a.plusF2d],
     ['pin', a.plusF3, a.plusF3d],
   ];
-  const since = new Date(settings.plusSince || Date.now()).toLocaleDateString(lang === 'hu' ? 'hu-HU' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
+  const since = new Date(settings.plusSince || Date.now()).toLocaleDateString(LOCALE[lang], { year: 'numeric', month: 'short', day: 'numeric' });
   return (
     <View>
       <PageHeader title={a.plusName} onBack={onBack} right={<PlusBadge />} />
@@ -231,7 +231,7 @@ export function MonthlyReport({ a, lang, items, hasPlus, onUnlock }: { a: AccStr
   sel.forEach((i) => byProfile.set(i.profileLabel || a.reportNoProfile, (byProfile.get(i.profileLabel || a.reportNoProfile) ?? 0) + i.cost + (i.plusFee ?? 0)));
   const label = (k: string) => {
     const [y, m] = k.split('-').map(Number);
-    return new Date(y, m, 1).toLocaleDateString(lang === 'hu' ? 'hu-HU' : 'en-GB', { year: 'numeric', month: 'long' });
+    return new Date(y, m, 1).toLocaleDateString(LOCALE[lang], { year: 'numeric', month: 'long' });
   };
   const exportCsv = async () => {
     const csv = historyCsv(sel);
