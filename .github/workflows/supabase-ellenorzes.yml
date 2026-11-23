@@ -22,7 +22,16 @@ jobs:
           RAW_URL: ${{ vars.SUPABASE_URL }}
           KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
-          U="$RAW_URL"; case "$U" in http*) ;; *) U="https://$U.supabase.co";; esac; U="${U%/}"
+          # Ugyanaz az elnéző beolvasás, mint az appban (src/logic/cloud.ts → normalizeSupabaseUrl)
+          U=$(node -e '
+            let s = (process.env.RAW_URL || "").trim().replace(/^["\x27]|["\x27]$/g, "");
+            const d = /supabase\.com\/dashboard\/project\/([a-z0-9]+)/i.exec(s);
+            if (d) s = "https://" + d[1].toLowerCase() + ".supabase.co";
+            else if (/^[a-z0-9]{15,30}$/i.test(s)) s = "https://" + s.toLowerCase() + ".supabase.co";
+            else if (!/^https?:\/\//i.test(s)) s = "https://" + s;
+            console.log(s.replace(/\/+$/, "").replace(/\/(rest|auth)\/v1$/, ""));
+          ')
+          echo "Projekt: ${U%%.*}" | sed 's/[a-z0-9]\{8\}$/********/'
           AUTH=(); case "$KEY" in eyJ*) AUTH=(-H "Authorization: Bearer $KEY");; esac
           req() { curl -s -o /tmp/b -w '%{http_code}' -H "apikey: $KEY" "${AUTH[@]}" -H 'Content-Type: application/json' "$@"; }
           fail=0
