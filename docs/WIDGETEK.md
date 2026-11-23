@@ -22,4 +22,4 @@ A gombok mélylinkkel nyitják az appot (`parkolj://widget/extend`, `/stop`, `/h
 1. `app.json` → `ios.appleTeamId`: az Apple fejlesztői fiók csapatazonosítója (Xcode → Signing, vagy developer.apple.com → Membership).
 2. Az App Group (`group.hu.parkolj.app`) az EAS buildnél automatikusan regisztrálódik az Apple-nél; ha nem, a developer.apple.com-on kell felvenni, és mind a `hu.parkolj.app`, mind a `hu.parkolj.app.widget` azonosítóhoz hozzárendelni.
 3. Expo Go-ban a widget nem működik (natív kód), development vagy preview build kell: lásd `docs/TELEFONOS_BUILD.md`.
-4. Ellenőrizve: `npx expo prebuild` mindkét platformra hibátlanul legenerálja a widgeteket (Android: 2 widget a manifestben előnézeti képpel; iOS: ParkoljWidget target App Group jogosultsággal). Fordítani Mac/EAS kell, ezt a felhőben nem tudtam kipróbálni.
+4. Ellenőrizve: a GitHubon a „Natív fordítás (ellenőrzés)” munkafolyamat minden natív változásnál lefordítja az Android appot (debug APK) és az iPhone appot a widgettel együtt (szimulátorra, aláírás nélkül). 2026-11-23 óta mindkettő zöld. Telefonon még nem próbáltuk ki.
