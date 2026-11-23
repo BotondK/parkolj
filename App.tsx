@@ -24,6 +24,7 @@ import FavoritesScreen from './src/screens/FavoritesScreen';
 import MenuScreens, { cardLabel, profileLabel, walletLabel, type MenuPage } from './src/screens/MenuScreens';
 import ParkingsScreen from './src/screens/ParkingsScreen';
 import { PlusActivePanel, PlusOnPay } from './src/screens/PlusScreens';
+import BetaScreen from './src/screens/BetaScreen';
 import CityScreen from './src/screens/CityScreen';
 import { registerServiceWorker, useOnline } from './src/logic/offline';
 import { eventStay } from './src/logic/event';
@@ -65,14 +66,16 @@ type Tab = 'park' | 'fav' | 'parkings' | 'menu';
 const STAY_CHOICES = [30, 60, 120, 180, 240];
 
 
-const CITY_PAGE = Platform.OS === 'web' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('varos');
+const PAGE_Q = Platform.OS === 'web' && typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+const CITY_PAGE = !!PAGE_Q?.has('varos');
+const BETA_PAGE = !!PAGE_Q?.has('beta');
 
 registerServiceWorker();
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      {CITY_PAGE ? <CityScreen /> : <Main />}
+      {CITY_PAGE ? <CityScreen /> : BETA_PAGE ? <BetaScreen /> : <Main />}
     </SafeAreaProvider>
   );
 }

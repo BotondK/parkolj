@@ -40,8 +40,11 @@ async function flush() {
   try {
     await cloud.sendEvents(batch);
     queue = queue.slice(batch.length);
-  } catch {
-    // marad a sorban, a következő eseménynél újra próbáljuk
+  } catch (e) {
+    // Hálózati vagy szerverhiba: marad a sorban, a következő eseménynél újra próbáljuk.
+    // 4xx (pl. még nincs events tábla, vagy elutasított esemény): eldobjuk, hogy ne próbálkozzon újra és újra.
+    const status = (e as { status?: number })?.status ?? 0;
+    if (status >= 400 && status < 500) queue = queue.slice(batch.length);
   }
   saveJSON('statsQueue', queue);
 }

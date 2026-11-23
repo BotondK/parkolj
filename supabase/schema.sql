@@ -106,3 +106,33 @@ select (at at time zone 'Europe/Budapest')::date as nap,
        count(*) filter (where name = 'plus_subscribe') as plusz_elofizetes
 from public.events group by 1 order by 1 desc;
 revoke all on public.funnel_daily from anon, authenticated;
+
+-- Jelentkezés a zárt bétára (webes oldal: ?beta). Csak a béta meghívóhoz; a béta végén törlendő.
+-- Közvetlen táblajog nincs: az anon kulcs csak a beta_signup függvényt hívhatja, olvasni nem tud.
+create table if not exists public.beta_signups (
+  id bigserial primary key,
+  created_at timestamptz not null default now(),
+  email text not null unique check (email = lower(email) and char_length(email) <= 254 and email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'),
+  platform text not null check (platform in ('ios','android','web')),
+  freq text not null check (freq in ('daily','weekly','monthly','rarely')),
+  who text not null check (who in ('resident','commuter','visitor')),
+  lang text check (char_length(lang) <= 5),
+  invited_at timestamptz
+);
+alter table public.beta_signups enable row level security;
+revoke all on public.beta_signups from anon, authenticated;
+
+create or replace function public.beta_signup(p_email text, p_platform text, p_freq text, p_who text, p_lang text)
+returns void language sql security definer set search_path = public as $$
+  insert into public.beta_signups (email, platform, freq, who, lang)
+  values (lower(trim(p_email)), p_platform, p_freq, p_who, left(p_lang, 5))
+  on conflict (email) do nothing;
+$$;
+revoke all on function public.beta_signup(text, text, text, text, text) from public;
+grant execute on function public.beta_signup(text, text, text, text, text) to anon, authenticated;
+
+-- Áttekintés (Dashboard → SQL: select * from public.beta_summary;) és a meghívandók: select email from public.beta_signups where invited_at is null;
+create or replace view public.beta_summary with (security_invoker = true) as
+select platform, who, freq, count(*) as fo, count(*) filter (where invited_at is not null) as meghivva
+from public.beta_signups group by 1, 2, 3 order by 4 desc;
+revoke all on public.beta_summary from anon, authenticated;

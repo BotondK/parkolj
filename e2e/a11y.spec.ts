@@ -55,3 +55,34 @@ test('Városnak oldal: mintaadat, szűrő, CSV, akadálymentes', async ({ page }
   expect((await dl).suggestedFilename()).toBe('parkolj-varosi-adatok-minta.csv');
   expect(await scan(page, 'városnak')).toEqual([]);
 });
+
+test('Béta jelentkezés: ellenőrzés, hozzájárulás, beküldés, akadálymentes', async ({ page }) => {
+  await page.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+  const box: { sent?: Record<string, string> } = {};
+  await page.route('**/rest/v1/rpc/beta_signup', (r) => {
+    box.sent = r.request().postDataJSON();
+    return r.fulfill({ status: 204, body: '' });
+  });
+  await page.goto('./?beta&lang=hu');
+  await expect(page.getByRole('heading', { name: 'Légy béta tesztelő' })).toBeVisible();
+  expect(await scan(page, 'béta')).toEqual([]);
+  await page.getByText('Jelentkezem').click();
+  await expect(page.getByText('Adj meg egy érvényes e-mail címet.')).toBeVisible();
+  await page.getByLabel('E-mail cím').fill('  Teszt.Elek@Pelda.hu ');
+  await page.getByRole('radio', { name: 'Android' }).click();
+  await page.getByRole('radio', { name: 'Hetente' }).click();
+  await page.getByRole('radio', { name: 'látogató, turista' }).click();
+  await page.getByText('Jelentkezem').click();
+  await expect(page.getByRole('alert')).toHaveText('A jelentkezéshez el kell fogadnod az adatkezelést.');
+  await page.getByRole('checkbox').click();
+  await expect(page.getByRole('checkbox')).toBeChecked();
+  await page.getByText('Jelentkezem').click();
+  // CI-ben be van állítva a Supabase (elfogott kérés), helyben nincs: akkor a „nincs bekapcsolva” üzenet jön
+  await expect(page.getByText(/Köszönjük, felírtunk!|még nincs bekapcsolva/).first()).toBeVisible();
+  if (box.sent) expect(box.sent).toEqual({ p_email: 'teszt.elek@pelda.hu', p_platform: 'android', p_freq: 'weekly', p_who: 'visitor', p_lang: 'hu' });
+  // Nyelvváltás és a tájékoztató
+  await page.goto('./?beta&lang=de');
+  await expect(page.getByRole('heading', { name: 'Werde Beta-Tester' })).toBeVisible();
+  await page.getByRole('link', { name: 'Datenschutzhinweis' }).click();
+  await expect(page.getByText('Anmeldung zur Beta')).toBeVisible();
+});

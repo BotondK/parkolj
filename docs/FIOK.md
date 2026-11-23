@@ -59,3 +59,12 @@ A „Városnak” oldal (`?varos`) a `city_stats()` adatbázis-függvényből ol
 ## Névtelen használati statisztika (2026-11-22)
 
 Az app névtelen eseményeket küld az `events` táblába (keresés, navigáció, indítás, leállítás stb.), felhasználói azonosító, rendszám és pontos hely nélkül; a Beállításokban kikapcsolható. Ehhez is újra kell futtatni a `supabase/schema.sql`-t. A napi tölcsér a Supabase SQL Editorban: `select * from public.funnel_daily;` (kívülről nem olvasható).
+
+## Jelentkezés a bétára (2026-11-23)
+
+A jelentkezési oldal: https://botondk.github.io/parkolj/?beta (nyelv: `&lang=en` vagy `&lang=de`, alapból a böngésző nyelve). A címek a `beta_signups` táblába kerülnek a `beta_signup()` függvényen át; az anon kulcs olvasni nem tudja a listát, és a válaszból sem derül ki, hogy egy cím már szerepel-e. Ehhez is a `supabase/schema.sql` újrafuttatása kell.
+
+- Áttekintés: `select * from public.beta_summary;` (telefon, gyakoriság, lakos/ingázó/látogató szerint)
+- Meghívandók: `select email, platform from public.beta_signups where invited_at is null order by created_at;`
+- Meghívás után: `update public.beta_signups set invited_at = now() where email in (…);`
+- Törlés kérésre: `delete from public.beta_signups where email = '…';` A béta végén az egész tábla törlendő (ezt ígérjük a tájékoztatóban).

@@ -9,7 +9,7 @@ type Block = [title: string, body: string];
 
 const HU: { title: string; draft: string; blocks: Block[] } = {
   title: 'Adatkezelési tájékoztató',
-  draft: 'Tervezet a zárt bétához, jogi átnézés előtt. Utolsó módosítás: 2026. november 21.',
+  draft: 'Tervezet a zárt bétához, jogi átnézés előtt. Utolsó módosítás: 2026. november 23.',
   blocks: [
     ['Ki kezeli az adataidat?', 'A Parkolj üzemeltetője: [cégnév, székhely, cégjegyzékszám]. Kapcsolat: [e-mail cím]. Adatvédelmi kérdésben is itt érsz el minket.'],
     [
@@ -18,6 +18,7 @@ const HU: { title: string; draft: string; blocks: Block[] } = {
     ],
     ['Helyadatok', 'A GPS-helyzetedet csak a készüléken használjuk (térkép, „Parkolás itt”, vissza az autóhoz). A szerverre csak az a hely kerül, ahol parkolást indítasz.'],
     ['Névtelen használati statisztika', 'A zárt béta alatt névtelenül számoljuk, hány keresésből lesz navigáció, indítás és leállítás (esemény neve, ideje, nyelv, platform, zóna betűjele, időtartam). Nincs benne név, e-mail, rendszám vagy pontos hely, és nem kötjük a fiókodhoz; egy alkalmon belül egy véletlen azonosító köti össze a lépéseket. A Beállításokban kikapcsolható. Jogalap: jogos érdek (az app fejlesztése).'],
+    ['Jelentkezés a bétára', 'Ha a jelentkezési oldalon (?beta) feliratkozol, az e-mail címedet, a telefonod típusát, a parkolási szokásodat (milyen gyakran, lakóként, ingázóként vagy látogatóként) és a nyelvet tároljuk, kizárólag a béta meghívóhoz. A béta végén töröljük, előbb is bármikor kérheted. Jogalap: hozzájárulás (6. cikk (1) a)), amelyet bármikor visszavonhatsz.'],
     ['Visszajelzés', 'Ha visszajelzést küldesz, a szöveget, az értékelést és néhány technikai adatot (verzió, platform, nyelv, képernyőszélesség, téma) tárolunk. Belépve a fiókodhoz kötjük.'],
     [
       'Miért és milyen jogalapon?',
@@ -37,7 +38,7 @@ const HU: { title: string; draft: string; blocks: Block[] } = {
 
 const EN: typeof HU = {
   title: 'Privacy notice',
-  draft: 'Draft for the closed beta, before legal review. Last updated: 21 November 2026.',
+  draft: 'Draft for the closed beta, before legal review. Last updated: 23 November 2026.',
   blocks: [
     ['Who handles your data?', 'Parkolj is operated by [company name, registered office, company number]. Contact: [email address], also for privacy questions.'],
     [
@@ -46,6 +47,7 @@ const EN: typeof HU = {
     ],
     ['Location', 'Your GPS position is used on your device only (map, “Park here”, back to my car). Only the place where you start a parking is sent to the server.'],
     ['Anonymous usage statistics', 'During the closed beta we anonymously count how many searches turn into navigation, start and stop (event name, time, language, platform, zone letter, duration). It contains no name, email, plate or exact location and is not linked to your account; a random ID connects the steps within one visit. You can turn it off in Settings. Legal basis: legitimate interest (improving the app).'],
+    ['Beta sign-up', 'If you sign up on the beta page (?beta) we store your email, phone type, parking habit (how often; resident, commuter or visitor) and language, only to invite you to the beta. We delete it when the beta ends, or earlier at your request. Legal basis: consent (Art. 6(1)(a)), which you can withdraw at any time.'],
     ['Feedback', 'If you send feedback we store the text, the rating and some technical details (version, platform, language, screen width, theme). When signed in it is linked to your account.'],
     ['Why and on what legal basis', 'The account and sync are needed to provide the service (contract, GDPR Art. 6(1)(b)). Feedback is voluntary and used to improve the app (legitimate interest, Art. 6(1)(f)). Billing data is kept as required by accounting law.'],
     [
@@ -62,7 +64,7 @@ const EN: typeof HU = {
 
 const DE: typeof HU = {
   title: 'Datenschutzhinweis',
-  draft: 'Entwurf für die geschlossene Beta, vor rechtlicher Prüfung. Zuletzt geändert: 21. November 2026.',
+  draft: 'Entwurf für die geschlossene Beta, vor rechtlicher Prüfung. Zuletzt geändert: 23. November 2026.',
   blocks: [
     ['Wer verarbeitet deine Daten?', 'Parkolj wird betrieben von [Firmenname, Sitz, Handelsregisternummer]. Kontakt: [E-Mail-Adresse], auch für Datenschutzfragen.'],
     [
@@ -71,6 +73,7 @@ const DE: typeof HU = {
     ],
     ['Standort', 'Deine GPS-Position wird nur auf deinem Gerät verwendet (Karte, „Hier parken“, zurück zum Auto). An den Server geht nur der Ort, an dem du einen Parkvorgang startest.'],
     ['Anonyme Nutzungsstatistik', 'Während der geschlossenen Beta zählen wir anonym, wie viele Suchen zu Navigation, Start und Ende führen (Ereignisname, Zeit, Sprache, Plattform, Zonenbuchstabe, Dauer). Sie enthält keinen Namen, keine E-Mail, kein Kennzeichen und keinen genauen Ort und wird nicht mit deinem Konto verknüpft; eine zufällige ID verbindet die Schritte innerhalb eines Besuchs. In den Einstellungen abschaltbar. Rechtsgrundlage: berechtigtes Interesse (Verbesserung der App).'],
+    ['Anmeldung zur Beta', 'Wenn du dich auf der Beta-Seite (?beta) anmeldest, speichern wir deine E-Mail, den Telefontyp, deine Parkgewohnheit (wie oft; Anwohner, Pendler oder Besucher) und die Sprache, nur für die Beta-Einladung. Am Ende der Beta löschen wir sie, auf Wunsch früher. Rechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a), jederzeit widerrufbar.'],
     ['Feedback', 'Wenn du Feedback sendest, speichern wir Text, Bewertung und einige technische Angaben (Version, Plattform, Sprache, Bildschirmbreite, Design). Angemeldet wird es mit deinem Konto verknüpft.'],
     ['Warum und auf welcher Rechtsgrundlage', 'Konto und Synchronisierung sind für den Dienst nötig (Vertrag, DSGVO Art. 6 Abs. 1 lit. b). Feedback ist freiwillig und dient der Verbesserung der App (berechtigtes Interesse, Art. 6 Abs. 1 lit. f). Rechnungsdaten bewahren wir nach dem Rechnungslegungsrecht auf.'],
     [

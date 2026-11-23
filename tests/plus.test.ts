@@ -44,3 +44,19 @@ test('statisztika: csak rövid kategóriaértékek, a sor legfeljebb 200 elem', 
   assert.equal(q.length, 200);
   assert.equal(q[0].at, '50');
 });
+
+test('béta jelentkezés: e-mail ellenőrzés, kötelező mezők, kisbetűs cím', async () => {
+  const { betaError, betaRow, validEmail } = await import('../src/logic/betaCore');
+  assert.ok(validEmail(' Anna@Pelda.HU '));
+  assert.ok(!validEmail('anna@pelda'));
+  assert.ok(!validEmail('anna pelda@x.hu'));
+  const f = { email: 'Anna@Pelda.hu', platform: null, freq: null, who: null, consent: false } as const;
+  assert.equal(betaError({ ...f, email: 'x' }), 'email');
+  assert.equal(betaError(f), 'platform');
+  assert.equal(betaError({ ...f, platform: 'ios' }), 'freq');
+  assert.equal(betaError({ ...f, platform: 'ios', freq: 'weekly' }), 'who');
+  const full = { ...f, platform: 'ios', freq: 'weekly', who: 'visitor', consent: false } as const;
+  assert.equal(betaError(full), 'consent');
+  assert.throws(() => betaRow(full, 'hu'));
+  assert.deepEqual(betaRow({ ...full, consent: true }, 'de'), { p_email: 'anna@pelda.hu', p_platform: 'ios', p_freq: 'weekly', p_who: 'visitor', p_lang: 'de' });
+});
