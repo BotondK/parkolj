@@ -47,7 +47,7 @@ jobs:
           grep -q 'widget.GyorsWidget' android/app/src/main/AndroidManifest.xml
 
   ios:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -56,12 +56,20 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Legújabb Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_*.app | grep -v beta | sort -V | tail -1)
+          sudo xcode-select -s "$X"
+          xcodebuild -version
       - run: npx expo prebuild -p ios
       - name: Fordítás szimulátorra, aláírás nélkül (app + widget)
         run: |
-          set -o pipefail
           xcodebuild -workspace ios/Parkolj.xcworkspace -scheme Parkolj -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO build | tail -n 80
+            CODE_SIGNING_ALLOWED=NO build > build.log 2>&1 || {
+              echo '--- hibák ---'; grep -n 'error:' build.log | head -60
+              echo '--- a hibás lépés vége ---'; grep -n -B40 'Command PhaseScriptExecution failed' build.log | grep -v '^[0-9]*-    export ' | tail -60
+              tail -n 30 build.log; exit 1; }
+          tail -n 5 build.log
       - name: A widget lefordult
         run: find ~/Library/Developer/Xcode/DerivedData -name 'ParkoljWidget.appex' -type d | grep -q .
