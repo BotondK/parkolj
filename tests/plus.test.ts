@@ -60,3 +60,31 @@ test('béta jelentkezés: e-mail ellenőrzés, kötelező mezők, kisbetűs cím
   assert.throws(() => betaRow(full, 'hu'));
   assert.deepEqual(betaRow({ ...full, consent: true }, 'de'), { p_email: 'anna@pelda.hu', p_platform: 'ios', p_freq: 'weekly', p_who: 'visitor', p_lang: 'de' });
 });
+
+test('widget: pillanatkép, állapotok, mélylinkek', async () => {
+  const { buildWidgetData, widgetState, leftText, progress, parseWidgetUrl, widgetUrl, clockText } = await import('../src/widgets/widgetModel');
+  const now = Date.UTC(2026, 10, 23, 12, 0);
+  const zone = { id: 'A', color: '#F15B22', maxMinutes: 180 };
+  const session = { option: { kind: 'street', zone }, placeName: 'Operaház', plate: 'ABC-123', durationMin: 120, elapsedSec: 30 * 60 };
+  const d = buildWidgetData({ lang: 'hu', session, favorites: [{ slot: 'home', name: 'Otthon utca 1.' }], now });
+  assert.equal(d.active!.endsAt - now, 90 * 60000);
+  assert.equal(d.active!.startedAt, now - 30 * 60000);
+  assert.equal(d.active!.canExtend, true);
+  assert.equal(d.home, 'Otthon utca 1.');
+  assert.equal(d.work, null);
+  assert.equal(widgetState(d, now), 'active');
+  assert.equal(leftText(d, now), '1:30');
+  assert.equal(progress(d, now), 0.25);
+  assert.equal(widgetState(d, now + 81 * 60000), 'soon');
+  assert.equal(widgetState(d, now + 91 * 60000), 'expired');
+  assert.equal(clockText(d.active!.endsAt, 'hu'), '14:30');
+  assert.equal(buildWidgetData({ lang: 'hu', session: { ...session, durationMin: 175 }, favorites: [], now }).active!.canExtend, false, '3 órás szabály');
+  const idle = buildWidgetData({ lang: 'de', session: null, favorites: [], now });
+  assert.equal(widgetState(idle, now), 'idle');
+  assert.equal(idle.labels.extend, '+15 Min.');
+  assert.equal(parseWidgetUrl(widgetUrl('extend')), 'extend');
+  assert.equal(parseWidgetUrl('parkolj:///widget/stop?x=1'), 'stop');
+  assert.equal(parseWidgetUrl('parkolj://widget/torol'), null);
+  assert.equal(parseWidgetUrl('https://example.com/widget/stop'), null);
+  assert.equal(parseWidgetUrl(null), null);
+});

@@ -1,5 +1,5 @@
 // A statisztika tiszta függvényei (React Native nélkül, tesztelhető).
-export const EVENT_NAMES = ['app_open', 'dest_selected', 'here_selected', 'navigate', 'start', 'extend', 'auto_extend', 'stop', 'sms_open', 'plus_subscribe', 'feedback'] as const;
+export const EVENT_NAMES = ['app_open', 'dest_selected', 'here_selected', 'navigate', 'start', 'extend', 'auto_extend', 'stop', 'sms_open', 'plus_subscribe', 'feedback', 'widget'] as const;
 export type EventName = (typeof EVENT_NAMES)[number];
 export type StatEvent = { sid: string; name: EventName; at: string; lang: string; platform: string; props: Record<string, string | number | boolean> };
 

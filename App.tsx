@@ -25,6 +25,8 @@ import MenuScreens, { cardLabel, profileLabel, walletLabel, type MenuPage } from
 import ParkingsScreen from './src/screens/ParkingsScreen';
 import { PlusActivePanel, PlusOnPay } from './src/screens/PlusScreens';
 import BetaScreen from './src/screens/BetaScreen';
+import { syncWidgets } from './src/widgets/sync';
+import { buildWidgetData, parseWidgetUrl, type WidgetAction } from './src/widgets/widgetModel';
 import CityScreen from './src/screens/CityScreen';
 import { registerServiceWorker, useOnline } from './src/logic/offline';
 import { eventStay } from './src/logic/event';
@@ -715,6 +717,45 @@ function Main() {
     else setTab('fav');
   };
 
+  // --- Kezdőképernyő-widgetek: pillanatkép minden lényeges változáskor, gombok mélylinkkel (parkolj://widget/…) ---
+  const widgetData = useMemo(
+    () => buildWidgetData({ lang, session, favorites, now: Date.now() }),
+    // A pillanatkép csak kezdéskor, hosszabbításkor, leállításkor és a kedvencek/nyelv változásakor kell; a másodpercek nem
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lang, favorites, session?.startedAt, session?.durationMin, session?.plate, !!session],
+  );
+  useEffect(() => {
+    if (loaded) syncWidgets(widgetData);
+  }, [widgetData, loaded]);
+  const [widgetAct, setWidgetAct] = useState<WidgetAction | null>(null);
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    Linking.getInitialURL().then((u) => setWidgetAct(parseWidgetUrl(u)));
+    const sub = Linking.addEventListener('url', (e) => setWidgetAct(parseWidgetUrl(e.url)));
+    return () => sub.remove();
+  }, []);
+  useEffect(() => {
+    if (!widgetAct || !loaded) return;
+    const act = widgetAct;
+    setWidgetAct(null);
+    track('widget', { action: act });
+    if (act === 'home' || act === 'work') return goFavorite(act);
+    setTab('park');
+    if (act === 'here') {
+      if (session) setStep('active');
+      else {
+        setStep('search');
+        useMyLocation();
+      }
+      return;
+    }
+    if (!session) return setStep('search');
+    setStep('active');
+    if (act === 'extend') extend();
+    if (act === 'stop') stopSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgetAct, loaded]);
+
   const openPlus = () => {
     setMenuPage('plus');
     setTab('menu');
@@ -1221,6 +1262,7 @@ function Main() {
           setDemoSpeed={setDemoSpeed}
           onWipe={wipe}
           onFeedback={sendFeedback}
+          widget={{ data: widgetData, onAction: setWidgetAct }}
           auth={auth}
         />
       )}

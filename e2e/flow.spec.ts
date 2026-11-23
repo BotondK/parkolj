@@ -198,3 +198,42 @@ test('névtelen statisztika: lépések sorba kerülnek személyes adat nélkül,
   await page.getByRole('switch', { name: 'Névtelen használati statisztika' }).click();
   await expect.poll(async () => (await queue()).length).toBe(0);
 });
+
+test('widgetek: előnézet üresen és aktív parkolással, +15 perc és leállítás a widgetről', async ({ page }) => {
+  await tab(page, 'Menü').click();
+  await page.getByText('Widgetek', { exact: true }).click();
+  await expect(page.getByText(/^Tedd ki a Parkolj widgetet/)).toBeVisible();
+  await expect(page.getByText('Nincs aktív parkolás').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Otthon: Beállítás' })).toBeVisible();
+
+  // Parkolás indítása, majd vissza a widgetekhez
+  await page.getByRole('tab', { name: 'Parkolás', exact: true }).click();
+  await page.getByPlaceholder('Hova szeretnél menni?').fill('opera');
+  await page.getByText('Magyar Állami Operaház').first().click();
+  await page.getByText('1 óra', { exact: true }).click(); // a 3 órás korlát alatt, hogy hosszabbítható legyen
+  await page.getByText('Navigálj oda').click();
+  await page.getByText(/Megérkeztem/).click();
+  await page.getByText(/Fizetés és indítás|Indítás \(most/).click();
+  await expect(page.getByText('Aktív parkolás')).toBeVisible();
+  const lejar = async () => (await page.getByText(/^ABC-123 · . zóna · Lejár \d\d:\d\d$|· Lejár \d\d:\d\d/).first().textContent())!.match(/(\d\d):(\d\d)/)!;
+
+  const before = await lejar();
+  await tab(page, 'Menü').click();
+  await page.getByText('Widgetek', { exact: true }).click();
+  const stage = page.getByTestId('widget-stage');
+  await expect(stage.getByText(/zóna · /).first()).toBeVisible();
+  await expect(stage.getByText(/^\d:\d\d$/).first()).toBeVisible(); // iPhone: élő visszaszámlálás
+  await page.getByRole('radio', { name: 'Android' }).click();
+  await expect(stage.getByText(/^Lejár \d\d:\d\d$/).first()).toBeVisible(); // Android: a lejárat ideje
+  await page.getByRole('radio', { name: 'Sötét' }).click();
+  await stage.getByRole('button', { name: '+15 perc' }).click();
+  await expect(page.getByText('Aktív parkolás')).toBeVisible();
+  const after = await lejar();
+  const mins = (m: RegExpMatchArray) => Number(m[1]) * 60 + Number(m[2]);
+  expect((mins(after) - mins(before) + 1440) % 1440).toBe(15);
+
+  await tab(page, 'Menü').click();
+  await page.getByText('Widgetek', { exact: true }).click();
+  await page.getByTestId('widget-stage').getByRole('button', { name: 'Leállítás' }).click();
+  await expect(page.getByText('Parkolás leállítva')).toBeVisible();
+});

@@ -81,12 +81,15 @@ create table if not exists public.events (
   id bigserial primary key,
   received_at timestamptz not null default now(),
   sid uuid not null,
-  name text not null check (name in ('app_open','dest_selected','here_selected','navigate','start','extend','auto_extend','stop','sms_open','plus_subscribe','feedback')),
+  name text not null check (name in ('app_open','dest_selected','here_selected','navigate','start','extend','auto_extend','stop','sms_open','plus_subscribe','feedback','widget')),
   at timestamptz not null,
   lang text check (char_length(lang) <= 5),
   platform text check (char_length(platform) <= 10),
   props jsonb not null default '{}'::jsonb check (pg_column_size(props) < 1000)
 );
+-- Az eseménynevek listája bővülhet: a régi ellenőrzést frissítjük (újrafuttatható)
+alter table public.events drop constraint if exists events_name_check;
+alter table public.events add constraint events_name_check check (name in ('app_open','dest_selected','here_selected','navigate','start','extend','auto_extend','stop','sms_open','plus_subscribe','feedback','widget'));
 alter table public.events enable row level security;
 drop policy if exists "esemeny kuldese" on public.events;
 create policy "esemeny kuldese" on public.events for insert to anon, authenticated with check (true);
@@ -103,7 +106,8 @@ select (at at time zone 'Europe/Budapest')::date as nap,
        count(distinct sid) filter (where name = 'start') as inditas,
        count(distinct sid) filter (where name = 'stop') as leallitas,
        count(*) filter (where name = 'sms_open') as sms,
-       count(*) filter (where name = 'plus_subscribe') as plusz_elofizetes
+       count(*) filter (where name = 'plus_subscribe') as plusz_elofizetes,
+       count(*) filter (where name = 'widget') as widget
 from public.events group by 1 order by 1 desc;
 revoke all on public.funnel_daily from anon, authenticated;
 

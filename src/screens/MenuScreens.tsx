@@ -21,9 +21,11 @@ import {
 } from '../types';
 import InfoScreen from './InfoScreen';
 import PrivacyScreen from './PrivacyScreen';
+import WidgetsScreen from './WidgetsScreen';
+import type { WidgetAction, WidgetData } from '../widgets/widgetModel';
 import { PlusBadge, PlusPage } from './PlusScreens';
 
-export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback' | 'plus' | 'privacy';
+export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback' | 'plus' | 'privacy' | 'widgets';
 
 export type MenuProps = {
   t: Strings;
@@ -49,6 +51,8 @@ export type MenuProps = {
   onWipe: () => void;
   /** Visszajelzés küldése; true = elküldve, false = sorba téve (később megy el) */
   onFeedback: (rating: number | null, message: string) => Promise<boolean>;
+  /** Kezdőképernyő-widgetek előnézete: az aktuális pillanatkép és a gombok művelete */
+  widget: { data: WidgetData; onAction: (a: WidgetAction) => void };
   /** Felhős fiók (Supabase), ha be van állítva */
   auth: {
     cloud: boolean;
@@ -90,6 +94,8 @@ export default function MenuScreens(p: MenuProps) {
       return <FeedbackPage {...p} onBack={back()} />;
     case 'privacy':
       return <PrivacyScreen lang={p.lang} onBack={back()} />;
+    case 'widgets':
+      return <WidgetsScreen lang={p.lang} data={p.widget.data} onAction={p.widget.onAction} onBack={back()} />;
     case 'info':
       return (
         <View>
@@ -144,6 +150,7 @@ function MenuHome({ a, account, setPage, notes, settings }: MenuProps) {
       <Section>
         <ListRow icon="bell" label={a.notifications} onPress={() => setPage('notes')} right={notes.length ? <Badge n={notes.length} /> : undefined} />
         <ListRow icon="gear" label={a.settings} onPress={() => setPage('settings')} />
+        <ListRow icon="map" label={a.widgets} onPress={() => setPage('widgets')} />
         <ListRow icon="card" label={a.purchase} onPress={() => setPage('payment')} />
         <ListRow icon="help" label={a.infoHelp} onPress={() => setPage('info')} />
         <ListRow icon="chat" label={a.feedback} onPress={() => setPage('feedback')} />

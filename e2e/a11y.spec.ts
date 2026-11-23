@@ -29,7 +29,7 @@ test('akadálymentesség: fő képernyők', async ({ page }) => {
   all.push(...(await scan(page, 'kedvencek')));
   await page.getByRole('tab', { name: 'Menü' }).click();
   all.push(...(await scan(page, 'menü')));
-  for (const p of ['Beállítások', 'Parkolj Plusz', 'Fizetés és számlázás', 'Visszajelzés küldése', 'Fiók']) {
+  for (const p of ['Beállítások', 'Widgetek', 'Parkolj Plusz', 'Fizetés és számlázás', 'Visszajelzés küldése', 'Fiók']) {
     const row = page.getByText(p, { exact: true }).first();
     if (!(await row.isVisible().catch(() => false))) continue;
     await row.click();

@@ -47,6 +47,7 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 39. „Előadás végéig”: színház, koncert, mozi, meccs célpontnál a parkolási idő az esemény várható végéhez igazodik (kezdés a következő félórára, jellemző hossz, visszaséta); ha a 3 órás szabály miatt nem fér bele, a javaslat jelzi, és ott a garázs
 40. Névtelen használati statisztika a zárt bétához (keresés → navigáció → indítás → leállítás tölcsér), felhasználói azonosító, rendszám és pontos hely nélkül; kikapcsolható; napi összesítő: `select * from public.funnel_daily;` a Supabase SQL Editorban
 41. Béta jelentkezési oldal (https://botondk.github.io/parkolj/?beta), magyarul, angolul és németül: e-mail, telefon típusa, parkolási szokás, hozzájárulás; a lista csak a Supabase-ben olvasható
+42. Kezdőképernyő-widgetek iPhone-ra és Androidra: „Parkolásom” (zóna, élő visszaszámlálás, +15 perc, leállítás; iPhone zárolt képernyőn is) és „Gyors indítás” (itt, otthon, munkahely); előnézet a webes demóban: Menü → Widgetek. Részletek: `docs/WIDGETEK.md`
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 

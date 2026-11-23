@@ -6,6 +6,8 @@ Nyisd meg a https://botondk.github.io/parkolj/ címet a telefonon.
 - **Android (Chrome):** ⋮ menü → „Alkalmazás telepítése” vagy „Hozzáadás a kezdőképernyőhöz”.
 Ikonnal, teljes képernyőn indul. Korlát: a lejárati értesítés csak nyitott appnál szól.
 
+> Widgetek (docs/WIDGETEK.md): Expo Go-ban nem futnak, development/preview build kell; iPhone-hoz az app.json-ba kell az `ios.appleTeamId`.
+
 ## 2. Expo Go (natív térkép, háttérértesítés nélkül teljes értékű teszt)
 ```bash
 npm install
