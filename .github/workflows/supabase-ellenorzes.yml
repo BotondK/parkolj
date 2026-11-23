@@ -1,0 +1,37 @@
+name: Supabase ellenőrzés
+
+# Csak olvas, vagy szándékosan hibás adatot küld (amit az adatbázis elutasít), így nem kerül be semmi.
+# Megmutatja, hogy a supabase/schema.sql minden része élesben van-e.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/schema.sql'
+      - '.github/workflows/supabase-ellenorzes.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ellenőrzés
+        env:
+          RAW_URL: ${{ vars.SUPABASE_URL }}
+          KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: |
+          U="$RAW_URL"; case "$U" in http*) ;; *) U="https://$U.supabase.co";; esac; U="${U%/}"
+          AUTH=(); case "$KEY" in eyJ*) AUTH=(-H "Authorization: Bearer $KEY");; esac
+          req() { curl -s -o /tmp/b -w '%{http_code}' -H "apikey: $KEY" "${AUTH[@]}" -H 'Content-Type: application/json' "$@"; }
+          fail=0
+          check() { # név, várt kódok (regex), kapott kód
+            if echo "$3" | grep -Eq "^($2)$"; then echo "OK   $1 ($3)"; else echo "HIBA $1: $3 $(head -c 200 /tmp/b)"; fail=1; fi; }
+          check "city_stats függvény" '200' "$(req -X POST "$U/rest/v1/rpc/city_stats" -d '{}')"
+          check "beta_signup függvény (hibás címet elutasít)" '400' "$(req -X POST "$U/rest/v1/rpc/beta_signup" -d '{"p_email":"x","p_platform":"ios","p_freq":"weekly","p_who":"resident","p_lang":"hu"}')"
+          check "events tábla (ismeretlen eseményt elutasít)" '400' "$(req -X POST "$U/rest/v1/events" -d '[{"sid":"00000000-0000-4000-8000-000000000000","name":"nem_letezik","at":"2026-01-01T00:00:00Z"}]')"
+          check "beta_signups kívülről nem olvasható" '401|403' "$(req "$U/rest/v1/beta_signups?select=email&limit=1")"
+          check "funnel_daily kívülről nem olvasható" '401|403' "$(req "$U/rest/v1/funnel_daily?limit=1")"
+          check "feedback tábla létezik (üres beküldést elutasít)" '400' "$(req -X POST "$U/rest/v1/feedback" -d '{"message":null}')"
+          exit $fail
