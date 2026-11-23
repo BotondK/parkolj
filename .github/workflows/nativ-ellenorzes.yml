@@ -1,0 +1,67 @@
+name: Natív fordítás (ellenőrzés)
+
+# Lefordítja az Android és az iPhone appot a widgetekkel együtt (aláírás nélkül), hogy a telefonos build
+# ne az Expo felhőjében bukjon el először. Csak akkor fut, ha natív részt érintő fájl változik, vagy kézzel.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'targets/**'
+      - 'src/widgets/**'
+      - 'app.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'index.ts'
+      - '.github/workflows/nativ-ellenorzes.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nativ-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npx expo prebuild -p android --no-install
+      - name: Fordítás (debug APK)
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: A widgetek benne vannak az appban
+        run: |
+          grep -q 'widget.ParkolasWidget' android/app/src/main/AndroidManifest.xml
+          grep -q 'widget.GyorsWidget' android/app/src/main/AndroidManifest.xml
+
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx expo prebuild -p ios
+      - name: Fordítás szimulátorra, aláírás nélkül (app + widget)
+        run: |
+          set -o pipefail
+          xcodebuild -workspace ios/Parkolj.xcworkspace -scheme Parkolj -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 80
+      - name: A widget lefordult
+        run: find ~/Library/Developer/Xcode/DerivedData -name 'ParkoljWidget.appex' -type d | grep -q .
