@@ -1,5 +1,7 @@
 # Telefonos app kipróbálása és buildelése
 
+> **Lépésről lépésre a saját telefonodra (Android, iPhone, widgetekkel): [TELEFONRA.md](TELEFONRA.md).** Ez az oldal a fejlesztői részletek.
+
 ## 1. Leggyorsabb: webapp a kezdőképernyőn (nem kell semmi telepíteni)
 Nyisd meg a https://botondk.github.io/parkolj/ címet a telefonon.
 - **iPhone (Safari):** Megosztás gomb → „Főképernyőhöz adás”.

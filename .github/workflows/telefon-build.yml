@@ -1,0 +1,52 @@
+name: Telefonos build (EAS)
+
+# Kézzel indítható: GitHub → Actions → „Telefonos build (EAS)” → Run workflow.
+# Kell hozzá egy EXPO_TOKEN titok (expo.dev → Account settings → Access tokens), lásd docs/TELEFONRA.md.
+# Az Expo felhőjében fordít, nem itt; a kész telepítő linkje az expo.dev-en és e-mailben jön.
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform (android: telepíthető APK; ios: csak ha a tanúsítványok már be vannak állítva, lásd docs/TELEFONRA.md)'
+        type: choice
+        options: [android, ios]
+        default: android
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Expo projekt összekötése (első alkalommal létrehozza a fiókodban)
+        run: npx eas-cli@latest init --non-interactive --force
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      # A build az Expo felhőjében fut, oda csak az eas.json-ban megadott változók jutnak el:
+      # a nyilvános (EXPO_PUBLIC_) beállításokat a repó változóiból írjuk bele (a service_role kulcs soha nem kerül ide)
+      - name: Fiók-beállítások a buildbe
+        run: |
+          node -e '
+            const fs = require("fs");
+            const j = JSON.parse(fs.readFileSync("eas.json", "utf8"));
+            const env = { EXPO_PUBLIC_SUPABASE_URL: process.env.SB_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.SB_KEY, EXPO_PUBLIC_API_URL: process.env.API_URL };
+            j.build.preview.env = Object.fromEntries(Object.entries(env).filter(([, v]) => v));
+            fs.writeFileSync("eas.json", JSON.stringify(j, null, 2));
+          '
+        env:
+          SB_URL: ${{ vars.SUPABASE_URL }}
+          SB_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          API_URL: ${{ vars.API_URL }}
+      - name: Build indítása
+        run: npx eas-cli@latest build -p ${{ inputs.platform }} --profile preview --non-interactive --no-wait
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          # az előző lépések módosították az app.json-t és az eas.json-t: a munkakönyvtárat töltjük fel, nem a commitot
+          EAS_NO_VCS: '1'
