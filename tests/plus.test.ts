@@ -88,3 +88,16 @@ test('widget: pillanatkép, állapotok, mélylinkek', async () => {
   assert.equal(parseWidgetUrl('https://example.com/widget/stop'), null);
   assert.equal(parseWidgetUrl(null), null);
 });
+
+test('élő tevékenység: az app és a widget ugyanazt az adattípust használja (iOS csak így köti össze)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const a = readFileSync(new URL('../modules/parkolj-live/ios/ParkingActivityAttributes.swift', import.meta.url), 'utf8');
+  const b = readFileSync(new URL('../targets/widget/ParkingActivityAttributes.swift', import.meta.url), 'utf8');
+  assert.equal(a, b);
+  // A pillanatkép minden mezőt tartalmaz, amit a natív oldal vár (LiveController.Payload)
+  const { buildWidgetData } = await import('../src/widgets/widgetModel');
+  const d = buildWidgetData({ lang: 'hu', session: { option: { kind: 'street', zone: { id: 'A', color: '#F15B22', maxMinutes: 180 } }, placeName: 'X', plate: 'ABC-123', durationMin: 60, elapsedSec: 0 }, favorites: [], now: 0 });
+  const payload = { ...d.active!, labels: d.labels };
+  for (const k of ['zone', 'color', 'plate', 'place', 'startedAt', 'endsAt', 'canExtend']) assert.ok(k in payload, k);
+  for (const k of ['zone', 'expires', 'expired', 'extend', 'stop']) assert.ok(k in payload.labels, k);
+});

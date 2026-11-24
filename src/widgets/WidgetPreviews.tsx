@@ -182,3 +182,59 @@ export function LockPreview({ d, now }: { d: WidgetData; now: number }) {
     </View>
   );
 }
+
+/** iPhone élő tevékenység: Dynamic Island (kicsi) és a zárolt képernyős értesítés (targets/widget/ParkingLiveActivity.swift) */
+export function LivePreview({ d, now, onAction }: { d: WidgetData; now: number; onAction: Act }) {
+  const a = d.active;
+  const L = d.labels;
+  if (!a) return null;
+  const st = widgetState(d, now);
+  const sub = '#D9C8E6';
+  const badge = (size: number) => (
+    <View style={{ width: size, height: size, borderRadius: size * 0.27, backgroundColor: a.color, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ color: '#fff', fontWeight: '900', fontSize: size * 0.55 }}>{a.zone ?? 'P'}</Text>
+    </View>
+  );
+  const timer = st === 'expired' ? L.expired : leftText(d, now);
+  return (
+    <View style={{ gap: 12, alignItems: 'center' }}>
+      <View accessibilityLabel={`Dynamic Island: ${timer}`} style={{ width: 200, height: 36, borderRadius: 18, backgroundColor: '#000', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 }}>
+        {badge(22)}
+        <Text style={{ color: st === 'expired' ? '#FF8A8A' : '#fff', fontWeight: '600', fontSize: 14, fontVariant: ['tabular-nums'] }}>{timer}</Text>
+      </View>
+      <View style={{ width: 338, borderRadius: 22, backgroundColor: '#2C0A3D', padding: 16, gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {badge(34)}
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }} numberOfLines={1}>
+              {a.zone ? `${a.zone} ${L.zone} · ` : ''}
+              {a.plate}
+            </Text>
+            <Text style={{ color: sub, fontSize: 12 }} numberOfLines={1}>
+              {a.place}
+            </Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ color: st === 'expired' ? '#FF8A8A' : '#fff', fontWeight: '800', fontSize: 26, fontVariant: ['tabular-nums'] }}>{timer}</Text>
+            <Text style={{ color: sub, fontSize: 12, fontWeight: '600' }}>
+              {L.expires} {clockText(a.endsAt, d.lang)}
+            </Text>
+          </View>
+        </View>
+        <View style={{ height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.16)', overflow: 'hidden' }}>
+          <View style={{ width: `${Math.round(progress(d, now) * 100)}%`, height: 6, backgroundColor: '#C9A9DC' }} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {st !== 'expired' && a.canExtend && (
+            <Pressable onPress={() => onAction('extend')} role="button" accessibilityLabel={L.extend} style={{ flex: 1, height: 34, borderRadius: 17, backgroundColor: '#C9A9DC', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#2C0A3D', fontWeight: '700', fontSize: 14 }}>＋ {L.extend}</Text>
+            </Pressable>
+          )}
+          <Pressable onPress={() => onAction('stop')} role="button" accessibilityLabel={L.stop} style={{ flex: 1, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>■ {L.stop}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}

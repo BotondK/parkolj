@@ -7,6 +7,8 @@ Két widget a telefonos appokhoz. A webes demóban előnézetként látszanak é
 | **Parkolásom** | iPhone: kicsi, közepes, zárolt képernyő (kör, téglalap, egysoros). Android: 4×2, átméretezhető, Android 16-tól zárolt képernyőn is | Zóna, rendszám, hely, hátralévő idő (iPhone: élő, másodpercre pontos visszaszámlálás; Android: a lejárat pontos ideje), előrehaladás sáv; 10 perccel lejárat előtt figyelmeztető szín, lejáratkor „Lejárt” | +15 perc (ha a 3 órás szabály engedi), Leállítás; ha nincs parkolás: Parkolás itt |
 | **Gyors indítás** | iPhone: kicsi, közepes. Android: 4×1, átméretezhető | Parkolás itt, Otthon, Munkahely (a mentett hely nevével) | Mindhárom egy koppintás |
 
+**Élő tevékenység (iPhone, iOS 16.2+):** aktív parkolás közben magától megjelenik a zárolt képernyőn és a Dynamic Islandben (kicsi: zóna + visszaszámlálás; kibontva: rendszám, hely, lejárat, +15 perc, Leállítás). Indításkor indul, hosszabbításkor frissül, leállításkor eltűnik. Kód: `modules/parkolj-live/` (helyi Expo-modul, ActivityKit) és `targets/widget/ParkingLiveActivity.swift` (megjelenés). A két `ParkingActivityAttributes.swift` fájlnak egyeznie kell, ezt teszt ellenőrzi. Androidon ennek nincs megfelelője, ott a widget és az értesítés jelez.
+
 A gombok mélylinkkel nyitják az appot (`parkolj://widget/extend`, `/stop`, `/here`, `/home`, `/work`, `/open`), és ugyanazt csinálják, mint az app saját gombjai (a hosszabbítás ugyanúgy ellenőrzi a zóna maximumát). A widget nem fizet és nem indít parkolást az app megnyitása nélkül.
 
 ## Felépítés

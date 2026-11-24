@@ -3,7 +3,7 @@ import { Platform, Text, View } from 'react-native';
 import { PageHeader, Section, Segmented } from '../components/kit';
 import { C } from '../components/ui';
 import type { Lang } from '../i18n';
-import { LockPreview, ParkingPreview, QuickPreview } from '../widgets/WidgetPreviews';
+import { LivePreview, LockPreview, ParkingPreview, QuickPreview } from '../widgets/WidgetPreviews';
 import type { WidgetAction, WidgetData } from '../widgets/widgetModel';
 
 // Menü → Widgetek: a kezdőképernyő-widgetek élő előnézete (az app aktuális adataival) és a kihelyezés lépései.
@@ -18,6 +18,9 @@ const T = {
     parking: 'Parkolásom',
     parkingSub: 'Zóna, rendszám, hátralévő idő, +15 perc és leállítás. Kicsi és közepes méretben.',
     lock: 'Zárolt képernyőn',
+    live: 'Élő tevékenység',
+    liveSub: 'Parkolás közben a zárolt képernyőn és a Dynamic Islandben is látszik a visszaszámlálás, gombokkal. Magától jelenik meg, nem kell kitenni.',
+    liveIdle: 'Parkolás indításakor jelenik meg.',
     quick: 'Gyors indítás',
     quickSub: 'Parkolás ott, ahol állsz, vagy otthon és a munkahelyed közelében.',
     how: 'Hogyan tedd ki?',
@@ -37,6 +40,9 @@ const T = {
     parking: 'My parking',
     parkingSub: 'Zone, plate, time left, +15 min and stop. Small and medium size.',
     lock: 'On the Lock Screen',
+    live: 'Live Activity',
+    liveSub: 'While parking, the countdown shows on the Lock Screen and in the Dynamic Island, with buttons. It appears by itself, no setup needed.',
+    liveIdle: 'Appears when you start parking.',
     quick: 'Quick start',
     quickSub: 'Park where you are, or near home and work.',
     how: 'How to add it',
@@ -56,6 +62,9 @@ const T = {
     parking: 'Mein Parken',
     parkingSub: 'Zone, Kennzeichen, Restzeit, +15 Min. und Beenden. Klein und mittel.',
     lock: 'Auf dem Sperrbildschirm',
+    live: 'Live-Aktivität',
+    liveSub: 'Beim Parken läuft der Countdown auf dem Sperrbildschirm und in der Dynamic Island, mit Tasten. Erscheint von selbst, ohne Einrichtung.',
+    liveIdle: 'Erscheint, wenn du das Parken startest.',
     quick: 'Schnellstart',
     quickSub: 'Hier parken, oder in der Nähe von Zuhause und Arbeit.',
     how: 'So fügst du es hinzu',
@@ -107,6 +116,18 @@ export default function WidgetsScreen({ lang, data, onAction, onBack }: { lang: 
       </View>
       <Text style={{ color: C.sub, fontSize: 13, marginTop: 8, marginBottom: 4, marginLeft: 4 }}>{t.parkingSub}</Text>
       <Text style={{ color: C.sub, fontSize: 13, marginBottom: 12, marginLeft: 4 }}>{live ? t.liveIos : t.liveAndroid}</Text>
+
+      {os === 'ios' && (
+        <>
+          <Text role="heading" aria-level={2} style={h}>
+            {t.live}
+          </Text>
+          <View testID="live-stage" style={{ ...stage, backgroundColor: '#1B1530' }}>
+            {data.active ? <LivePreview d={data} now={now} onAction={onAction} /> : <Text style={{ color: '#fff', fontSize: 14 }}>{t.liveIdle}</Text>}
+          </View>
+          <Text style={{ color: C.sub, fontSize: 13, marginTop: 8, marginBottom: 12, marginLeft: 4 }}>{t.liveSub}</Text>
+        </>
+      )}
 
       <Text role="heading" aria-level={2} style={h}>
         {t.quick}

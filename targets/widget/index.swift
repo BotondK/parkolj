@@ -6,5 +6,6 @@ struct ParkoljWidgets: WidgetBundle {
   var body: some Widget {
     ParkingWidget()
     QuickWidget()
+    ParkingLiveActivity()
   }
 }

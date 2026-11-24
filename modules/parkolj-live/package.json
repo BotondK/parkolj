@@ -1,0 +1,8 @@
+{
+  "name": "parkolj-live",
+  "version": "1.0.0",
+  "description": "Élő tevékenység (Live Activity) az aktív parkoláshoz, iPhone",
+  "main": "index.ts",
+  "private": true,
+  "license": "MIT"
+}

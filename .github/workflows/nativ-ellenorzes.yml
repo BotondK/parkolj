@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - 'targets/**'
+      - 'modules/**'
       - 'src/widgets/**'
       - 'app.json'
       - 'package.json'

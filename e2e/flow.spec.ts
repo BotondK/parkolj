@@ -223,6 +223,7 @@ test('widgetek: előnézet üresen és aktív parkolással, +15 perc és leáll�
   const stage = page.getByTestId('widget-stage');
   await expect(stage.getByText(/zóna · /).first()).toBeVisible();
   await expect(stage.getByText(/^\d:\d\d$/).first()).toBeVisible(); // iPhone: élő visszaszámlálás
+  await expect(page.getByTestId('live-stage').getByText(/^Lejár \d\d:\d\d$/)).toBeVisible(); // iPhone élő tevékenység
   await page.getByRole('radio', { name: 'Android' }).click();
   await expect(stage.getByText(/^Lejár \d\d:\d\d$/).first()).toBeVisible(); // Android: a lejárat ideje
   await page.getByRole('radio', { name: 'Sötét' }).click();

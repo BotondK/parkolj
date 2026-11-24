@@ -10,7 +10,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "hu.parkolj.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSSupportsLiveActivities": true
       },
       "entitlements": {
         "com.apple.security.application-groups": [
