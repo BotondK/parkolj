@@ -1,4 +1,4 @@
-name: OSM adatok letöltése (garázsok, töltők)
+name: OSM adatok letöltése (garázsok, P+R, töltők)
 
 # Kézzel indítható. Az eredmény az `osm-data` ágra kerül (és csatolmányként is letölthető);
 # a main ágra átnézés után kerül be: git checkout origin/osm-data -- src/data/osm public/data

@@ -1,4 +1,4 @@
-// OpenStreetMap adatok letöltése Budapestre (Overpass API): mélygarázsok/parkolóházak és elektromos töltők.
+// OpenStreetMap adatok letöltése Budapestre (Overpass API): mélygarázsok/parkolóházak, P+R parkolók és elektromos töltők.
 // Futtatás: node scripts/fetch-osm.mjs  (vagy GitHub Actions: "OSM adatok letöltése", az eredmény letölthető csatolmány)
 // Licenc: © OpenStreetMap közreműködők, ODbL. A kimenet: src/data/osm/*.json
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -87,12 +87,37 @@ const chargers = cEls
   .filter(Boolean)
   .sort((a, b) => a.id.localeCompare(b.id));
 
+// 2b) P+R parkolók (park_ride), a BKK P+R-ek többsége díjmentes, BKK-bérlettel vagy jeggyel
+const prEls = await overpass(`[out:json][timeout:180];${AREA}
+nwr["amenity"="parking"]["park_ride"]["park_ride"!="no"](area.bp);
+out center tags;`);
+const parkRides = prEls
+  .filter(open)
+  .map((e) => {
+    const p = pos(e);
+    const t = e.tags;
+    return p && {
+      id: `${e.type[0]}${e.id}`,
+      name: t.name ?? null,
+      lat: r5(p.lat),
+      lng: r5(p.lng),
+      capacity: int(t.capacity),
+      fee: t.fee ?? null,
+      transit: t.park_ride === 'yes' ? null : t.park_ride,
+      operator: t.operator ?? null,
+      hours: t.opening_hours ?? null,
+    };
+  })
+  .filter(Boolean)
+  .sort((a, b) => a.id.localeCompare(b.id));
+
 mkdirSync('src/data/osm', { recursive: true });
 mkdirSync('public/data', { recursive: true });
 const meta = { source: '© OpenStreetMap közreműködők (ODbL)', fetchedAt: new Date().toISOString().slice(0, 10) };
 writeFileSync('src/data/osm/garages.json', JSON.stringify({ ...meta, items: garages }) + '\n');
 writeFileSync('src/data/osm/chargers.json', JSON.stringify({ ...meta, items: chargers }) + '\n');
-console.log(`Garázsok: ${garages.length} (névvel: ${garages.filter((g) => g.name).length}), töltők: ${chargers.length}`);
+writeFileSync('src/data/osm/parkrides.json', JSON.stringify({ ...meta, items: parkRides }) + '\n');
+console.log(`Garázsok: ${garages.length} (névvel: ${garages.filter((g) => g.name).length}), töltők: ${chargers.length}, P+R: ${parkRides.length} (névvel: ${parkRides.filter((g) => g.name).length})`);
 
 // 3) Utcaszintű parkolási zónák: az OSM-ben az utcák oldalanként jelölve (parking:left|right|both:zone = A–D,
 //    díjfizetési idő: parking:*:fee:conditional). Ebből rajzoljuk a pontos zónákat és határozzuk meg a zónát egy ponton.
