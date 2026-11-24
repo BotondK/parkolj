@@ -1,5 +1,6 @@
 // A „Városnak” oldal adatlogikája: összesítés, mintaadat, CSV. Tiszta függvények (tesztelhető).
 import type { CityRow } from './cloud';
+import type { Hotspot } from './reportCore';
 
 export const CITY_ZONES = ['A', 'B', 'C', 'D'] as const;
 export const CITY_HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7–22 óra
@@ -48,4 +49,17 @@ export function byZone(rows: CityRow[], f: DayFilter) {
 export function cityCsv(rows: CityRow[]) {
   const head = 'zona;het_napja;ora;parkolasok;felhasznalok;atlag_perc;osszes_ft';
   return '﻿' + [head, ...rows.map((r) => [r.zone_id, r.dow, r.hour, r.sessions, r.users, r.avg_minutes, r.total_ft].join(';'))].join('\r\n');
+}
+
+/** „Nem volt hely” forró pontok mintaadata a bemutatóhoz (valódi belvárosi utcák környéke), amíg nincs elég jelzés */
+export function sampleHotspots(): Hotspot[] {
+  const pts: [number, number, string, number, number][] = [
+    [47.503, 19.058, 'A', 18, 9], // Opera, este
+    [47.497, 19.053, 'A', 9, 7], // Deák tér, délelőtt
+    [47.501, 19.064, 'B', 18, 6], // Nagymező utca, színházak
+    [47.487, 19.07, 'B', 12, 5], // Corvin, délben
+    [47.51, 19.057, 'B', 9, 4], // Nyugati, reggel
+    [47.494, 19.06, 'A', 21, 4], // Gozsdu, késő este
+  ];
+  return pts.map(([lat, lng, zone_id, hour_from, reports]) => ({ lat, lng, zone_id, hour_from, reports, last_at: '' }));
 }

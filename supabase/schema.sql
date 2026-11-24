@@ -168,3 +168,21 @@ create or replace view public.spot_report_summary with (security_invoker = true)
   select zone_id, kind, extract(hour from at at time zone 'Europe/Budapest')::int as hour, count(*) as reports, max(at) as last_at
   from public.spot_reports group by 1, 2, 3 order by reports desc;
 revoke all on public.spot_report_summary from anon, authenticated;
+
+-- „Nem volt hely” forró pontok: ~100 m-es cella × 3 órás sáv (Budapest idő), az elmúlt 60 napból.
+-- Csak ahol legalább 3 jelzés van legalább 2 különböző napról (egy ember ismételt jelzése így nem elég).
+-- Bárki olvashatja (az app ezzel becsüli a szabad hely esélyét, a „Városnak” oldal ebből mutatja).
+create or replace function public.nospace_hotspots()
+returns table (lat numeric, lng numeric, zone_id text, hour_from int, reports int, last_at timestamptz)
+language sql stable security definer set search_path = '' as $$
+  select r.lat, r.lng, max(r.zone_id), (extract(hour from r.at at time zone 'Europe/Budapest')::int / 3) * 3,
+         count(*)::int, max(r.at)
+  from public.spot_reports r
+  where r.kind = 'nospace' and r.at > now() - interval '60 days'
+  group by r.lat, r.lng, 4
+  having count(*) >= 3 and count(distinct (r.at at time zone 'Europe/Budapest')::date) >= 2
+  order by 5 desc
+  limit 2000;
+$$;
+revoke all on function public.nospace_hotspots() from public;
+grant execute on function public.nospace_hotspots() to anon, authenticated;

@@ -49,3 +49,27 @@ export function buildReport(p: {
 /** Kapcsolat nélkül sorba kerül; legfeljebb 50 jelzés marad meg */
 export const MAX_REPORTS = 50;
 export const enqueueReport = (q: SpotReport[], r: SpotReport) => [...q, r].slice(-MAX_REPORTS);
+
+/** „Nem volt hely” forró pont (a szerver összesítése: ≥3 jelzés ≥2 napról, ~100 m-es cella × 3 órás sáv) */
+export type Hotspot = { lat: number; lng: number; zone_id: string | null; hour_from: number; reports: number; last_at: string };
+
+let hotspots: Hotspot[] = [];
+export const setHotspots = (h: Hotspot[]) => {
+  hotspots = h.map((x) => ({ ...x, lat: Number(x.lat), lng: Number(x.lng) }));
+};
+export const getHotspots = () => hotspots;
+
+/**
+ * Mennyivel kisebb a szabad hely esélye egy ponton az adott órában (0..0,35), a közeli „nem volt hely” jelzések alapján.
+ * 120 m-en belüli cella, ugyanabban a 3 órás sávban; több jelzés nagyobb levonás.
+ */
+export function hotspotPenalty(p: LatLng, hour: number, list: Hotspot[] = hotspots): number {
+  let pen = 0;
+  for (const h of list) {
+    if (Math.floor(hour / 3) * 3 !== h.hour_from) continue;
+    const dy = (h.lat - p.lat) * 110540, dx = (h.lng - p.lng) * 75000;
+    if (dx * dx + dy * dy > 120 * 120) continue;
+    pen = Math.max(pen, Math.min(0.35, 0.12 + 0.04 * (h.reports - 3)));
+  }
+  return pen;
+}

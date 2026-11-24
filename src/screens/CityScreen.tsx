@@ -3,7 +3,9 @@ import { Linking, Platform, Pressable, ScrollView, Text, useColorScheme, useWind
 import { PillButton, Segmented } from '../components/kit';
 import { applyTheme, bgForWhite, C, isDark } from '../components/ui';
 import { ZONES } from '../data/zones';
-import { byZone, CITY_HOURS, CITY_ZONES, cityCsv, heat, sampleCityRows, type DayFilter } from '../logic/city';
+import { byZone, CITY_HOURS, CITY_ZONES, cityCsv, heat, sampleCityRows, sampleHotspots, type DayFilter } from '../logic/city';
+import { districtAt } from '../logic/geo';
+import type { Hotspot } from '../logic/reportCore';
 import { cloud, type CityRow } from '../logic/cloud';
 import { formatFt } from '../logic/pricing';
 
@@ -31,6 +33,12 @@ export default function CityScreen() {
   const [live, setLive] = useState(false);
   const [f, setF] = useState<DayFilter>('weekday');
   const [sel, setSel] = useState<string | null>(null);
+  const [spots, setSpots] = useState<{ items: Hotspot[]; live: boolean } | null>(null);
+  useEffect(() => {
+    (cloud ? cloud.nospaceHotspots().catch(() => null) : Promise.resolve(null)).then((r) =>
+      setSpots(r && r.length >= 3 ? { items: r.map((x) => ({ ...x, lat: Number(x.lat), lng: Number(x.lng) })), live: true } : { items: sampleHotspots(), live: false }),
+    );
+  }, []);
 
   useEffect(() => {
     let off = false;
@@ -192,12 +200,41 @@ export default function CityScreen() {
         </View>
       </View>
 
+      {/* „Nem volt hely” jelzések: hol és mikor nem találnak helyet a sofőrök */}
+      {spots && (
+        <View testID="nospace-card" style={[card, { gap: 10 }]}>
+          <Text style={{ color: C.text, fontSize: 18, fontWeight: '800' }}>Hol nem találnak helyet?</Text>
+          <Text style={{ color: C.sub, fontSize: 14, lineHeight: 20 }}>
+            A sofőrök az appban jelzik, ha a javasolt helyen nem volt szabad hely. Egy pont csak akkor jelenik meg, ha legalább 3 jelzés érkezett legalább 2 különböző napon (kb. 100 m-es terület, 3 órás idősáv, az elmúlt 60 napból).
+          </Text>
+          <View style={{ alignSelf: 'flex-start', backgroundColor: spots.live ? C.goodSoft : C.warnSoft, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <Text style={{ color: spots.live ? C.good : C.warn, fontWeight: '800', fontSize: 13 }}>{spots.live ? '● Élő béta-adat' : '◌ Mintaadat: még kevés a jelzés'}</Text>
+          </View>
+          {spots.items.slice(0, 10).map((h, i) => (
+            <View key={`${h.lat}-${h.lng}-${h.hour_from}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, borderTopWidth: i ? 1 : 0, borderColor: C.line }}>
+              <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: zColor(h.zone_id ?? 'A'), alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#fff', fontWeight: '800' }}>{h.zone_id ?? '–'}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: C.text, fontWeight: '700' }}>{districtAt({ lat: h.lat, lng: h.lng }) ?? 'Budapest'}, {h.hour_from}:00–{h.hour_from + 3}:00</Text>
+                <Text style={{ color: C.sub, fontSize: 12 }}>
+                  {h.lat.toFixed(3)}, {h.lng.toFixed(3)}
+                </Text>
+              </View>
+              <Text style={{ color: C.text, fontWeight: '800' }}>{h.reports} jelzés</Text>
+            </View>
+          ))}
+          <Text style={{ color: C.sub, fontSize: 12 }}>Az app ezekkel a pontokkal számol: ilyen helyre és időre kisebb eséllyel javasol utcai parkolást.</Text>
+        </View>
+      )}
+
       {/* Mit adhat a város számára */}
       <View style={[card, { gap: 8 }]}>
         <Text style={{ color: C.text, fontSize: 18, fontWeight: '800' }}>Élesben ezt kapja a város</Text>
         {[
           'Valós idejű kereslet zónánként és óránként, a mostani SMS- és automatás adatok mellé.',
           'Kevesebb körözés: a sofőrök a célponthoz legközelebbi, jó eséllyel szabad helyre vagy garázsba mennek.',
+          'Hol és mikor nincs hely: a sofőrök „Nem volt hely” jelzéseiből, utcai pontossággal.',
           'A 3 órás szabály betartása: az app figyelmeztet, és csak a zónában megengedett ideig hosszabbít.',
           'Rendezvények (színház, koncert, meccs) hatása a környék parkolására, előre tervezhetően.',
           'Nyílt, géppel olvasható formátum (CSV, később API), személyes adat nélkül.',

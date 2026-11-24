@@ -169,6 +169,7 @@ export function OptionCard({
       <View style={styles.metaRow}>
         {o.quickest && <Meta text={`⚡ ${t.quickest}`} tone="good" />}
         <Meta text={t.eta(o.etaMin)} />
+        {o.reportedFull && <Meta text={t.reportedFull} tone="bad" />}
         <Meta text={`🚶 ${o.walkMin} ${t.minutes}`} />
         {o.kind === 'garage' ? (
           o.garage?.realCapacity ? <Meta text={t.places(o.garage.realCapacity)} /> : null

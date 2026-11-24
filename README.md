@@ -57,6 +57,7 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 49. Belépés e-mail címmel és jelszóval, elfelejtett jelszó visszaállítása (Supabase)
 50. Lakossági parkolási engedély: tudnivaló és link a kerületi igényléshez
 51. „Hol hagytam az autót?” mindenkinek: szint, jegyzet és fotó az aktív jegyen (a fotó csak a készüléken marad)
+52. „Nem volt hely” forró pontok: ahol mások többször nem találtak helyet, ott a javaslat kisebb esélyt mutat; a „Városnak” oldalon lista a BKK-nak
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 

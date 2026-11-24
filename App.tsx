@@ -32,7 +32,7 @@ import { registerServiceWorker, useOnline } from './src/logic/offline';
 import { eventStay } from './src/logic/event';
 import { configureStats, track } from './src/logic/analytics';
 import { buildReport, type ReportKind } from './src/logic/reportCore';
-import { flushReports, sendReport } from './src/logic/reports';
+import { flushReports, loadHotspots, sendReport } from './src/logic/reports';
 import { driveToUrl, prSuggestion, transitUrl } from './src/logic/parkRide';
 import { rememberPlace, topFrequent, type FrequentPlace } from './src/logic/frequent';
 import CarSpotCard from './src/components/CarSpotCard';
@@ -102,6 +102,8 @@ function Main() {
     setTabRaw(k);
   };
   const zoneStreets = useZoneStreets();
+  // „Nem volt hely” forró pontok száma (betöltéskor újraszámolja a javaslatokat)
+  const [hotspotCount, setHotspotCount] = useState(0);
   const [clock, setClock] = useState(() => formatClock(new Date()));
   useEffect(() => {
     const id = setInterval(() => setClock(formatClock(new Date())), 15000);
@@ -494,7 +496,7 @@ function Main() {
   const options = useMemo(
     () => (dest ? recommend(dest, stay, new Date(Date.now() + arriveOffset * 60000)) : []),
     // az utcaszintű zónaadat betöltése után újraszámol (valódi utcákon javasol)
-    [dest, stay, arriveOffset, zoneStreets.length],
+    [dest, stay, arriveOffset, zoneStreets.length, hotspotCount],
   );
   const hereOpt = useMemo(() => (here ? hereOption(here, stay) : null), [here, stay]);
   const selected = hereOpt ?? options.find((o) => o.id === selectedId) ?? null;
@@ -506,7 +508,9 @@ function Main() {
     if (step === 'search') setNoSpaceNote(false);
   }, [step]);
   useEffect(() => {
-    if (loaded) flushReports();
+    if (!loaded) return;
+    flushReports();
+    loadHotspots().then((h) => setHotspotCount(h.length));
   }, [loaded]);
 
   useEffect(() => {

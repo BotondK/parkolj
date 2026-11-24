@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildReport, enqueueReport } from '../src/logic/reportCore';
+import { buildReport, enqueueReport, hotspotPenalty } from '../src/logic/reportCore';
 import { prSuggestion } from '../src/logic/parkRide';
 import { rememberPlace, topFrequent } from '../src/logic/frequent';
 import { zoneById } from '../src/data/zones';
@@ -148,4 +148,12 @@ test('gyakori helyek: gyakoriság és frissesség szerint, azonos hely egyszer',
   l = rememberPlace(l, p('opera-photon', 47.50001), 3000); // ugyanaz a hely, másik azonosító
   assert.equal(l.length, 2);
   assert.deepEqual(topFrequent(l, 5, 4000).map((x) => x.id), ['opera-photon', 'mupa']);
+});
+
+test('„nem volt hely” forró pont: csak a közeli cellán és ugyanabban az idősávban csökkenti az esélyt', () => {
+  const h = [{ lat: 47.503, lng: 19.058, zone_id: 'A', hour_from: 18, reports: 5, last_at: '' }];
+  assert.ok(hotspotPenalty({ lat: 47.5032, lng: 19.0582 }, 19, h) > 0.15);
+  assert.equal(hotspotPenalty({ lat: 47.5032, lng: 19.0582 }, 12, h), 0);
+  assert.equal(hotspotPenalty({ lat: 47.51, lng: 19.058 }, 19, h), 0);
+  assert.ok(hotspotPenalty({ lat: 47.503, lng: 19.058 }, 18, [{ ...h[0], reports: 50 }]) <= 0.35);
 });

@@ -82,3 +82,5 @@ A `schema.sql` újrafuttatása létrehozza a `spot_reports` táblát. A felhaszn
 lépésnél) vagy hibás zóna/ár (a fizetésnél). Nincs benne felhasználói azonosító, rendszám; a hely ~100 m-re kerekítve.
 Kívülről csak írható. Áttekintés: `select * from public.spot_report_summary;` (zóna × jelzés × óra). Ez a BKK-nak
 átadható „hol nincs hely” adat alapja. Amíg a táblát nem hoztad létre, a jelzések a készüléken várnak.
+
+Forró pontok (`nospace_hotspots()` függvény, bárki olvashatja): csak ahol legalább 3 jelzés érkezett legalább 2 különböző napon, ~100 m-es cella × 3 órás sáv, az elmúlt 60 napból. Az app 6 óránként frissíti, a javaslatoknál ezzel csökkenti a szabad hely esélyét; a „Városnak” oldal ebből mutatja a „Hol nem találnak helyet?” listát.

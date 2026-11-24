@@ -4,6 +4,7 @@ import { distanceM, offset, walkMinutes, zoneAt } from './geo';
 import { formatClock, paidEnd, priceFor, priceWindow } from './pricing';
 import { bpParts } from './budapestTime';
 import { streetPointsNear } from './zoneStreets';
+import { hotspotPenalty } from './reportCore';
 import { ZONES } from '../data/zones';
 
 export type OptionKind = 'fastest' | 'cheapest' | 'garage' | 'here';
@@ -30,6 +31,8 @@ export type ParkingOption = {
   street?: string | null;
   /** Becsült idő a célig percben: helykeresés + gyaloglás (garázsnál behajtás + gyaloglás) */
   etaMin: number;
+  /** Mások ebben az idősávban többször jelezték, hogy itt nem volt hely */
+  reportedFull?: boolean;
   /** A javaslatok közül ez ér leghamarabb a célhoz */
   quickest?: boolean;
   /** Az „olcsóbb” helyett: nincs olcsóbb utcai hely, ez a nagyobb eséllyel szabad */
@@ -51,7 +54,8 @@ function availabilityAt(pt: LatLng, distFromDest: number, at: Date): number {
   const officePeak = h >= 9 && h <= 16 && weekday >= 1 && weekday <= 5 ? 0.12 : 0;
   const base = 0.2 + Math.min(distFromDest, 1200) / 1500 - eventPeak - officePeak;
   const n = (noise(pt.lat * 1000, pt.lng * 1000, h) - 0.5) * 0.35;
-  return Math.max(0.05, Math.min(0.95, base + n));
+  // Valódi jelzés: ahol mások ebben az idősávban többször nem találtak helyet, ott kisebb az esély
+  return Math.max(0.05, Math.min(0.95, base + n - hotspotPenalty(pt, h)));
 }
 
 function streetCost(zone: Zone | null, minutes: number, at: Date) {
@@ -94,6 +98,7 @@ export function recommend(dest: LatLng, plannedMinutes: number, at: Date = new D
       distanceM: Math.round(d / 10) * 10,
       street,
       etaMin: Math.round(walkMin + (1 - availability) * 12),
+      reportedFull: hotspotPenalty(coord, bpParts(at).hour) > 0,
     });
   };
   const pts = streetPointsNear(dest, 1200).filter((p) => distanceM(dest, p.coord) <= 1200);
