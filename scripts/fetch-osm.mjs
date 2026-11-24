@@ -26,6 +26,29 @@ const r5 = (n) => Math.round(n * 1e5) / 1e5;
 const int = (v) => (v && /^\d+$/.test(v) ? Number(v) : null);
 const open = (e) => !/^(private|no|customers;private)$/.test(e.tags.access ?? '');
 
+// ONLY=parkrides: csak a P+R lekérdezés (gyors, ha az Overpass terhelt)
+const ONLY = process.env.ONLY ?? '';
+const PR_QUERY = `[out:json][timeout:120];${AREA}
+nwr["amenity"="parking"]["park_ride"]["park_ride"!="no"](area.bp);
+out center tags;`;
+const mapPr = (els) =>
+  els
+    .filter(open)
+    .map((e) => {
+      const p = pos(e);
+      const t = e.tags;
+      return p && { id: `${e.type[0]}${e.id}`, name: t.name ?? null, lat: r5(p.lat), lng: r5(p.lng), capacity: int(t.capacity), fee: t.fee ?? null, transit: t.park_ride === 'yes' ? null : t.park_ride, operator: t.operator ?? null, hours: t.opening_hours ?? null };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.id.localeCompare(b.id));
+if (ONLY === 'parkrides') {
+  const items = mapPr(await overpass(PR_QUERY));
+  mkdirSync('src/data/osm', { recursive: true });
+  writeFileSync('src/data/osm/parkrides.json', JSON.stringify({ source: '© OpenStreetMap közreműködők (ODbL)', fetchedAt: new Date().toISOString().slice(0, 10), items }) + '\n');
+  console.log(`P+R: ${items.length} (névvel: ${items.filter((g) => g.name).length})`);
+  process.exit(0);
+}
+
 // 1) Mélygarázsok, parkolóházak
 const gEls = await overpass(`[out:json][timeout:180];${AREA}
 nwr["amenity"="parking"]["parking"~"^(underground|multi-storey)$"](area.bp);
@@ -88,28 +111,7 @@ const chargers = cEls
   .sort((a, b) => a.id.localeCompare(b.id));
 
 // 2b) P+R parkolók (park_ride), a BKK P+R-ek többsége díjmentes, BKK-bérlettel vagy jeggyel
-const prEls = await overpass(`[out:json][timeout:180];${AREA}
-nwr["amenity"="parking"]["park_ride"]["park_ride"!="no"](area.bp);
-out center tags;`);
-const parkRides = prEls
-  .filter(open)
-  .map((e) => {
-    const p = pos(e);
-    const t = e.tags;
-    return p && {
-      id: `${e.type[0]}${e.id}`,
-      name: t.name ?? null,
-      lat: r5(p.lat),
-      lng: r5(p.lng),
-      capacity: int(t.capacity),
-      fee: t.fee ?? null,
-      transit: t.park_ride === 'yes' ? null : t.park_ride,
-      operator: t.operator ?? null,
-      hours: t.opening_hours ?? null,
-    };
-  })
-  .filter(Boolean)
-  .sort((a, b) => a.id.localeCompare(b.id));
+const parkRides = mapPr(await overpass(PR_QUERY));
 
 mkdirSync('src/data/osm', { recursive: true });
 mkdirSync('public/data', { recursive: true });

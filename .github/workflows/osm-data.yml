@@ -5,6 +5,10 @@ name: OSM adatok letöltése (garázsok, P+R, töltők)
 on:
   workflow_dispatch:
     inputs:
+      only:
+        description: 'Csak ezt töltse le (pl. parkrides), üresen mindent'
+        type: string
+        default: ''
       probe_zones:
         description: 'Parkolási zóna adatok felmérése az OSM-ben (csak napló)'
         type: boolean
@@ -25,6 +29,7 @@ jobs:
       - run: node scripts/fetch-osm.mjs
         env:
           PROBE_ZONES: ${{ inputs.probe_zones && '1' || '' }}
+          ONLY: ${{ inputs.only }}
       - uses: actions/upload-artifact@v4
         with:
           name: osm-data
