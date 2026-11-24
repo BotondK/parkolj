@@ -31,6 +31,7 @@ import CityScreen from './src/screens/CityScreen';
 import { registerServiceWorker, useOnline } from './src/logic/offline';
 import { eventStay } from './src/logic/event';
 import { configureStats, track } from './src/logic/analytics';
+import { configureCrash, setCrashScreen } from './src/logic/crash';
 import { buildReport, type ReportKind } from './src/logic/reportCore';
 import { flushReports, loadHotspots, sendReport } from './src/logic/reports';
 import { driveToUrl, prSuggestion, transitUrl } from './src/logic/parkRide';
@@ -148,7 +149,12 @@ function Main() {
   const [demoSpeed, setDemoSpeed] = useState(true);
   const [banner, setBanner] = useState<{ kind: 'warn' | 'danger' | 'good'; text: string } | null>(null);
   const online = useOnline();
-  useEffect(() => configureStats({ enabled: settings.stats !== false, lang }), [settings.stats, lang]);
+  useEffect(() => {
+    configureStats({ enabled: settings.stats !== false, lang });
+    configureCrash({ enabled: settings.stats !== false, lang });
+  }, [settings.stats, lang]);
+  // A hibajelentésben látszik, melyik képernyőn történt a hiba
+  useEffect(() => setCrashScreen(tab === 'park' ? step : tab), [tab, step]);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     if (loaded) track('app_open');

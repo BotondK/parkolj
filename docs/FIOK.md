@@ -84,3 +84,11 @@ Kívülről csak írható. Áttekintés: `select * from public.spot_report_summa
 átadható „hol nincs hely” adat alapja. Amíg a táblát nem hoztad létre, a jelzések a készüléken várnak.
 
 Forró pontok (`nospace_hotspots()` függvény, bárki olvashatja): csak ahol legalább 3 jelzés érkezett legalább 2 különböző napon, ~100 m-es cella × 3 órás sáv, az elmúlt 60 napból. Az app 6 óránként frissíti, a javaslatoknál ezzel csökkenti a szabad hely esélyét; a „Városnak” oldal ebből mutatja a „Hol nem találnak helyet?” listát.
+
+## Hibajelentés (összeomlás)
+
+A `schema.sql` újrafuttatása létrehozza az `app_errors` táblát. Ha az app összeomlik, névtelen jelentés megy: a hiba neve, megtisztított üzenete (rendszám, e-mail, számok, koordináta, URL kiszűrve), a kódhely (fájlnév és sor), a képernyő, verzió, platform, nyelv és egy indításonként új véletlen azonosító. Fiókhoz nem kötjük. A Beállítások „Névtelen használati statisztika” kapcsolója ezt is kikapcsolja.
+
+Kívülről csak írható. Leggyakoribb hibák: `select * from public.error_summary;`. Régiek törlése (90 nap): `delete from public.app_errors where at < now() - interval '90 days';`
+
+Kipróbálás: a webes demóban a `?crashtest` paraméter szándékos hibát vált ki (https://botondk.github.io/parkolj/?crashtest).

@@ -186,3 +186,36 @@ language sql stable security definer set search_path = '' as $$
 $$;
 revoke all on function public.nospace_hotspots() from public;
 grant execute on function public.nospace_hotspots() to anon, authenticated;
+
+-- Névtelen hibajelentés (összeomlás) a zárt bétához. Nincs felhasználói azonosító; az üzenetből az app előre kiszűri
+-- a rendszámot, e-mailt, számokat, koordinátát és URL-t. Kívülről csak írható; 90 nap után törölhető (lásd lent).
+create table if not exists public.app_errors (
+  id bigserial primary key,
+  received_at timestamptz not null default now(),
+  sid uuid not null,
+  at timestamptz not null,
+  kind text not null check (kind in ('render','global','promise')),
+  name text not null check (char_length(name) <= 40),
+  message text not null check (char_length(message) <= 200),
+  stack text not null check (char_length(stack) <= 600),
+  fp text not null check (fp ~ '^[0-9a-f]{8}$'),
+  version text not null check (char_length(version) <= 20),
+  platform text not null check (char_length(platform) <= 10),
+  lang text not null check (char_length(lang) <= 5),
+  screen text not null check (char_length(screen) <= 20)
+);
+alter table public.app_errors enable row level security;
+drop policy if exists "hiba kuldese" on public.app_errors;
+create policy "hiba kuldese" on public.app_errors for insert to anon, authenticated with check (true);
+revoke all on public.app_errors from anon, authenticated;
+grant insert on public.app_errors to anon, authenticated;
+grant usage on sequence public.app_errors_id_seq to anon, authenticated;
+create index if not exists app_errors_at_idx on public.app_errors (at);
+
+-- Leggyakoribb hibák (Dashboard → SQL: select * from public.error_summary;)
+-- Régiek törlése: delete from public.app_errors where at < now() - interval '90 days';
+create or replace view public.error_summary with (security_invoker = true) as
+  select fp, name, max(message) as message, max(stack) as stack, count(*) as db, count(distinct sid) as alkalom,
+         array_agg(distinct screen) as kepernyok, array_agg(distinct platform) as platformok, max(version) as verzio, max(at) as utoljara
+  from public.app_errors group by fp, name order by db desc;
+revoke all on public.error_summary from anon, authenticated;

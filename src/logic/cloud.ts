@@ -2,6 +2,7 @@
 // Ha nincs beállítva EXPO_PUBLIC_SUPABASE_URL és EXPO_PUBLIC_SUPABASE_ANON_KEY, az app helyi fiókkal működik tovább.
 // A tábla és a jogosultságok: supabase/schema.sql. Beállítás: docs/FIOK.md.
 import type { Hotspot, SpotReport } from './reportCore';
+import type { CrashReport } from './crashCore';
 import type { BetaRow } from './betaCore';
 import type { BillingProfile, Car, FavoritePlace, HistoryItem, PaymentCard, Session, Settings } from '../types';
 
@@ -150,6 +151,8 @@ export function makeCloud(cfg: CloudConfig, f: Fetch = fetch) {
     /** Névtelen használati események (zárt béta); felhasználói azonosító nélkül, belépve sem kötjük a fiókhoz */
     sendEvents: (events: { sid: string; name: string; at: string; lang: string; platform: string; props: Record<string, unknown> }[]) =>
       call<unknown>('/rest/v1/events', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(events.map((e) => ({ sid: e.sid, name: e.name, at: e.at, lang: e.lang, platform: e.platform, props: e.props }))) }),
+    /** Névtelen hibajelentések (összeomlás); azonosító nélkül */
+    sendCrashes: (rows: CrashReport[]) => call<unknown>('/rest/v1/app_errors', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(rows) }),
     /** „Nem volt hely” / „Hibás adat” jelzések; azonosító nélkül, belépve sem kötjük a fiókhoz */
     sendReports: (rows: SpotReport[]) => call<unknown>('/rest/v1/spot_reports', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(rows) }),
     /** „Nem volt hely” forró pontok (névtelen összesítés), belépés nélkül */
