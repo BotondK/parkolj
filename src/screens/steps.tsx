@@ -4,6 +4,7 @@ import { Linking, Platform, Pressable, ScrollView, Switch, Text, TextInput, View
 import { MARKER_COLORS } from '../components/mapTypes';
 import { Icon } from '../components/icons';
 import SpecialDayBanner from '../components/SpecialDayBanner';
+import ReportForm from '../components/ReportForm';
 import { BackLink, C, Chip, Meta, PrimaryButton, styles, zoneText } from '../components/ui';
 import { placeName, type Place } from '../data/places';
 import { zoneAt } from '../logic/geo';
@@ -24,13 +25,13 @@ export function chargeFor(s: Session) {
 export function titleOf(o: ParkingOption, t: Strings) {
   if (o.kind === 'garage') return `${t.garage}: ${o.garage?.name}`;
   if (o.kind === 'here') return t.hereTitle;
-  return o.kind === 'fastest' ? t.fastest : t.cheapest;
+  return o.kind === 'fastest' ? t.fastest : o.surer ? t.surer : t.cheapest;
 }
 
 export function describe(o: ParkingOption, t: Strings) {
   if (o.kind === 'garage') return `${o.distanceM} m · ${o.walkMin} ${t.minutes} ${t.walk}`;
   if (o.kind === 'here') return t.hereSub;
-  return `${o.distanceM} m ${t.directions[o.bearing]} ${t.fromDest} · ${o.walkMin} ${t.minutes} ${t.walk}`;
+  return `${o.street ? `${o.street} · ` : ''}${o.distanceM} m ${t.directions[o.bearing]} ${t.fromDest} · ${o.walkMin} ${t.minutes} ${t.walk}`;
 }
 
 export function navApps(o: ParkingOption) {
@@ -51,6 +52,7 @@ export function SearchStep({
   onPick,
   lang,
   hideInput,
+  frequent = [],
 }: {
   t: Strings;
   query: string;
@@ -60,14 +62,17 @@ export function SearchStep({
   lang: Lang;
   /** Asztali nézetben a keresőmező a panel tetején van */
   hideInput?: boolean;
+  /** Gyakran választott helyek (üres keresésnél) */
+  frequent?: Place[];
 }) {
   const icon: Record<string, string> = { theatre: '🎭', cinema: '🎬', concert: '🎻', sight: '🏛️', mall: '🛍️', sport: '🏟️', address: '📍' };
   return (
     <View>
       {!hideInput && <SearchInput t={t} query={query} setQuery={setQuery} />}
-      <Text style={[styles.label, hideInput && { marginTop: 0 }]}>{query ? '' : t.popular}</Text>
-      {results.length === 0 && <Text style={styles.sub}>{t.noResults}</Text>}
-      {results.map((p) => (
+      {(query || frequent.length > 0) && <Text style={[styles.label, hideInput && { marginTop: 0 }]}>{query ? '' : t.popular}</Text>}
+      {query && results.length === 0 && <Text style={styles.sub}>{t.noResults}</Text>}
+      {!query && frequent.length === 0 && <Text style={[styles.sub, { marginTop: 14 }]}>{t.popularEmpty}</Text>}
+      {(query ? results : frequent).map((p) => (
         <Pressable key={p.id} style={styles.result} onPress={() => onPick(p)}>
           <Text style={{ fontSize: 22 }}>{icon[p.kind]}</Text>
           <View style={{ flex: 1 }}>
@@ -142,7 +147,7 @@ export function OptionCard({
   onPress: () => void;
 }) {
   const color = MARKER_COLORS[o.kind];
-  const sub = o.kind === 'fastest' ? t.fastestSub : o.kind === 'cheapest' ? t.cheapestSub : t.garageSub;
+  const sub = o.street && o.kind !== 'garage' ? `${o.street} · ${o.kind === 'fastest' ? t.fastestSub : o.surer ? t.surerSub : t.cheapestSub}` : o.kind === 'fastest' ? t.fastestSub : o.kind === 'cheapest' ? (o.surer ? t.surerSub : t.cheapestSub) : t.garageSub;
   const over = o.maxMinutes != null && stay > o.maxMinutes;
   return (
     <Pressable onPress={onPress} style={[styles.card, styles.option, active && { borderColor: color, borderWidth: 2 }]}>
@@ -152,7 +157,7 @@ export function OptionCard({
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontWeight: '700', fontSize: 16, color: C.text }}>
-            {o.kind === 'garage' ? o.garage?.name : o.kind === 'fastest' ? t.fastest : t.cheapest}
+            {o.kind === 'garage' ? o.garage?.name : titleOf(o, t)}
           </Text>
           <Text style={{ color: C.sub, fontSize: 13 }}>{sub}</Text>
         </View>
@@ -162,6 +167,8 @@ export function OptionCard({
         </View>
       </View>
       <View style={styles.metaRow}>
+        {o.quickest && <Meta text={`⚡ ${t.quickest}`} tone="good" />}
+        <Meta text={t.eta(o.etaMin)} />
         <Meta text={`🚶 ${o.walkMin} ${t.minutes}`} />
         {o.kind === 'garage' ? (
           o.garage?.realCapacity ? <Meta text={t.places(o.garage.realCapacity)} /> : null
@@ -203,6 +210,7 @@ export function PayStep({
   plusFee = 0,
   onBack,
   onPay,
+  onReport,
 }: {
   plusSlot?: React.ReactNode;
   /** Alkalmi Plusz díja, a fizetendőhöz adódik */
@@ -230,6 +238,8 @@ export function PayStep({
   a: AccStrings;
   onBack: () => void;
   onPay: () => void;
+  /** Hibás zóna/ár jelzése (névtelen) */
+  onReport?: (kind: 'wrongzone' | 'wrongprice' | 'notpaid' | 'other', note: string) => Promise<'sent' | 'queued' | 'invalid'>;
 }) {
   const z = option.zone;
   const max = z?.maxMinutes ?? 600;
@@ -257,6 +267,7 @@ export function PayStep({
       )}
       {!charging && <Text style={[styles.sub, { marginTop: 8 }]}>{t.notCharging}</Text>}
       <SpecialDayBanner t={t} lang={lang} now={now} />
+      {onReport && <ReportForm t={t} onSend={onReport} />}
       {endsFree && pe && (
         <View style={[styles.banner, { backgroundColor: C.goodSoft, marginTop: 10, marginBottom: 0 }]}>
           <Text style={{ color: C.good, fontWeight: '600' }}>{t.autoStopNote(formatClock(pe), formatDuration(paidMin, lang))}</Text>

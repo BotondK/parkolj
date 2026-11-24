@@ -209,7 +209,8 @@ const buildStyles = () =>
   },
   menuItem: { paddingHorizontal: 18, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between' },
   sheet: {
-    position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: C.bg, borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden',
+    // zIndex + saját réteg: iPhone-on (Safari, főképernyőre mentett webapp) a WebGL-térkép különben a panel háttere és a fülsor fölé rajzol
+    position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 10, backgroundColor: C.bg, borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden',
     shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 12, shadowOffset: { width: 0, height: -2 }, elevation: 8,
   },
   grabber: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: isDark ? '#55535C' : '#C9C9CF', marginTop: 8, marginBottom: 2 },

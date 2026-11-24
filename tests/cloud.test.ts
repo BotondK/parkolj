@@ -119,3 +119,30 @@ test('aktív parkolás: a frissebb állapot nyer (másik eszközön leállítva 
   assert.equal(mergeData({ active: { s: null, at: 300 } }, { active: { s, at: 200 } }).active?.s, null);
   assert.equal(mergeData({ active: { s: null, at: 0 } }, { active: { s, at: 50 } }).active?.s, s);
 });
+
+test('felhő: jelszavas regisztráció (megerősítéssel és anélkül), belépés, elfelejtett és új jelszó', async () => {
+  const log: { url: string; init: RequestInit }[] = [];
+  const ok = { access_token: 'tok', refresh_token: 'ref', expires_in: 3600, user: { id: 'u1', email: 'a@b.hu' } };
+  const c = makeCloud(cfg, fake({ '/auth/v1/signup': { id: 'u1', email: 'a@b.hu' }, 'grant_type=password': ok, '/auth/v1/recover': {}, '/auth/v1/user': {} }, log));
+  assert.equal(await c.signUp('a@b.hu', 'titok1234', 'Boti', 'https://h/p/'), null);
+  assert.equal(log[0].url, 'https://x.supabase.co/auth/v1/signup?redirect_to=https%3A%2F%2Fh%2Fp%2F');
+  assert.deepEqual(JSON.parse(log[0].init.body as string), { email: 'a@b.hu', password: 'titok1234', data: { name: 'Boti' } });
+  const s = await c.signIn('a@b.hu', 'titok1234');
+  assert.equal(s.userId, 'u1');
+  assert.match(log[1].url, /\/auth\/v1\/token\?grant_type=password$/);
+  await c.recover('a@b.hu');
+  assert.equal(log[2].url, 'https://x.supabase.co/auth/v1/recover');
+  await c.setPassword(s, 'ujjelszo99');
+  assert.equal(log[3].init.method, 'PUT');
+  assert.equal((log[3].init.headers as Record<string, string>).Authorization, 'Bearer tok');
+  const c2 = makeCloud(cfg, fake({ '/auth/v1/signup': ok }, []));
+  assert.equal((await c2.signUp('a@b.hu', 'titok1234', 'Boti'))?.userId, 'u1');
+  const c3 = makeCloud(cfg, fake({ 'grant_type=password': { status: 400, error: 'invalid_grant', error_description: 'Invalid login credentials' } }, []));
+  await assert.rejects(() => c3.signIn('a@b.hu', 'rossz'), /Invalid login credentials/);
+});
+
+test('felhő: jelszó-visszaállító link felismerése', async () => {
+  const c = makeCloud(cfg, fake({ '/auth/v1/user': { id: 'u1', email: 'a@b.hu' } }, []));
+  const r = await c.sessionFromUrl('#access_token=t&refresh_token=r&expires_in=3600&type=recovery');
+  assert.ok(r && !('error' in r) && r.recovery === true);
+});

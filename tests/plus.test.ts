@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { buildReport, enqueueReport } from '../src/logic/reportCore';
+import { prSuggestion } from '../src/logic/parkRide';
+import { rememberPlace, topFrequent } from '../src/logic/frequent';
+import { zoneById } from '../src/data/zones';
 import { historyCsv, shouldAutoExtend } from '../src/types';
 
 test('Plusz: automatikus hosszabbítás csak a lejárat előtti 2 percben, a kereten és a zóna maximumán belül', () => {
@@ -100,4 +104,48 @@ test('élő tevékenység: az app és a widget ugyanazt az adattípust használj
   const payload = { ...d.active!, labels: d.labels };
   for (const k of ['zone', 'color', 'plate', 'place', 'startedAt', 'endsAt', 'canExtend']) assert.ok(k in payload, k);
   for (const k of ['zone', 'expires', 'expired', 'extend', 'stop']) assert.ok(k in payload.labels, k);
+});
+
+test('jelzés: ~100 m-re kerekített hely, zóna ellenőrzés, Budapesten kívül nem küld', () => {
+  const r = buildReport({ kind: 'nospace', coord: { lat: 47.497912, lng: 19.040235 }, zone: 'A', district: 'V. kerület', optionKind: 'fastest', lang: 'hu', now: new Date('2026-11-24T10:00:00Z') })!;
+  assert.equal(r.lat, 47.498);
+  assert.equal(r.lng, 19.04);
+  assert.equal(r.zone_id, 'A');
+  assert.equal(r.note, null);
+  assert.equal(r.at, '2026-11-24T10:00:00.000Z');
+  assert.equal(buildReport({ kind: 'other', coord: { lat: 48.2, lng: 16.37 }, zone: null, lang: 'en' }), null);
+  const long = buildReport({ kind: 'wrongprice', coord: { lat: 47.5, lng: 19.05 }, zone: 'X', note: '  ' + 'x'.repeat(400), lang: 'de' })!;
+  assert.equal(long.zone_id, null);
+  assert.equal(long.note!.length, 300);
+  let q: ReturnType<typeof enqueueReport> = [];
+  for (let i = 0; i < 60; i++) q = enqueueReport(q, r);
+  assert.equal(q.length, 50);
+});
+
+test('P+R javaslat: belvárosi célnál a zónán kívüli, útba eső P+R; D zónában és ingyenes helyen nincs', () => {
+  const A = zoneById('A')!;
+  const D = zoneById('D')!;
+  const opera = { lat: 47.5026, lng: 19.0581 };
+  const list = [
+    { id: 'n1', name: 'Örs vezér tere P+R', lat: 47.5035, lng: 19.1365, capacity: 400, fee: 'no', transit: null, operator: null, hours: null },
+    { id: 'n2', name: 'Kelenföld P+R', lat: 47.4636, lng: 19.0213, capacity: 600, fee: null, transit: 'train', operator: null, hours: null },
+    { id: 'n3', name: 'Fizetős P+R', lat: 47.53, lng: 19.12, capacity: 50, fee: 'yes', transit: null, operator: null, hours: null },
+    { id: 'n4', name: null, lat: 47.52, lng: 19.13, capacity: 50, fee: 'no', transit: null, operator: null, hours: null },
+  ];
+  assert.equal(prSuggestion(opera, D, null, list), null);
+  assert.equal(prSuggestion(opera, null, null, list), null);
+  const fromEast = prSuggestion(opera, A, { lat: 47.52, lng: 19.3 }, list)!;
+  assert.equal(fromEast.pr.id, 'n1');
+  const fromSouthWest = prSuggestion(opera, A, { lat: 47.38, lng: 18.92 }, list)!;
+  assert.equal(fromSouthWest.pr.id, 'n2');
+  assert.ok(fromEast.transitMin > 10 && fromEast.transitMin < 40);
+});
+
+test('gyakori helyek: gyakoriság és frissesség szerint, azonos hely egyszer', () => {
+  const p = (id: string, lat: number) => ({ id, name: id, address: '', kind: 'address' as const, lat, lng: 19.05 });
+  let l = rememberPlace([], p('opera', 47.5), 1000);
+  l = rememberPlace(l, p('mupa', 47.47), 2000);
+  l = rememberPlace(l, p('opera-photon', 47.50001), 3000); // ugyanaz a hely, másik azonosító
+  assert.equal(l.length, 2);
+  assert.deepEqual(topFrequent(l, 5, 4000).map((x) => x.id), ['opera-photon', 'mupa']);
 });

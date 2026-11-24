@@ -31,6 +31,10 @@ import CityScreen from './src/screens/CityScreen';
 import { registerServiceWorker, useOnline } from './src/logic/offline';
 import { eventStay } from './src/logic/event';
 import { configureStats, track } from './src/logic/analytics';
+import { buildReport, type ReportKind } from './src/logic/reportCore';
+import { flushReports, sendReport } from './src/logic/reports';
+import { driveToUrl, prSuggestion, transitUrl } from './src/logic/parkRide';
+import { rememberPlace, topFrequent, type FrequentPlace } from './src/logic/frequent';
 import Onboarding from './src/screens/Onboarding';
 import {
   ActiveStep,
@@ -369,17 +373,75 @@ function Main() {
         const r = await cloud!.sessionFromUrl(hash);
         if (!r) return;
         if ('error' in r) throw new Error(r.error);
-        await finishLogin(r, await loadJSON<string>('pendingName', ''));
+        const { recovery, ...sess } = r;
+        await finishLogin(sess, await loadJSON<string>('pendingName', ''));
         saveJSON('pendingName', '');
-        setBanner({ kind: 'good', text: a.loggedIn(r.email) });
+        if (recovery) {
+          // Jelszó-visszaállító linkről: új jelszó megadása a Fiókom oldalon
+          setNeedNewPassword(true);
+          setMenuPage('account');
+          setTab('menu');
+        } else setBanner({ kind: 'good', text: a.loggedIn(r.email) });
       } catch {
         setBanner({ kind: 'danger', text: a.linkFailed });
       }
     })();
   }, [loaded]);
 
+  const [needNewPassword, setNeedNewPassword] = useState(false);
+  const backUrl = () => (Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin + window.location.pathname : undefined);
+  const authErr = (e: unknown) => {
+    const st = (e as { status?: number })?.status ?? 0;
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/invalid login credentials|invalid_grant/i.test(msg)) return a.badPassword;
+    if (/email not confirmed/i.test(msg)) return a.notConfirmed;
+    if (/already registered|already exists/i.test(msg)) return a.alreadyRegistered;
+    if (/password/i.test(msg) && st === 422) return a.weakPassword;
+    return `${a.sendFailed} (${msg})`;
+  };
   const auth = {
     cloud: !!cloud,
+    needNewPassword,
+    /** Regisztráció: 'in' = belépve, 'confirm' = megerősítő levél ment, különben hibaüzenet */
+    signUp: async (email: string, password: string, name: string): Promise<'in' | 'confirm' | string> => {
+      try {
+        saveJSON('pendingName', name);
+        const s = await cloud!.signUp(email, password, name, backUrl());
+        if (!s) return 'confirm';
+        await finishLogin(s, name);
+        return 'in';
+      } catch (e) {
+        return authErr(e);
+      }
+    },
+    signIn: async (email: string, password: string): Promise<string | null> => {
+      try {
+        await finishLogin(await cloud!.signIn(email, password), '');
+        return null;
+      } catch (e) {
+        return authErr(e);
+      }
+    },
+    recover: async (email: string): Promise<string | null> => {
+      try {
+        await cloud!.recover(email, backUrl());
+        return null;
+      } catch (e) {
+        return authErr(e);
+      }
+    },
+    setPassword: async (password: string): Promise<string | null> => {
+      try {
+        if (!authSession) return a.loginFailed;
+        const s = await withToken();
+        if (!s) return a.loginFailed;
+        await cloud!.setPassword(s, password);
+        setNeedNewPassword(false);
+        return null;
+      } catch (e) {
+        return authErr(e);
+      }
+    },
     sync: authSession ? sync : ('off' as const),
     sendCode: async (email: string, name: string) => {
       try {
@@ -429,10 +491,21 @@ function Main() {
   }, [dest?.id, ev?.minutes]);
   const options = useMemo(
     () => (dest ? recommend(dest, stay, new Date(Date.now() + arriveOffset * 60000)) : []),
-    [dest, stay, arriveOffset],
+    // az utcaszintű zónaadat betöltése után újraszámol (valódi utcákon javasol)
+    [dest, stay, arriveOffset, zoneStreets.length],
   );
   const hereOpt = useMemo(() => (here ? hereOption(here, stay) : null), [here, stay]);
   const selected = hereOpt ?? options.find((o) => o.id === selectedId) ?? null;
+  // „Nem volt hely” után a következő javaslat kerül kijelölésre, és egy köszönő sor jelenik meg
+  const [noSpaceNote, setNoSpaceNote] = useState(false);
+  const report = (kind: ReportKind, o: ParkingOption, note = '') =>
+    sendReport(buildReport({ kind, coord: o.coord, zone: o.zone?.id ?? null, district: districtAt(o.coord), optionKind: o.kind, note, lang }));
+  useEffect(() => {
+    if (step === 'search') setNoSpaceNote(false);
+  }, [step]);
+  useEffect(() => {
+    if (loaded) flushReports();
+  }, [loaded]);
 
   useEffect(() => {
     if (options.length && !options.some((o) => o.id === selectedId)) setSelectedId(options[0].id);
@@ -440,8 +513,19 @@ function Main() {
 
   const results = usePlaceSearch(query);
 
+  const [frequent, setFrequent] = useState<FrequentPlace[]>([]);
+  useEffect(() => {
+    loadJSON<FrequentPlace[]>('frequent', []).then(setFrequent);
+  }, []);
+  const frequentTop = useMemo(() => topFrequent(frequent), [frequent]);
   const pickDest = (p: Place) => {
     track('dest_selected', { kind: p.kind });
+    // A kedvencekből indított cél is számít; a GPS-pont („itt”) nem
+    setFrequent((f) => {
+      const next = rememberPlace(f, p);
+      saveJSON('frequent', next);
+      return next;
+    });
     setHere(null);
     setDest(p);
     setArriveOffset(0);
@@ -485,6 +569,7 @@ function Main() {
   };
   const meZone = live.fix ? zoneAt(live.fix) : null;
   const meDistrict = live.fix ? districtAt(live.fix) : null;
+  const prOpt = useMemo(() => (dest ? prSuggestion(dest, zoneAt(dest), live.fix) : null), [dest, !!live.fix]);
 
   // --- Aktív parkolás óra ---
   const speedRef = useRef(demoSpeed);
@@ -947,7 +1032,7 @@ function Main() {
               </Section>
             </>
           )}
-          <SearchStep t={t} query={query} setQuery={setQuery} results={results} onPick={pickDest} lang={lang} hideInput />
+          <SearchStep t={t} query={query} setQuery={setQuery} results={results} onPick={pickDest} lang={lang} hideInput frequent={frequentTop} />
           <View style={[styles.card, { marginTop: 14, gap: 10 }]}>
             <Text style={{ color: C.sub, fontSize: 13 }}>{canLocate() ? t.orHere : t.tapMap}</Text>
             {canLocate() && !live.fix && (
@@ -1045,6 +1130,12 @@ function Main() {
           )}
 
           <Text style={styles.label}>{t.options}</Text>
+          <Text style={{ color: C.sub, fontSize: 12, marginTop: -4, marginBottom: 8 }}>{t.etaNote}</Text>
+          {noSpaceNote && (
+            <View style={[styles.banner, { backgroundColor: C.goodSoft }]} accessibilityRole="alert">
+              <Text style={{ color: C.good, fontWeight: '600' }}>{t.noSpaceThanks}</Text>
+            </View>
+          )}
           {options.map((o) => (
             <OptionCard
               key={o.id + o.kind}
@@ -1056,6 +1147,32 @@ function Main() {
               onPress={() => setSelectedId(o.id)}
             />
           ))}
+
+          {prOpt && dest && (
+            <View testID="pr-card" style={[styles.card, { marginTop: 4, marginBottom: 6, gap: 8 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={[styles.badge, { backgroundColor: '#1D4ED8', borderRadius: 8 }]}>
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 11 }}>P+R</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.text, fontWeight: '700', fontSize: 15 }}>{t.prTitle}</Text>
+                  <Text style={{ color: C.sub, fontSize: 13 }}>{prOpt.pr.name}</Text>
+                </View>
+              </View>
+              <Text style={styles.sub}>{t.prSub(prOpt.transitMin, prOpt.distKm)}</Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                <Pressable role="link" style={[styles.navBtn, { flex: 1, minWidth: 150 }]} onPress={() => Linking.openURL(driveToUrl(prOpt.pr))}>
+                  <Text style={styles.navBtnText}>{t.prDrive}</Text>
+                  <Text style={{ color: C.sub }}>↗</Text>
+                </Pressable>
+                <Pressable role="link" style={[styles.navBtn, { flex: 1, minWidth: 150 }]} onPress={() => Linking.openURL(transitUrl(prOpt.pr, dest))}>
+                  <Text style={styles.navBtnText}>{t.prTransit}</Text>
+                  <Text style={{ color: C.sub }}>↗</Text>
+                </Pressable>
+              </View>
+              <Text style={{ color: C.sub, fontSize: 12 }}>{t.prNote}</Text>
+            </View>
+          )}
 
           <PrimaryButton
             disabled={!selected}
@@ -1093,6 +1210,20 @@ function Main() {
           ) : (
             <PrimaryButton text={t.arrived} onPress={() => setStep('pay')} />
           )}
+          <Pressable
+            role="button"
+            style={[styles.secondary, { flex: 0, marginTop: 12 }]}
+            onPress={() => {
+              report('nospace', selected);
+              const i = options.findIndex((o) => o.id === selected.id && o.kind === selected.kind);
+              const next = options.slice(i + 1).find((o) => o.id !== selected.id) ?? options.find((o) => o.id !== selected.id);
+              if (next) setSelectedId(next.id);
+              setNoSpaceNote(true);
+              setStep('options');
+            }}
+          >
+            <Text style={styles.secondaryText}>{t.noSpace}</Text>
+          </Pressable>
         </View>
       )}
 
@@ -1123,6 +1254,7 @@ function Main() {
           plusSlot={<PlusOnPay a={a} monthly={settings.plus === 'monthly'} value={plusOnce} onChange={setPlusOnce} />}
           onBack={() => setStep(hereOpt ? 'search' : 'navigate')}
           onPay={startSession}
+          onReport={(kind, note) => report(kind, selected, note)}
         />
       )}
 
@@ -1262,6 +1394,7 @@ function Main() {
           setDemoSpeed={setDemoSpeed}
           onWipe={wipe}
           onFeedback={sendFeedback}
+          district={meDistrict}
           widget={{ data: widgetData, onAction: setWidgetAct }}
           auth={auth}
         />
@@ -1341,7 +1474,7 @@ function Main() {
       ) : tab === 'park' ? (
         <View style={{ flex: 1 }}>
           {map}
-          <View style={[styles.sheet, { height: sheetH }]}>
+          <View style={[styles.sheet, { height: sheetH }, Platform.OS === 'web' && ({ transform: 'translateZ(0)' } as object)]}>
             <View style={styles.grabber} />
             {panel}
             <SafeAreaView edges={['bottom']} style={{ backgroundColor: C.tabBar }}>

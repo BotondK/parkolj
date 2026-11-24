@@ -3,7 +3,7 @@ import maplibregl, { type GeoJSONSource, type StyleSpecification } from 'maplibr
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { ZONES } from '../data/zones';
 import { DISTRICTS } from '../data/districts';
-import { CHARGERS, OSM_GARAGES } from '../data/poi';
+import { CHARGERS, OSM_GARAGES, PARK_RIDES } from '../data/poi';
 import { DISTRICT_CENTERS } from '../logic/geo';
 import { MAP_STRINGS, type MapStrings } from '../i18nMap';
 import { MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
@@ -22,8 +22,9 @@ const GARAGE_COLOR = '#4A1466';
 const ZONE_COLOR = Object.fromEntries(ZONES.map((z) => [z.id, z.color])) as Record<string, string>;
 const localHours = (h: string, L: MapStrings) => h.replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su)\b/g, (d) => L.days[d]);
 const CHARGER_COLOR = '#0E9F6E';
+const PR_COLOR = '#1D4ED8';
 
-type Layers = { zones: boolean; garages: boolean; chargers: boolean };
+type Layers = { zones: boolean; garages: boolean; parkRides: boolean; chargers: boolean };
 
 const fc = (features: GeoJSON.Feature[]): GeoJSON.FeatureCollection => ({ type: 'FeatureCollection', features });
 const ring = (pts: { lat: number; lng: number }[]) => {
@@ -40,6 +41,7 @@ const DISTRICTS_GJ = fc(
 const GARAGES_GJ = fc(
   OSM_GARAGES.map((g) => ({ type: 'Feature', properties: { id: g.id }, geometry: { type: 'Point', coordinates: [g.lng, g.lat] } })),
 );
+const PR_GJ = fc(PARK_RIDES.map((g) => ({ type: 'Feature', properties: { id: g.id }, geometry: { type: 'Point', coordinates: [g.lng, g.lat] } })));
 const CHARGERS_GJ = fc(
   CHARGERS.map((c) => ({ type: 'Feature', properties: { id: c.id, fast: (c.maxKw ?? 0) >= 50 ? 1 : 0 }, geometry: { type: 'Point', coordinates: [c.lng, c.lat] } })),
 );
@@ -58,6 +60,13 @@ function garageHtml(id: string, L: MapStrings) {
     g.operator,
   ].filter(Boolean) as string[];
   return `<b>${esc(g.name ?? (g.kind === 'underground' ? L.underground : L.multiStorey))}</b><br>${rows.map(esc).join('<br>')}`;
+}
+
+function prHtml(id: string, L: MapStrings) {
+  const g = PARK_RIDES.find((x) => x.id === id);
+  if (!g) return '';
+  const rows = [g.capacity ? L.spaces(g.capacity) : null, g.fee === 'no' ? L.free : g.fee === 'yes' ? L.paid : null, g.hours ? L.open(localHours(g.hours, L)) : null, g.operator].filter(Boolean) as string[];
+  return `<b>${esc(g.name ?? 'P+R')}</b>${g.name && !/p\s*\+\s*r/i.test(g.name) ? ' (P+R)' : ''}<br>${rows.map(esc).join('<br>')}`;
 }
 
 function chargerHtml(id: string, L: MapStrings) {
@@ -147,7 +156,24 @@ function POI_ICONS(): Record<string, ImageData> {
       c.fillStyle = '#fff';
       c.fill();
     });
-  iconCache = { 'poi-garage': garage, 'poi-charger': charger(false), 'poi-charger-fast': charger(true) };
+  const pr = make((c) => {
+    shadow(c);
+    roundRect(c, 5, 5, 42, 42, 11);
+    c.fillStyle = '#fff';
+    c.fill();
+    c.shadowColor = 'transparent';
+    roundRect(c, 9, 9, 34, 34, 8);
+    c.fillStyle = PR_COLOR;
+    c.fill();
+    c.fillStyle = '#fff';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.font = '800 20px system-ui,-apple-system,Segoe UI,sans-serif';
+    c.fillText('P', 26, 20);
+    c.font = '800 13px system-ui,-apple-system,Segoe UI,sans-serif';
+    c.fillText('+R', 26, 35);
+  });
+  iconCache = { 'poi-pr': pr, 'poi-garage': garage, 'poi-charger': charger(false), 'poi-charger-fast': charger(true) };
   return iconCache;
 }
 
@@ -164,7 +190,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
   meRef.current = me;
   const wantCenter = useRef(false);
   const [ready, setReady] = useState(0);
-  const [layers, setLayers] = useState<Layers>({ zones: true, garages: true, chargers: true });
+  const [layers, setLayers] = useState<Layers>({ zones: true, garages: true, parkRides: true, chargers: true });
   const layersRef = useRef(layers);
   layersRef.current = layers;
   const [layersOpen, setLayersOpen] = useState(false);
@@ -238,6 +264,14 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
         minzoom: 11,
         layout: { 'icon-image': 'poi-garage', 'icon-size': iconSize, 'icon-allow-overlap': true, 'icon-padding': 0 },
       });
+      m.addSource('parkrides', { type: 'geojson', data: PR_GJ });
+      m.addLayer({
+        id: 'parkrides',
+        type: 'symbol',
+        source: 'parkrides',
+        minzoom: 10,
+        layout: { 'icon-image': 'poi-pr', 'icon-size': iconSize, 'icon-allow-overlap': true, 'icon-padding': 0 },
+      });
       applyVisibility(m, layersRef.current);
       setReady((n) => n + 1);
     };
@@ -261,7 +295,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
     const showPopup = (html: string, at: maplibregl.LngLatLike) => popup.setLngLat(at).setHTML(`<div style="font:13px/1.4 system-ui,sans-serif;color:#1C1B1F">${html}</div>`).addTo(m);
     m.on('click', (e) => {
       const street = m.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['zone-streets'].filter((l) => m.getLayer(l)) })[0];
-      const hit = m.queryRenderedFeatures(e.point, { layers: ['garages', 'chargers'].filter((l) => m.getLayer(l)) })[0];
+      const hit = m.queryRenderedFeatures(e.point, { layers: ['garages', 'parkrides', 'chargers'].filter((l) => m.getLayer(l)) })[0];
       if (!hit && street && !pressRef.current) {
         const p = street.properties as { z: string; n?: string; h?: string };
         showPopup(`<b>${esc(LRef.current.zone(p.z))}</b>${p.n ? ` · ${esc(p.n)}` : ''}${p.h ? `<br>${esc(LRef.current.paidHours(localHours(p.h, LRef.current)))}` : ''}`, e.lngLat);
@@ -269,13 +303,13 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
       }
       if (hit) {
         const id = String(hit.properties?.id);
-        showPopup(hit.layer.id === 'garages' ? garageHtml(id, LRef.current) : chargerHtml(id, LRef.current), e.lngLat);
+        showPopup(hit.layer.id === 'garages' ? garageHtml(id, LRef.current) : hit.layer.id === 'parkrides' ? prHtml(id, LRef.current) : chargerHtml(id, LRef.current), e.lngLat);
         return;
       }
       popup.remove();
       pressRef.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng });
     });
-    for (const l of ['garages', 'chargers']) {
+    for (const l of ['garages', 'parkrides', 'chargers']) {
       m.on('mouseenter', l, () => (m.getCanvas().style.cursor = 'pointer'));
       m.on('mouseleave', l, () => (m.getCanvas().style.cursor = ''));
     }
@@ -384,11 +418,13 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
   const legend: [keyof Layers, string, string][] = [
     ['zones', L.zones, '#E8590C'],
     ['garages', L.garages(OSM_GARAGES.length), GARAGE_COLOR],
+    ...(PARK_RIDES.length ? [['parkRides', L.parkRides(PARK_RIDES.length), PR_COLOR] as [keyof Layers, string, string]] : []),
     ['chargers', L.chargers(CHARGERS.length), CHARGER_COLOR],
   ];
 
   return (
-    <div style={{ position: 'relative', flex: 1, width: '100%', height: '100%', minHeight: 0 }}>
+    // isolation: a térkép (és vezérlői, felirata) saját rétegben marad, nem kerül a felette lévő panel fölé (iPhone Safari)
+    <div style={{ position: 'relative', flex: 1, width: '100%', height: '100%', minHeight: 0, isolation: 'isolate', zIndex: 0 }}>
       <style>{`.maplibregl-ctrl-attrib{font-size:11px}.maplibregl-popup-content{border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.18);padding:10px 12px}`}</style>
       <div ref={host} style={{ position: 'absolute', inset: 0, backgroundColor: dark ? '#1E1D22' : '#F2EFE6' }} />
       {/* Rétegválasztó (jobbra fent, az óra mellett / alatt) */}
@@ -403,7 +439,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
             {legend.map(([k, label, color]) => (
               <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', cursor: 'pointer', color: dark ? '#F5F4F7' : '#1C1B1F' }}>
                 <input type="checkbox" checked={layers[k]} onChange={() => toggle(k)} style={{ accentColor: '#4A1466', width: 18, height: 18 }} />
-                <span style={{ width: 18, height: 18, borderRadius: k === 'garages' ? 5 : 9, background: color, flex: 'none', color: '#fff', font: '800 11px system-ui,sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{k === 'garages' ? 'P' : k === 'chargers' ? '⚡' : ''}</span>
+                <span style={{ width: 18, height: 18, borderRadius: k === 'garages' || k === 'parkRides' ? 5 : 9, background: color, flex: 'none', color: '#fff', font: '800 11px system-ui,sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{k === 'garages' ? 'P' : k === 'parkRides' ? 'P+' : k === 'chargers' ? '⚡' : ''}</span>
                 {label}
               </label>
             ))}
@@ -433,5 +469,6 @@ function applyVisibility(m: maplibregl.Map, l: Layers) {
   set('zones-line', l.zones);
   set('zone-streets', l.zones);
   set('garages', l.garages);
+  set('parkrides', l.parkRides);
   set('chargers', l.chargers);
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { Icon } from '../components/icons';
 import { EmptyState, Field, ListRow, PageHeader, PillButton, Section, Segmented, ToggleRow, titleColor } from '../components/kit';
-import { C, isDark, PrimaryButton, styles } from '../components/ui';
+import { C, Chip, isDark, PrimaryButton, styles } from '../components/ui';
 import { LOCALE, type Lang, type Strings } from '../i18n';
 import type { AccStrings } from '../i18nAccount';
 import { BIOMETRIC_AVAILABLE } from '../logic/biometric';
@@ -28,6 +28,8 @@ import { PlusBadge, PlusPage } from './PlusScreens';
 export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback' | 'plus' | 'privacy' | 'widgets';
 
 export type MenuProps = {
+  /** A felhasználó kerülete (GPS alapján), a lakossági engedély linkjéhez */
+  district?: string | null;
   t: Strings;
   a: AccStrings;
   lang: Lang;
@@ -60,6 +62,13 @@ export type MenuProps = {
     /** null = elküldve, különben a hibaüzenet */
     sendCode: (email: string, name: string) => Promise<string | null>;
     verify: (email: string, code: string, name: string) => Promise<boolean>;
+    /** E-mail + jelszó: 'in' = belépve, 'confirm' = megerősítő levél, különben hibaüzenet */
+    signUp: (email: string, password: string, name: string) => Promise<'in' | 'confirm' | string>;
+    signIn: (email: string, password: string) => Promise<string | null>;
+    recover: (email: string) => Promise<string | null>;
+    setPassword: (password: string) => Promise<string | null>;
+    /** Jelszó-visszaállító linkről érkezett: új jelszót kell megadni */
+    needNewPassword: boolean;
     logout: () => void;
   };
 };
@@ -100,7 +109,7 @@ export default function MenuScreens(p: MenuProps) {
       return (
         <View>
           <PageHeader title={a.infoHelp} onBack={back()} />
-          <InfoScreen t={p.t} lang={p.lang} hideTitle />
+          <InfoScreen t={p.t} lang={p.lang} hideTitle district={p.district} />
         </View>
       );
     default:
@@ -224,8 +233,11 @@ function AccountPage({ a, account, setAccount, onWipe, onBack, auth, setPage }: 
   const [name, setName] = useState(account?.name ?? '');
   const [email, setEmail] = useState(account?.email ?? '');
   const [confirm, setConfirm] = useState(false);
-  const [code, setCode] = useState('');
-  const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
+  const [password, setPassword] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [info, setInfo] = useState<string | null>(null);
+  const [pwOpen, setPwOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const syncText = auth.sync === 'saving' ? a.syncSaving : auth.sync === 'saved' ? a.syncSaved : auth.sync === 'error' ? a.syncError : null;
@@ -239,47 +251,102 @@ function AccountPage({ a, account, setAccount, onWipe, onBack, auth, setPage }: 
           {syncText && <ListRow icon={auth.sync === 'error' ? 'info' : 'check'} label={syncText} />}
           <ListRow icon="logout" label={a.logout} onPress={() => (auth.cloud ? auth.logout() : setAccount(null))} last />
         </Section>
-      ) : auth.cloud ? (
+      ) : null}
+      {account && auth.cloud && (auth.needNewPassword || pwOpen) && (
         <View style={[styles.card, { marginBottom: 18 }]}>
-          {!codeSentTo ? (
+          <Text style={{ color: C.text, fontWeight: '700', marginBottom: 10 }}>{a.newPassword}</Text>
+          <Field label={a.password} value={newPw} onChange={setNewPw} secure autoComplete="new-password" error={newPw && newPw.length < 8 ? a.passwordMin : null} />
+          <PrimaryButton
+            text={a.savePassword}
+            disabled={newPw.length < 8 || busy}
+            onPress={async () => {
+              setBusy(true);
+              const r = await auth.setPassword(newPw);
+              setBusy(false);
+              if (r) setErr(r);
+              else {
+                setNewPw('');
+                setPwOpen(false);
+                setInfo(a.passwordSaved);
+              }
+            }}
+          />
+          {err && <Text style={{ color: C.danger, marginTop: 10 }}>{err}</Text>}
+        </View>
+      )}
+      {account && auth.cloud && !auth.needNewPassword && !pwOpen && (
+        <Section>
+          <ListRow icon="finger" label={info ?? a.changePassword} onPress={() => { setInfo(null); setErr(null); setPwOpen(true); }} last />
+        </Section>
+      )}
+      {account ? null : auth.cloud ? (
+        <View style={[styles.card, { marginBottom: 18 }]}>
+          {info ? (
             <>
-              <Field label={a.name} value={name} onChange={setName} autoCap="words" />
-              <Field label={a.email} value={email} onChange={setEmail} keyboard="email-address" />
-              <Text style={{ color: C.sub, fontSize: 12 }}>{a.cloudNote}</Text>
-              <Text style={{ color: C.sub, fontSize: 12, marginTop: 4 }} onPress={() => setPage('privacy')}>
-                {a.privacyAgree} <Text style={{ color: titleColor(), fontWeight: '700', textDecorationLine: 'underline' }}>{a.privacy}</Text>
-              </Text>
-              <PrimaryButton
-                text={a.sendCode}
-                disabled={!emailOk || busy}
-                onPress={async () => {
-                  setBusy(true);
-                  setErr(null);
-                  const e = await auth.sendCode(email.trim().toLowerCase(), name.trim());
-                  setBusy(false);
-                  if (!e) setCodeSentTo(email.trim().toLowerCase());
-                  else setErr(`${a.sendFailed} (${e})`);
-                }}
-              />
+              <Text style={{ color: C.text }}>{info}</Text>
+              <Pressable onPress={() => { setInfo(null); setMode('login'); }} style={{ alignSelf: 'center', marginTop: 14 }}>
+                <Text style={{ color: titleColor(), fontWeight: '700' }}>{a.backToLogin}</Text>
+              </Pressable>
             </>
           ) : (
             <>
-              <Text style={{ color: C.text, marginBottom: 12 }}>{a.codeSent(codeSentTo)}</Text>
-              <Field label={a.code} value={code} onChange={(s) => setCode(s.replace(/\D/g, '').slice(0, 8))} keyboard="number-pad" placeholder="123456" />
+              <View style={[styles.chipRow, { marginBottom: 14 }]} role="tablist">
+                <Chip text={a.login} active={mode === 'login'} onPress={() => { setMode('login'); setErr(null); }} />
+                <Chip text={a.register} active={mode === 'register'} onPress={() => { setMode('register'); setErr(null); }} />
+              </View>
+              {mode === 'register' && <Field label={a.name} value={name} onChange={setName} autoCap="words" autoComplete="name" />}
+              <Field label={a.emailAsUser} value={email} onChange={setEmail} keyboard="email-address" autoComplete="email" />
+              {mode !== 'forgot' && (
+                <Field
+                  label={a.password}
+                  value={password}
+                  onChange={setPassword}
+                  secure
+                  autoComplete={mode === 'register' ? 'new-password' : 'password'}
+                  error={mode === 'register' && password && password.length < 8 ? a.passwordMin : null}
+                />
+              )}
+              {mode === 'register' && (
+                <>
+                  <Text style={{ color: C.sub, fontSize: 12 }}>{a.cloudNote}</Text>
+                  <Text style={{ color: C.sub, fontSize: 12, marginTop: 4 }} onPress={() => setPage('privacy')}>
+                    {a.privacyAgree} <Text style={{ color: titleColor(), fontWeight: '700', textDecorationLine: 'underline' }}>{a.privacy}</Text>
+                  </Text>
+                </>
+              )}
+              {mode === 'forgot' && <Text style={{ color: C.sub, fontSize: 12 }}>{a.forgotNote}</Text>}
               <PrimaryButton
-                text={a.verify}
-                disabled={code.length < 6 || busy}
+                text={mode === 'login' ? a.login : mode === 'register' ? a.register : a.sendReset}
+                disabled={!emailOk || busy || (mode === 'login' && !password) || (mode === 'register' && password.length < 8)}
                 onPress={async () => {
                   setBusy(true);
                   setErr(null);
-                  const ok = await auth.verify(codeSentTo, code, name.trim());
+                  const e = email.trim().toLowerCase();
+                  if (mode === 'login') {
+                    const r = await auth.signIn(e, password);
+                    if (r) setErr(r);
+                  } else if (mode === 'register') {
+                    const r = await auth.signUp(e, password, name.trim());
+                    if (r === 'confirm') setInfo(a.confirmSent(e));
+                    else if (r !== 'in') setErr(r);
+                  } else {
+                    const r = await auth.recover(e);
+                    if (r) setErr(r);
+                    else setInfo(a.resetSent(e));
+                  }
                   setBusy(false);
-                  if (!ok) setErr(a.loginFailed);
                 }}
               />
-              <Pressable onPress={() => { setCodeSentTo(null); setCode(''); }} style={{ alignSelf: 'center', marginTop: 14 }}>
-                <Text style={{ color: titleColor(), fontWeight: '700' }}>{a.changeEmail}</Text>
-              </Pressable>
+              {mode === 'login' && (
+                <Pressable onPress={() => { setMode('forgot'); setErr(null); }} style={{ alignSelf: 'center', marginTop: 14 }} role="button">
+                  <Text style={{ color: titleColor(), fontWeight: '700' }}>{a.forgot}</Text>
+                </Pressable>
+              )}
+              {mode === 'forgot' && (
+                <Pressable onPress={() => setMode('login')} style={{ alignSelf: 'center', marginTop: 14 }} role="button">
+                  <Text style={{ color: titleColor(), fontWeight: '700' }}>{a.backToLogin}</Text>
+                </Pressable>
+              )}
             </>
           )}
           {err && <Text style={{ color: C.danger, marginTop: 10 }}>{err}</Text>}

@@ -129,6 +129,8 @@ export function Field({
   error,
   autoCap,
   maxLength,
+  secure,
+  autoComplete,
 }: {
   label: string;
   value: string;
@@ -138,6 +140,9 @@ export function Field({
   error?: string | null;
   autoCap?: 'none' | 'characters' | 'words';
   maxLength?: number;
+  /** Jelszómező */
+  secure?: boolean;
+  autoComplete?: 'email' | 'password' | 'new-password' | 'name';
 }) {
   return (
     <View style={{ marginBottom: 12 }}>
@@ -151,6 +156,8 @@ export function Field({
         keyboardType={keyboard}
         autoCapitalize={autoCap ?? 'none'}
         maxLength={maxLength}
+        secureTextEntry={secure}
+        autoComplete={autoComplete}
         style={{
           height: 52,
           borderRadius: 12,

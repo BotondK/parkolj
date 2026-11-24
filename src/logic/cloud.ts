@@ -1,6 +1,7 @@
 // Fiók és felhőszinkron Supabase-szel (Auth + Postgres), külső csomag nélkül, sima fetch-csel.
 // Ha nincs beállítva EXPO_PUBLIC_SUPABASE_URL és EXPO_PUBLIC_SUPABASE_ANON_KEY, az app helyi fiókkal működik tovább.
 // A tábla és a jogosultságok: supabase/schema.sql. Beállítás: docs/FIOK.md.
+import type { SpotReport } from './reportCore';
 import type { BetaRow } from './betaCore';
 import type { BillingProfile, Car, FavoritePlace, HistoryItem, PaymentCard, Session, Settings } from '../types';
 
@@ -91,7 +92,7 @@ export function makeCloud(cfg: CloudConfig, f: Fetch = fetch) {
         body: JSON.stringify({ email, create_user: true }),
       }),
     /** A belépő linkről visszatérve az URL-ben (#access_token=…) lévő adatokból munkamenet */
-    sessionFromUrl: async (hash: string): Promise<AuthSession | { error: string } | null> => {
+    sessionFromUrl: async (hash: string): Promise<(AuthSession & { recovery?: boolean }) | { error: string } | null> => {
       const q = new URLSearchParams(hash.replace(/^#/, ''));
       if (q.get('error')) return { error: q.get('error_description') || q.get('error')! };
       const accessToken = q.get('access_token');
@@ -99,8 +100,25 @@ export function makeCloud(cfg: CloudConfig, f: Fetch = fetch) {
       if (!accessToken || !refreshToken) return null;
       const user = await call<{ id: string; email: string }>('/auth/v1/user', { token: accessToken });
       const expiresIn = Number(q.get('expires_in') || 3600);
-      return { accessToken, refreshToken, expiresAt: Date.now() + expiresIn * 1000, userId: user.id, email: user.email };
+      return { accessToken, refreshToken, expiresAt: Date.now() + expiresIn * 1000, userId: user.id, email: user.email, recovery: q.get('type') === 'recovery' };
     },
+    /** Regisztráció e-mail címmel és jelszóval. Ha a Supabase-ben be van kapcsolva az e-mail megerősítés, munkamenet helyett
+     *  null jön vissza: a felhasználó a levélben lévő linkkel erősít meg (ide tér vissza). */
+    signUp: async (email: string, password: string, name: string, redirectTo?: string): Promise<AuthSession | null> => {
+      const b = await call<{ access_token?: string }>(`/auth/v1/signup${redirectTo ? `?redirect_to=${encodeURIComponent(redirectTo)}` : ''}`, {
+        method: 'POST',
+        body: JSON.stringify({ email, password, data: { name } }),
+      });
+      return b && b.access_token ? toSession(b as Parameters<typeof toSession>[0]) : null;
+    },
+    /** Belépés e-mail címmel és jelszóval */
+    signIn: async (email: string, password: string) =>
+      toSession(await call('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email, password }) })),
+    /** Elfelejtett jelszó: levél egy linkkel, ami ide hoz vissza (#type=recovery), ott adható meg az új jelszó */
+    recover: (email: string, redirectTo?: string) =>
+      call<unknown>(`/auth/v1/recover${redirectTo ? `?redirect_to=${encodeURIComponent(redirectTo)}` : ''}`, { method: 'POST', body: JSON.stringify({ email }) }),
+    /** Új jelszó beállítása (belépve, pl. a jelszó-visszaállító link után) */
+    setPassword: (s: AuthSession, password: string) => call<unknown>('/auth/v1/user', { method: 'PUT', token: s.accessToken, body: JSON.stringify({ password }) }),
     /** A kapott 6 jegyű kód ellenőrzése */
     verifyCode: async (email: string, token: string) =>
       toSession(await call('/auth/v1/verify', { method: 'POST', body: JSON.stringify({ type: 'email', email, token }) })),
@@ -132,6 +150,8 @@ export function makeCloud(cfg: CloudConfig, f: Fetch = fetch) {
     /** Névtelen használati események (zárt béta); felhasználói azonosító nélkül, belépve sem kötjük a fiókhoz */
     sendEvents: (events: { sid: string; name: string; at: string; lang: string; platform: string; props: Record<string, unknown> }[]) =>
       call<unknown>('/rest/v1/events', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(events.map((e) => ({ sid: e.sid, name: e.name, at: e.at, lang: e.lang, platform: e.platform, props: e.props }))) }),
+    /** „Nem volt hely” / „Hibás adat” jelzések; azonosító nélkül, belépve sem kötjük a fiókhoz */
+    sendReports: (rows: SpotReport[]) => call<unknown>('/rest/v1/spot_reports', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(rows) }),
     /** Jelentkezés a zárt bétára (be nem lépve). Adatbázis-függvény: a már jelentkezett címet csendben kihagyja,
      *  így a válaszból nem derül ki, hogy egy e-mail cím szerepel-e a listán. */
     betaSignup: (row: BetaRow) => call<unknown>('/rest/v1/rpc/beta_signup', { method: 'POST', body: JSON.stringify(row) }),

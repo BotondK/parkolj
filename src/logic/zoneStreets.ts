@@ -57,3 +57,26 @@ export function streetZoneAt(p: LatLng, maxM = 30): (ZoneStreet & { distM: numbe
   }
   return best ? { ...best, distM: Math.round(bestD) } : null;
 }
+
+/**
+ * Zónás utcaszakaszok pontjai a cél körül (szakaszfelezők, ~70 m-enként egy), a javaslatokhoz.
+ * Így a javasolt hely mindig valódi, fizetős zónás utcán van (nem pályaudvaron, parkban vagy épületben).
+ */
+export function streetPointsNear(p: LatLng, radiusM: number): { coord: LatLng; z: ZoneStreet['z']; n: string | null }[] {
+  if (!streets.length) return [];
+  const rLat = radiusM / 110540, rLng = radiusM / (111320 * Math.cos((p.lat * Math.PI) / 180));
+  const cand = new Set<number>();
+  for (let y = Math.floor((p.lat - rLat) / CELL); y <= Math.floor((p.lat + rLat) / CELL); y++)
+    for (let x = Math.floor((p.lng - rLng) / CELL); x <= Math.floor((p.lng + rLng) / CELL); x++) grid.get(`${y}:${x}`)?.forEach((i) => cand.add(i));
+  const out = new Map<string, { coord: LatLng; z: ZoneStreet['z']; n: string | null }>();
+  for (const i of cand) {
+    const s = streets[i];
+    for (let j = 1; j < s.c.length; j++) {
+      const lng = (s.c[j - 1][0] + s.c[j][0]) / 2, lat = (s.c[j - 1][1] + s.c[j][1]) / 2;
+      if (Math.abs(lat - p.lat) > rLat || Math.abs(lng - p.lng) > rLng) continue;
+      const k = `${Math.round(lat / 0.0006)}:${Math.round(lng / 0.0009)}`;
+      if (!out.has(k)) out.set(k, { coord: { lat, lng }, z: s.z, n: s.n });
+    }
+  }
+  return [...out.values()];
+}

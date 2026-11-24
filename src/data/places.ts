@@ -40,7 +40,7 @@ const norm = (s: string) =>
 
 export function searchPlaces(q: string, extra: Place[] = []): Place[] {
   const n = norm(q.trim());
-  if (!n) return PLACES.slice(0, 6);
+  if (!n) return [];
   return [...PLACES, ...extra]
     .filter((p) => [p.name, p.nameEn ?? '', p.nameDe ?? '', p.address].some((f) => norm(f).includes(n)))
     .slice(0, 8);

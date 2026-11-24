@@ -140,3 +140,31 @@ create or replace view public.beta_summary with (security_invoker = true) as
 select platform, who, freq, count(*) as fo, count(*) filter (where invited_at is not null) as meghivva
 from public.beta_signups group by 1, 2, 3 order by 4 desc;
 revoke all on public.beta_summary from anon, authenticated;
+
+-- „Nem volt hely” és „Hibás adat” jelzések (a felhasználó maga küldi). Nincs felhasználói azonosító, rendszám;
+-- a hely kb. 100 m-re kerekítve. Kívülről csak írható; az összesítő a Dashboardon olvasható, és a BKK-nak adható át.
+create table if not exists public.spot_reports (
+  id bigserial primary key,
+  created_at timestamptz not null default now(),
+  at timestamptz not null,
+  kind text not null check (kind in ('nospace','wrongzone','wrongprice','notpaid','other')),
+  zone_id text check (zone_id is null or zone_id ~ '^[A-D]$'),
+  district text check (district is null or char_length(district) <= 40),
+  option_kind text check (option_kind is null or option_kind in ('fastest','cheapest','garage','here')),
+  lat numeric(6,3) not null check (lat between 47.3 and 47.7),
+  lng numeric(6,3) not null check (lng between 18.9 and 19.4),
+  note text check (note is null or char_length(note) <= 300),
+  lang text not null check (lang in ('hu','en','de'))
+);
+alter table public.spot_reports enable row level security;
+drop policy if exists "jelzes kuldese" on public.spot_reports;
+create policy "jelzes kuldese" on public.spot_reports for insert to anon, authenticated with check (true);
+revoke all on public.spot_reports from anon, authenticated;
+grant insert on public.spot_reports to anon, authenticated;
+grant usage on sequence public.spot_reports_id_seq to anon, authenticated;
+
+-- Áttekintés: select * from public.spot_report_summary;  (zóna × jelzés × óra, Budapest idő szerint)
+create or replace view public.spot_report_summary with (security_invoker = true) as
+  select zone_id, kind, extract(hour from at at time zone 'Europe/Budapest')::int as hour, count(*) as reports, max(at) as last_at
+  from public.spot_reports group by 1, 2, 3 order by reports desc;
+revoke all on public.spot_report_summary from anon, authenticated;

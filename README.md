@@ -50,6 +50,12 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 42. Kezdőképernyő-widgetek iPhone-ra és Androidra: „Parkolásom” (zóna, élő visszaszámlálás, +15 perc, leállítás; iPhone zárolt képernyőn is) és „Gyors indítás” (itt, otthon, munkahely); előnézet a webes demóban: Menü → Widgetek. Részletek: `docs/WIDGETEK.md`
 43. Élő tevékenység iPhone-on: parkolás közben a zárolt képernyőn és a Dynamic Islandben is fut a visszaszámlálás, +15 perc és Leállítás gombbal
 44. Ledolgozós szombat és áthelyezett pihenőnap: ledolgozós szombaton munkanapi rend szerint számol díjat (pótdíjveszély, főleg turistáknak), az áthelyezett pihenőnap díjmentes; pár nappal előtte figyelmeztet a fizetésnél és a Tudnivalókban
+45. A javaslatok valódi zónás utcákon (OSM utcaszintű adatból), utcanévvel; minden javaslaton „kb. X perc a célig” (helykeresés + gyaloglás), a valóban leggyorsabb jelölve
+46. „Nem volt hely” gomb (a következő javaslatra lép) és „Hibás zóna vagy ár?” jelzés, névtelenül (`spot_reports` tábla)
+47. P+R javaslat belvárosi célnál (ingyenes parkolás a szélen, onnan tömegközlekedéssel), P+R réteg a térképen (OSM-adat)
+48. Gyakori helyeid: a keresőben az előre megadott népszerű célpontok helyett a gyakran választott helyek (csak a készüléken)
+49. Belépés e-mail címmel és jelszóval, elfelejtett jelszó visszaállítása (Supabase)
+50. Lakossági parkolási engedély: tudnivaló és link a kerületi igényléshez
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 

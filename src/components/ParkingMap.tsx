@@ -2,7 +2,7 @@ import { MAP_STRINGS } from '../i18nMap';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import MapView, { Marker, Polygon, Polyline, type Region } from 'react-native-maps';
-import { CHARGERS, OSM_GARAGES } from '../data/poi';
+import { CHARGERS, OSM_GARAGES, PARK_RIDES } from '../data/poi';
 import { DISTRICTS } from '../data/districts';
 import { ZONES } from '../data/zones';
 import { MARKER_COLORS, MARKER_GLYPH, type ParkingMapProps } from './mapTypes';
@@ -12,18 +12,21 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
   const L = MAP_STRINGS[lang];
   const ref = useRef<MapView>(null);
   const [region, setRegion] = useState<Region>({ latitude: 47.4979, longitude: 19.0402, latitudeDelta: 0.05, longitudeDelta: 0.05 });
-  const [layers, setLayers] = useState({ garages: true, chargers: true });
+  const [layers, setLayers] = useState({ garages: true, parkRides: true, chargers: true });
   const [layersOpen, setLayersOpen] = useState(false);
   // Garázsok és töltők csak közelről, és csak a látható részen (sok egyedi jelölő lassítaná a natív térképet)
   const pois = useMemo(() => {
     if (region.latitudeDelta > 0.06) return [];
     const inView = (lat: number, lng: number) =>
       Math.abs(lat - region.latitude) < region.latitudeDelta * 0.6 && Math.abs(lng - region.longitude) < region.longitudeDelta * 0.6;
-    const out: { id: string; kind: 'garage' | 'charger' | 'fast'; lat: number; lng: number; title: string; desc: string }[] = [];
+    const out: { id: string; kind: 'garage' | 'pr' | 'charger' | 'fast'; lat: number; lng: number; title: string; desc: string }[] = [];
     if (layers.garages)
       for (const g of OSM_GARAGES)
         if (inView(g.lat, g.lng))
           out.push({ id: `g${g.id}`, kind: 'garage', lat: g.lat, lng: g.lng, title: g.name ?? (g.kind === 'underground' ? L.underground : L.multiStorey), desc: [g.capacity ? L.spaces(g.capacity) : '', g.operator ?? ''].filter(Boolean).join(' · ') });
+    if (layers.parkRides)
+      for (const g of PARK_RIDES)
+        if (inView(g.lat, g.lng)) out.push({ id: `r${g.id}`, kind: 'pr', lat: g.lat, lng: g.lng, title: g.name ?? 'P+R', desc: [g.capacity ? L.spaces(g.capacity) : '', g.operator ?? ''].filter(Boolean).join(' · ') });
     if (layers.chargers)
       for (const c of CHARGERS)
         if (inView(c.lat, c.lng))
@@ -88,15 +91,15 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
             style={{
               width: 26,
               height: 26,
-              borderRadius: pt.kind === 'garage' ? 7 : 13,
-              backgroundColor: pt.kind === 'garage' ? '#4A1466' : '#0E9F6E',
+              borderRadius: pt.kind === 'garage' || pt.kind === 'pr' ? 7 : 13,
+              backgroundColor: pt.kind === 'garage' ? '#4A1466' : pt.kind === 'pr' ? '#1D4ED8' : '#0E9F6E',
               borderWidth: 2,
               borderColor: pt.kind === 'fast' ? '#FACC15' : '#fff',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: pt.kind === 'garage' ? 15 : 13 }}>{pt.kind === 'garage' ? 'P' : '⚡'}</Text>
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: pt.kind === 'garage' ? 15 : pt.kind === 'pr' ? 10 : 13 }}>{pt.kind === 'garage' ? 'P' : pt.kind === 'pr' ? 'P+R' : '⚡'}</Text>
           </View>
         </Marker>
       ))}
@@ -137,11 +140,12 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
             {(
               [
                 ['garages', L.garagesShort(OSM_GARAGES.length), 'P', '#4A1466'],
+                ['parkRides', L.parkRides(PARK_RIDES.length), 'P+', '#1D4ED8'],
                 ['chargers', L.chargers(CHARGERS.length), '⚡', '#0E9F6E'],
               ] as const
             ).map(([k, label, glyph, color]) => (
               <Pressable key={k} onPress={() => setLayers((l) => ({ ...l, [k]: !l[k] }))} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, opacity: layers[k] ? 1 : 0.45 }}>
-                <View style={{ width: 22, height: 22, borderRadius: k === 'garages' ? 6 : 11, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{ width: 22, height: 22, borderRadius: k === 'chargers' ? 11 : 6, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{glyph}</Text>
                 </View>
                 <Text style={{ color: dark ? '#F5F4F7' : '#1C1B1F', fontSize: 15 }}>{label}</Text>

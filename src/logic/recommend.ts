@@ -3,6 +3,8 @@ import type { LatLng, Zone } from '../data/zones';
 import { distanceM, offset, walkMinutes, zoneAt } from './geo';
 import { formatClock, paidEnd, priceFor, priceWindow } from './pricing';
 import { bpParts } from './budapestTime';
+import { streetPointsNear } from './zoneStreets';
+import { ZONES } from '../data/zones';
 
 export type OptionKind = 'fastest' | 'cheapest' | 'garage' | 'here';
 
@@ -24,6 +26,14 @@ export type ParkingOption = {
   /** Égtáj kulcs a leíráshoz (N, NE, ...) */
   bearing: string;
   distanceM: number;
+  /** Az utca neve, ha ismert (OSM) */
+  street?: string | null;
+  /** Becsült idő a célig percben: helykeresés + gyaloglás (garázsnál behajtás + gyaloglás) */
+  etaMin: number;
+  /** A javaslatok közül ez ér leghamarabb a célhoz */
+  quickest?: boolean;
+  /** Az „olcsóbb” helyett: nincs olcsóbb utcai hely, ez a nagyobb eséllyel szabad */
+  surer?: boolean;
 };
 
 const BEARINGS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -59,35 +69,53 @@ function freeFromLabel(zone: Zone | null, minutes: number, at: Date): string | u
 }
 
 export function recommend(dest: LatLng, plannedMinutes: number, at: Date = new Date()): ParkingOption[] {
-  // 1) Jelölt utcai helyek gyűrűkben a célpont körül
+  // 1) Jelölt utcai helyek: ha betöltött az utcaszintű zónaadat, a cél körüli valódi zónás utcákon;
+  //    különben gyűrűkben, de csak zónán belüli pontokon (ne kerüljön pályaudvarra, parkba)
   const candidates: ParkingOption[] = [];
-  const rings = [110, 220, 350, 500, 700, 950, 1200];
-  rings.forEach((r, ri) => {
-    BEARINGS.forEach((b, bi) => {
-      const angle = (bi * Math.PI) / 4 + ri * 0.35;
-      const coord = offset(dest, Math.cos(angle) * r, Math.sin(angle) * r);
-      const zone = zoneAt(coord);
-      const d = distanceM(dest, coord);
-      const availability = availabilityAt(coord, d, at);
-      const idx = Math.round(((Math.atan2(Math.sin(angle), Math.cos(angle)) * 180) / Math.PI + 360) % 360 / 45) % 8;
-      candidates.push({
-        id: `s-${ri}-${bi}`,
-        kind: 'fastest',
-        coord,
-        zone,
-        walkMin: walkMinutes(dest, coord),
-        availability,
-        cost: streetCost(zone, plannedMinutes, at),
-        freeFrom: freeFromLabel(zone, plannedMinutes, at),
-        maxMinutes: zone?.maxMinutes ?? null,
-        bearing: BEARINGS[idx],
-        distanceM: Math.round(d / 10) * 10,
+  const bearingOf = (coord: LatLng) => {
+    const deg = ((Math.atan2(coord.lng - dest.lng, (coord.lat - dest.lat) / Math.cos((dest.lat * Math.PI) / 180)) * 180) / Math.PI + 360) % 360;
+    return BEARINGS[Math.round(deg / 45) % 8];
+  };
+  const add = (id: string, coord: LatLng, zone: Zone | null, street: string | null) => {
+    const d = distanceM(dest, coord);
+    const walkMin = walkMinutes(dest, coord);
+    const availability = availabilityAt(coord, d, at);
+    candidates.push({
+      id,
+      kind: 'fastest',
+      coord,
+      zone,
+      walkMin,
+      availability,
+      cost: streetCost(zone, plannedMinutes, at),
+      freeFrom: freeFromLabel(zone, plannedMinutes, at),
+      maxMinutes: zone?.maxMinutes ?? null,
+      bearing: bearingOf(coord),
+      distanceM: Math.round(d / 10) * 10,
+      street,
+      etaMin: Math.round(walkMin + (1 - availability) * 12),
+    });
+  };
+  const pts = streetPointsNear(dest, 1200).filter((p) => distanceM(dest, p.coord) <= 1200);
+  if (pts.length >= 6) {
+    pts.forEach((p, i) => add(`st-${i}-${p.coord.lat.toFixed(4)}`, p.coord, ZONES.find((z) => z.id === p.z) ?? null, p.n));
+  } else {
+    const destInZone = !!zoneAt(dest);
+    const rings = [110, 220, 350, 500, 700, 950, 1200];
+    rings.forEach((r, ri) => {
+      BEARINGS.forEach((_, bi) => {
+        const angle = (bi * Math.PI) / 4 + ri * 0.35;
+        const coord = offset(dest, Math.cos(angle) * r, Math.sin(angle) * r);
+        const zone = zoneAt(coord);
+        if (destInZone && !zone) return;
+        add(`s-${ri}-${bi}`, coord, zone, null);
       });
     });
-  });
+    if (!candidates.length) add('s-dest', dest, zoneAt(dest), null);
+  }
 
   // Várható „idő a célig”: gyaloglás + keresgélés (alacsony esély = körözés)
-  const timeScore = (o: ParkingOption) => o.walkMin + (1 - o.availability) * 12;
+  const timeScore = (o: ParkingOption) => o.etaMin + o.walkMin * 0.01;
 
   const fastest = [...candidates].filter((c) => c.availability >= 0.4).sort((a, b) => timeScore(a) - timeScore(b))[0] ??
     [...candidates].sort((a, b) => timeScore(a) - timeScore(b))[0];
@@ -97,7 +125,7 @@ export function recommend(dest: LatLng, plannedMinutes: number, at: Date = new D
     .filter((c) => c.cost < fastest.cost)
     .sort((a, b) => a.cost - b.cost || timeScore(a) - timeScore(b))[0];
   const surest = others.sort((a, b) => b.availability - a.availability || a.walkMin - b.walkMin)[0];
-  const cheapest = { ...(cheaper ?? surest ?? fastest), kind: 'cheapest' as const };
+  const cheapest = { ...(cheaper ?? surest ?? fastest), kind: 'cheapest' as const, surer: !cheaper };
 
   // 2) Legközelebbi garázs
   const g = [...GARAGES].sort((a, b) => distanceM(dest, a) - distanceM(dest, b))[0];
@@ -114,9 +142,13 @@ export function recommend(dest: LatLng, plannedMinutes: number, at: Date = new D
     maxMinutes: null,
     bearing: '',
     distanceM: Math.round(distanceM(dest, g) / 10) * 10,
+    // behajtás, sorompó, lift: kb. 2 perc
+    etaMin: walkMinutes(dest, g) + 2,
   };
 
-  return [{ ...fastest, kind: 'fastest' }, cheapest, garage];
+  const out: ParkingOption[] = [{ ...fastest, kind: 'fastest' }, cheapest, garage];
+  const best = Math.min(...out.map((o) => o.etaMin));
+  return out.map((o) => ({ ...o, quickest: o.etaMin === best && out.findIndex((x) => x.etaMin === best) === out.indexOf(o) }));
 }
 
 /** „Parkolás itt”: a felhasználó által választott pont (térkép-koppintás vagy saját helyzet). */
@@ -134,5 +166,6 @@ export function hereOption(pt: LatLng, plannedMinutes: number, at: Date = new Da
     maxMinutes: zone?.maxMinutes ?? null,
     bearing: '',
     distanceM: 0,
+    etaMin: 0,
   };
 }

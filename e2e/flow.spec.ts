@@ -238,3 +238,29 @@ test('widgetek: előnézet üresen és aktív parkolással, +15 perc és leáll�
   await page.getByTestId('widget-stage').getByRole('button', { name: 'Leállítás' }).click();
   await expect(page.getByText('Parkolás leállítva')).toBeVisible();
 });
+
+test('„Nem volt hely”: a következő javaslatra lép; hibás adat jelzése a fizetésnél', async ({ page }) => {
+  await page.getByPlaceholder('Hova szeretnél menni?').fill('opera');
+  await page.getByText('Magyar Állami Operaház').first().click();
+  await page.getByText('Navigálj oda').click();
+  await page.getByRole('button', { name: 'Nem volt hely, mutasd a következőt' }).click();
+  await expect(page.getByText('Köszönjük a jelzést!', { exact: false })).toBeVisible();
+  const queued = await page.evaluate(() => Object.entries(localStorage).find(([k]) => k.includes('reportQueue'))?.[1] ?? '');
+  expect(queued).toContain('"kind":"nospace"');
+  expect(queued).not.toMatch(/"lat":\d+\.\d{4,}/);
+  await page.getByText('Navigálj oda').click();
+  await page.getByText(/Megérkeztem/).click();
+  await page.getByText('Hibás zóna vagy ár? Jelezd ›').click();
+  await page.getByText('Rossz ár', { exact: true }).click();
+  await page.getByLabel('Mi a hiba? (nem kötelező)').fill('A tábla szerint 400 Ft');
+  await page.getByText('Jelzés küldése').click();
+  await expect(page.getByText(/Köszönjük! (Átnézzük|Elmentettük)/)).toBeVisible();
+});
+
+test('P+R javaslat belvárosi célnál, tömegközlekedési átadással', async ({ page }) => {
+  await page.getByPlaceholder('Hova szeretnél menni?').fill('opera');
+  await page.getByText('Magyar Állami Operaház').first().click();
+  await expect(page.getByTestId('pr-card')).toContainText('P+R és tömegközlekedés');
+  await expect(page.getByText(/perc a célig/).first()).toBeVisible();
+  await expect(page.getByText('⚡ Leggyorsabb')).toHaveCount(1);
+});
