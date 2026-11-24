@@ -3,7 +3,7 @@
 // Licenc: © OpenStreetMap közreműködők, ODbL. A kimenet: src/data/osm/*.json
 import { mkdirSync, writeFileSync } from 'node:fs';
 
-const ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+const ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
 const AREA = 'area(id:3600037244)->.bp;'; // Budapest közigazgatási határa (OSM relation 37244)
 
 async function overpass(q) {
