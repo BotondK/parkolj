@@ -22,10 +22,19 @@ export const ZONE_CODES: Record<ZoneId, [code: string, district: string][]> = {
   D: [['0908', 'IX'], ['0102', 'X'], ['1104', 'XI'], ['3114', 'XI'], ['3115', 'XI'], ['3116', 'XI']],
 };
 
-// Munkaszüneti napok (díjmentes parkolás). Áthelyezett munkanapok még nincsenek benne.
+// Munkaszüneti napok (díjmentes parkolás), a Munka törvénykönyve 102. § szerint.
 export const HOLIDAYS = new Set([
   '2026-01-01', '2026-03-15', '2026-04-03', '2026-04-06', '2026-05-01', '2026-05-25', '2026-08-20', '2026-10-23',
   '2026-11-01', '2026-12-24', '2026-12-25', '2026-12-26',
   '2027-01-01', '2027-03-15', '2027-03-26', '2027-03-29', '2027-05-01', '2027-05-17', '2027-08-20', '2027-10-23',
   '2027-11-01', '2027-12-24', '2027-12-25', '2027-12-26',
 ]);
+
+// Munkanap-áthelyezések (a minisztérium éves rendelete). A fővárosi parkolási rendelet a munkanapokhoz köti a díjfizetést:
+// ledolgozós szombaton munkanapi rend szerint fizetni kell (pl. 2026. aug. 8., pótdíjazták), az áthelyezett pihenőnap díjmentes.
+// 2026: 10/2025. (IV. 30.) NGM rendelet. A decemberi pár a 4/2026. (XI. 13.) SZCSM rendelettel kikerült (dec. 24. munkaszüneti nap).
+// 2027: a rendelet még nem jelent meg (2026. nov.); előzetesen nincs áthelyezés. Megjelenéskor ide kell felvenni, és a TRANSFERS_KNOWN-t frissíteni.
+export const WORKING_SATURDAYS = new Set(['2026-01-10', '2026-08-08']);
+export const TRANSFERRED_REST_DAYS = new Set(['2026-01-02', '2026-08-21']);
+/** Ezekre az évekre ellenőrizve megvan az áthelyezési rendelet tartalma */
+export const TRANSFERS_KNOWN = [2026];

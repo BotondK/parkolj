@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { MARKER_COLORS } from '../components/mapTypes';
 import { Icon } from '../components/icons';
+import SpecialDayBanner from '../components/SpecialDayBanner';
 import { BackLink, C, Chip, Meta, PrimaryButton, styles, zoneText } from '../components/ui';
 import { placeName, type Place } from '../data/places';
 import { zoneAt } from '../logic/geo';
@@ -255,6 +256,7 @@ export function PayStep({
         </View>
       )}
       {!charging && <Text style={[styles.sub, { marginTop: 8 }]}>{t.notCharging}</Text>}
+      <SpecialDayBanner t={t} lang={lang} now={now} />
       {endsFree && pe && (
         <View style={[styles.banner, { backgroundColor: C.goodSoft, marginTop: 10, marginBottom: 0 }]}>
           <Text style={{ color: C.good, fontWeight: '600' }}>{t.autoStopNote(formatClock(pe), formatDuration(paidMin, lang))}</Text>

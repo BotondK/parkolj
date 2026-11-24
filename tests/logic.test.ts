@@ -4,7 +4,7 @@ import { bpParts, bpTime } from '../src/logic/budapestTime';
 import { zoneById } from '../src/data/zones';
 import { searchPlaces, PLACES } from '../src/data/places';
 import { distanceM, districtAt, zoneAt } from '../src/logic/geo';
-import { chargeableMinutes, formatFt, isCharging, paidEnd, priceFor, priceWindow } from '../src/logic/pricing';
+import { chargeableMinutes, formatFt, isCharging, paidEnd, priceFor, priceWindow, specialDay, upcomingSpecialDays } from '../src/logic/pricing';
 import { hereOption, recommend } from '../src/logic/recommend';
 import { parsePhoton } from '../src/logic/geocode';
 import { ZONE_CODES } from '../src/data/zoneCodes';
@@ -192,4 +192,29 @@ test('előadás végéig: kezdés a következő félórára, hossz típus szerin
   assert.equal(e.minutes, 225); // 18:40 → 22:15 (215 perc), 15-re felkerekítve 3 ó 45 p
   assert.equal(eventStay('cinema', arrive)!.minutes, 195);
   assert.equal(eventStay('sight', arrive), null);
+});
+
+test('ledolgozós szombat: munkanapi díjfizetés; áthelyezett pihenőnap: díjmentes', () => {
+  const A = zoneById('A')!;
+  const C = zoneById('C')!;
+  // 2026. aug. 8., szombat munkanap (10/2025. NGM rendelet)
+  assert.equal(specialDay(new Date(bpTime(2026, 8, 8, 10))), 'workSaturday');
+  assert.equal(isCharging(A, new Date(bpTime(2026, 8, 8, 21))), true);
+  assert.equal(isCharging(C, new Date(bpTime(2026, 8, 8, 17))), true);
+  assert.equal(isCharging(C, new Date(bpTime(2026, 8, 8, 19))), false);
+  // egy sima szombat ingyenes marad
+  assert.equal(isCharging(A, new Date(bpTime(2026, 8, 15, 10))), false);
+  // 2026. aug. 21., péntek pihenőnap
+  assert.equal(specialDay(new Date(bpTime(2026, 8, 21, 10))), 'restDay');
+  assert.equal(isCharging(A, new Date(bpTime(2026, 8, 21, 10))), false);
+  assert.equal(isCharging(A, new Date(bpTime(2026, 8, 20 + 4, 10))), true); // hétfő, aug. 24.
+  // a parkolás díja a ledolgozós szombaton számol
+  assert.ok(priceWindow(A, new Date(bpTime(2026, 8, 8, 10)), 60) > 0);
+});
+
+test('közelgő különleges napok listája', () => {
+  const list = upcomingSpecialDays(new Date(bpTime(2026, 8, 3, 9)), 6);
+  assert.deepEqual(list, [{ ymd: '2026-08-08', kind: 'workSaturday' }]);
+  assert.deepEqual(upcomingSpecialDays(new Date(bpTime(2026, 8, 9, 9)), 6), []);
+  assert.deepEqual(upcomingSpecialDays(new Date(bpTime(2026, 8, 21, 23)), 0), [{ ymd: '2026-08-21', kind: 'restDay' }]);
 });

@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native';
+import SpecialDayBanner from '../components/SpecialDayBanner';
 import { bgForWhite, C, styles } from '../components/ui';
 import { ZONES } from '../data/zones';
 import type { Lang, Strings } from '../i18n';
@@ -9,6 +10,7 @@ export default function InfoScreen({ t, lang, hideTitle }: { t: Strings; lang: L
   return (
     <View>
       {!hideTitle && <Text style={styles.h1}>{t.infoTitle}</Text>}
+      <SpecialDayBanner t={t} lang={lang} days={14} />
 
       <Text style={styles.label}>{t.infoZones}</Text>
       <View style={[styles.card, { padding: 0, overflow: 'hidden' }]}>

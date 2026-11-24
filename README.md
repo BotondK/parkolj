@@ -49,6 +49,7 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 41. Béta jelentkezési oldal (https://botondk.github.io/parkolj/?beta), magyarul, angolul és németül: e-mail, telefon típusa, parkolási szokás, hozzájárulás; a lista csak a Supabase-ben olvasható
 42. Kezdőképernyő-widgetek iPhone-ra és Androidra: „Parkolásom” (zóna, élő visszaszámlálás, +15 perc, leállítás; iPhone zárolt képernyőn is) és „Gyors indítás” (itt, otthon, munkahely); előnézet a webes demóban: Menü → Widgetek. Részletek: `docs/WIDGETEK.md`
 43. Élő tevékenység iPhone-on: parkolás közben a zárolt képernyőn és a Dynamic Islandben is fut a visszaszámlálás, +15 perc és Leállítás gombbal
+44. Ledolgozós szombat és áthelyezett pihenőnap: ledolgozós szombaton munkanapi rend szerint számol díjat (pótdíjveszély, főleg turistáknak), az áthelyezett pihenőnap díjmentes; pár nappal előtte figyelmeztet a fizetésnél és a Tudnivalókban
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 
@@ -71,7 +72,7 @@ Szerverszinkron (opcionális): `EXPO_PUBLIC_API_URL=https://... npx expo start`.
 ## Fontos
 - Térkép: MapLibre GL + OpenFreeMap (ingyenes, kulcs nélkül). Garázsok, töltők, utcaszintű zónák: OpenStreetMap (ODbL), frissítés: Actions → „OSM adatok letöltése”, majd `git checkout origin/osm-data -- src/data/osm public/data`.
 - `src/data/zones.ts`: díjak, díjfizetési idők, pótdíjak a BKK listái szerint (https://bkk.hu/downloads/43733/, https://bkk.hu/downloads/43739/). Zónahatárok: `src/data/zoneShapes.ts`, a BKK „Parkolási zónák 2026.07.01-étől” vektoros PDF-térképéből kinyerve és a kerülethatárokhoz illesztve (`scripts/zones_from_bkk_pdf.py`); a térkép tájékoztató jellegű.
-- `src/data/zoneCodes.ts`: zónakódok kerülettel, ünnepnapok 2026–2027 (áthelyezett munkanapok még nincsenek benne).
+- `src/data/zoneCodes.ts`: zónakódok kerülettel, ünnepnapok 2026–2027, munkanap-áthelyezések (2026: 10/2025. NGM rendelet; a 2027-es rendelet 2026 novemberében még nem jelent meg, megjelenésekor fel kell venni).
 - `src/logic/geocode.ts`: Photon geokódoló; élesben saját vagy fizetős szolgáltatás kell.
 - `src/logic/recommend.ts`: a foglaltság **szimulált** (determinisztikus modell).
 - `src/data/garages.ts`: kitalált garázsárak és kapacitás.

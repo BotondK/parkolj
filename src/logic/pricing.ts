@@ -1,9 +1,28 @@
 import type { Zone } from '../data/zones';
-import { HOLIDAYS } from '../data/zoneCodes';
+import { HOLIDAYS, TRANSFERRED_REST_DAYS, WORKING_SATURDAYS } from '../data/zoneCodes';
 import { bpParts, bpTime, bpYmd } from './budapestTime';
 
 // Minden időpont budapesti helyi időben értendő (lásd budapestTime.ts), a készülék időzónájától függetlenül.
 export const isHoliday = (d: Date) => HOLIDAYS.has(bpYmd(d));
+
+/** Különleges nap: ledolgozós szombat (munkanapi díjfizetés) vagy áthelyezett pihenőnap (díjmentes) */
+export type SpecialDay = 'workSaturday' | 'restDay' | null;
+export function specialDay(d: Date): SpecialDay {
+  const ymd = bpYmd(d);
+  if (WORKING_SATURDAYS.has(ymd)) return 'workSaturday';
+  if (TRANSFERRED_REST_DAYS.has(ymd)) return 'restDay';
+  return null;
+}
+
+/** A következő különleges napok `from`-tól `days` napon belül (a figyelmeztetéshez és a Tudnivalókhoz) */
+export function upcomingSpecialDays(from: Date, days = 14): { ymd: string; kind: Exclude<SpecialDay, null> }[] {
+  const out: { ymd: string; kind: Exclude<SpecialDay, null> }[] = [];
+  const today = bpYmd(from);
+  const until = bpYmd(new Date(from.getTime() + days * 86400000));
+  for (const ymd of [...WORKING_SATURDAYS].sort()) if (ymd >= today && ymd <= until) out.push({ ymd, kind: 'workSaturday' });
+  for (const ymd of [...TRANSFERRED_REST_DAYS].sort()) if (ymd >= today && ymd <= until) out.push({ ymd, kind: 'restDay' });
+  return out.sort((a, b) => a.ymd.localeCompare(b.ymd));
+}
 
 /** Díj a megadott percekre, percalapú elszámolással (ahogy a mobilparkolás működik). */
 export function priceFor(zone: Pick<Zone, 'pricePerHour'>, minutes: number): number {
@@ -12,8 +31,10 @@ export function priceFor(zone: Pick<Zone, 'pricePerHour'>, minutes: number): num
 
 export function chargingWindow(zone: Zone, at: Date): [number, number] | null {
   const day = bpParts(at).weekday; // 0 = vasárnap
-  if (day === 0 || isHoliday(at)) return null;
-  if (day === 6) return zone.saturdayHours;
+  const special = specialDay(at);
+  if (day === 0 || isHoliday(at) || special === 'restDay') return null;
+  // Ledolgozós szombaton a munkanapi díjfizetési rend érvényes
+  if (day === 6) return special === 'workSaturday' ? zone.weekdayHours : zone.saturdayHours;
   return zone.weekdayHours;
 }
 
