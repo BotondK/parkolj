@@ -7,6 +7,7 @@ import type { Lang, Strings } from '../i18n';
 import type { AccStrings } from '../i18nAccount';
 import { formatClock, formatDuration, formatFt } from '../logic/pricing';
 import type { HistoryItem, Session } from '../types';
+import { floorLabel } from '../components/CarSpotCard';
 import HistoryScreen from './HistoryScreen';
 import { MonthlyReport } from './PlusScreens';
 import { chargeFor } from './steps';
@@ -69,7 +70,7 @@ export default function ParkingsScreen({
       {tab === 'closed' && (
         <>
           {history.length > 0 && <MonthlyReport a={a} lang={lang} items={history} hasPlus={hasPlus} onUnlock={onUnlockPlus} />}
-          <HistoryScreen t={t} lang={lang} items={history} hideTitle />
+          <HistoryScreen t={t} a={a} lang={lang} items={history} hideTitle />
         </>
       )}
     </View>
@@ -109,9 +110,9 @@ function Ticket({ t, a, lang, s, onDetails, onExtend }: { t: Strings; a: AccStri
         <Text style={{ color: C.sub, fontSize: 14 }} numberOfLines={1}>
           {s.country} · {s.placeName}
         </Text>
-        {!!s.spot && (
+        {(!!s.spot || !!s.floor) && (
           <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }} numberOfLines={2}>
-            📍 {s.spot}
+            📍 {[s.floor ? floorLabel(s.floor, a) : '', s.spot ?? ''].filter(Boolean).join(' · ')}
           </Text>
         )}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 12 }}>

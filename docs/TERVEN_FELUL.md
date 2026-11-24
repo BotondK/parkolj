@@ -74,3 +74,4 @@ Ebben a fájlban vezetjük, mi került a projektbe ezen felül, és ki kérte. �
 | 2026-11-24 | Belépés e-mail címmel és jelszóval (regisztráció, elfelejtett jelszó, jelszócsere) a jelszó nélküli belépő link helyett | Boti kérése: „inkább felhasználónév, jelszó” |
 | 2026-11-24 | iPhone-ra mentett webapp: a térkép nem rajzol a panel és a fülsor fölé | Boti képernyőképe alapján |
 | 2026-11-24 | Elektromos töltők élő adata (ár, foglaltság): utánanézés | Boti kérése; ingyenes, élő magyar forrást nem találtam, ezért nincs bekötve |
+| 2026-11-24 | „Hol hagytam az autót?” mindenkinek: szint, jegyzet, fotó (a fotó csak a készüléken), a jegyen és a nyugtán; a Pluszból kikerült (kapcsoló: CAR_SPOT_FREE) | Boti „folytasd”: a terv szerint ez az MVP része („Hol parkoltam + fotó + emelet”) |

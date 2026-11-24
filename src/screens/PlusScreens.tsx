@@ -7,7 +7,7 @@ import { C, isDark, PrimaryButton, styles } from '../components/ui';
 import { LOCALE, type Lang } from '../i18n';
 import type { AccStrings } from '../i18nAccount';
 import { formatFt } from '../logic/pricing';
-import { historyCsv, PLUS_MONTHLY_FT, PLUS_ONCE_FT, type HistoryItem, type Session, type Settings } from '../types';
+import { CAR_SPOT_FREE, historyCsv, PLUS_MONTHLY_FT, PLUS_ONCE_FT, type HistoryItem, type Session, type Settings } from '../types';
 
 const GOLD = '#F5B301';
 
@@ -40,7 +40,7 @@ export function PlusPage({
   const features: [IconName, string, string][] = [
     ['clock', a.plusF1, a.plusF1d],
     ['receipt', a.plusF2, a.plusF2d],
-    ['pin', a.plusF3, a.plusF3d],
+    ...(CAR_SPOT_FREE ? [] : ([['pin', a.plusF3, a.plusF3d]] as [IconName, string, string][])),
   ];
   const since = new Date(settings.plusSince || Date.now()).toLocaleDateString(LOCALE[lang], { year: 'numeric', month: 'short', day: 'numeric' });
   return (
@@ -131,7 +131,7 @@ export function PlusOnPay({ a, monthly, value, onChange }: { a: AccStrings; mont
       <View style={{ width: 24, height: 24, borderRadius: 7, borderWidth: 2, borderColor: value ? GOLD : C.sub, backgroundColor: value ? GOLD : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
         {value && <Icon name="check" size={16} color="#2C1A00" stroke={2.6} />}
       </View>
-      <Text style={{ flex: 1, color: C.text, fontSize: 14, lineHeight: 19 }}>{a.plusOnPay(formatFt(PLUS_ONCE_FT))}</Text>
+      <Text style={{ flex: 1, color: C.text, fontSize: 14, lineHeight: 19 }}>{(CAR_SPOT_FREE ? a.plusOnPayNoSpot : a.plusOnPay)(formatFt(PLUS_ONCE_FT))}</Text>
       <PlusBadge small />
     </Pressable>
   );
@@ -166,7 +166,7 @@ export function PlusActivePanel({
             <Text style={{ fontWeight: '700', color: C.text }}>{a.plusF1}</Text>
             <PlusBadge small />
           </View>
-          <Text style={{ color: C.sub, fontSize: 13, marginTop: 2 }}>{a.plusF3}</Text>
+          <Text style={{ color: C.sub, fontSize: 13, marginTop: 2 }}>{CAR_SPOT_FREE ? a.plusF1d : a.plusF3}</Text>
         </View>
         <Text style={{ color: titleColor(), fontWeight: '700' }}>{a.plusUnlock} ›</Text>
       </Pressable>
@@ -192,6 +192,7 @@ export function PlusActivePanel({
           <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff' }} />
         </Pressable>
       </View>
+      {!CAR_SPOT_FREE && (<>
       <View style={{ height: 1, backgroundColor: C.line }} />
       <Text style={{ fontWeight: '700', color: C.text }}>{a.spotTitle}</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -212,6 +213,7 @@ export function PlusActivePanel({
           <Text style={{ fontWeight: '700', color: saved ? C.good : C.onPrimary }}>{saved ? a.spotSaved : a.spotSave}</Text>
         </Pressable>
       </View>
+      </>)}
     </View>
   );
 }

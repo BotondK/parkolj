@@ -56,6 +56,7 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 48. Gyakori helyeid: a keresőben az előre megadott népszerű célpontok helyett a gyakran választott helyek (csak a készüléken)
 49. Belépés e-mail címmel és jelszóval, elfelejtett jelszó visszaállítása (Supabase)
 50. Lakossági parkolási engedély: tudnivaló és link a kerületi igényléshez
+51. „Hol hagytam az autót?” mindenkinek: szint, jegyzet és fotó az aktív jegyen (a fotó csak a készüléken marad)
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 

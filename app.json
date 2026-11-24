@@ -54,6 +54,14 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "A Parkolj a kiválasztott fotót menti el, hogy megtaláld, hol hagytad az autót. A fotó csak a telefonodon marad.",
+          "cameraPermission": "A Parkolj fotót készít arról, hol hagytad az autót (pl. az oszlop jelzése a mélygarázsban). A fotó csak a telefonodon marad.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "react-native-android-widget",
         {
           "widgets": [

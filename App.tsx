@@ -35,6 +35,7 @@ import { buildReport, type ReportKind } from './src/logic/reportCore';
 import { flushReports, sendReport } from './src/logic/reports';
 import { driveToUrl, prSuggestion, transitUrl } from './src/logic/parkRide';
 import { rememberPlace, topFrequent, type FrequentPlace } from './src/logic/frequent';
+import CarSpotCard from './src/components/CarSpotCard';
 import Onboarding from './src/screens/Onboarding';
 import {
   ActiveStep,
@@ -49,6 +50,7 @@ import {
 } from './src/screens/steps';
 import {
   AUTO_EXT_STEP_MIN,
+  CAR_SPOT_FREE,
   DEFAULT_SETTINGS,
   PLUS_ONCE_FT,
   shouldAutoExtend,
@@ -729,6 +731,7 @@ function Main() {
           profileLabel: session.profileLabel,
           plusFee: session.plusOnce ? PLUS_ONCE_FT : undefined,
           spot: session.spot,
+          floor: session.floor,
         },
         ...h,
       ]);
@@ -1269,6 +1272,17 @@ function Main() {
           onStop={stopSession}
           onGarage={showGarage}
           extra={
+            <>
+            {CAR_SPOT_FREE && (
+              <CarSpotCard
+                a={a}
+                photoKey={session.startedAt}
+                spot={session.spot}
+                floor={session.floor}
+                garage={session.option.kind === 'garage'}
+                onChange={(p) => setSession((cur) => (cur ? { ...cur, ...p } : cur))}
+              />
+            )}
             <PlusActivePanel
               key={session.startedAt}
               a={a}
@@ -1279,6 +1293,7 @@ function Main() {
               setSpot={(spot) => setSession((cur) => (cur ? { ...cur, spot: spot || undefined } : cur))}
               onUnlock={openPlus}
             />
+            </>
           }
         />
       )}

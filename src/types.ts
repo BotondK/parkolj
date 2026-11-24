@@ -22,7 +22,12 @@ export type Session = {
   autoExtMin?: number;
   /** „Hol hagytam az autót”: szint, oszlop, megjegyzés */
   spot?: string;
+  /** Garázsszint (pl. „-2”, „0”); a fotó külön, csak a készüléken (carPhoto kulcs) */
+  floor?: string;
 };
+
+/** A terv szerint a „Hol parkoltam” (szint, jegyzet, fotó) az MVP része, mindenkinek ingyenes. false: Plusz-funkció. */
+export const CAR_SPOT_FREE = true;
 
 export type HistoryItem = {
   id: string;
@@ -42,6 +47,7 @@ export type HistoryItem = {
   /** Alkalmi Plusz díja (Ft) */
   plusFee?: number;
   spot?: string;
+  floor?: string;
 };
 
 export const COUNTRIES = ['H', 'A', 'D', 'SK', 'RO', 'HR', 'SRB', 'UA', 'PL', 'CZ', 'I', 'F', 'GB', '…'];

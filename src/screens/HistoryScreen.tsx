@@ -1,3 +1,5 @@
+import type { AccStrings } from '../i18nAccount';
+import { floorLabel } from '../components/CarSpotCard';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { bgForWhite, C, Row, styles } from '../components/ui';
@@ -6,7 +8,7 @@ import { LOCALE, type Lang, type Strings } from '../i18n';
 import { formatClock, formatDuration, formatFt } from '../logic/pricing';
 import type { HistoryItem } from '../types';
 
-export default function HistoryScreen({ t, lang, items, hideTitle }: { t: Strings; lang: Lang; items: HistoryItem[]; hideTitle?: boolean }) {
+export default function HistoryScreen({ t, a, lang, items, hideTitle }: { t: Strings; a?: AccStrings; lang: Lang; items: HistoryItem[]; hideTitle?: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
   const now = new Date();
   const month = items.filter((i) => {
@@ -66,7 +68,7 @@ export default function HistoryScreen({ t, lang, items, hideTitle }: { t: String
                 {!!i.profileLabel && <Row k={t.invoice} v={i.profileLabel} />}
                 {!!i.credit && <Row k={t.creditUsed} v={`−${formatFt(i.credit)}`} />}
                 {!!i.plusFee && <Row k="Plusz" v={formatFt(i.plusFee)} />}
-                {!!i.spot && <Row k="📍" v={i.spot} />}
+                {(!!i.spot || !!i.floor) && <Row k="📍" v={[i.floor && a ? floorLabel(i.floor, a) : '', i.spot ?? ''].filter(Boolean).join(' · ')} />}
                 <Row k={t.total} v={formatFt(i.cost + (i.plusFee ?? 0))} strong />
                 <Text style={{ color: C.sub, fontSize: 12, marginTop: 6 }}>{t.receiptNote}</Text>
               </View>

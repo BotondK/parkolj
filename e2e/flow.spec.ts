@@ -129,12 +129,18 @@ test('Parkolj Plusz: alkalmi Plusz fizetéskor, autó helye, majd havi előfizet
   await page.getByText(/Fizetés és indítás|Indítás \(most/).click();
   await expect(page.getByText('Aktív parkolás')).toBeVisible();
 
-  await page.getByPlaceholder(/-2\. szint/).fill('-2. szint, C12');
-  await page.getByText('Mentés', { exact: true }).click();
-  await expect(page.getByText('Elmentve')).toBeVisible();
+  // „Hol hagytam az autót?”: mindenkinek, szint + jegyzet + fotó (a fotó csak a készüléken)
+  const spot = page.getByTestId('car-spot');
+  await spot.getByText('-2', { exact: true }).click();
+  await page.getByPlaceholder(/-2\. szint/).fill('C12 oszlop');
+  await page.getByPlaceholder(/-2\. szint/).press('Enter');
+  const chooser = page.waitForEvent('filechooser');
+  await spot.getByText(/Fotó a galériából/).click();
+  await (await chooser).setFiles('e2e/fixtures/auto.png');
+  await expect(spot.getByRole('img', { name: 'Fotó arról, hol hagytad az autót' })).toBeVisible();
 
   await tab(page, 'Parkolásaim').click();
-  await expect(page.getByText('📍 -2. szint, C12')).toBeVisible();
+  await expect(page.getByText('📍 -2. szint · C12 oszlop')).toBeVisible();
   await page.getByText('Részletek', { exact: true }).click();
   await page.getByText('Parkolás leállítása').click();
   await expect(page.getByText('Parkolás leállítva')).toBeVisible();
