@@ -10,7 +10,7 @@ async function overpass(q) {
   let last;
   for (const url of ENDPOINTS) {
     try {
-      const r = await fetch(url, { method: 'POST', body: new URLSearchParams({ data: q }), headers: { 'user-agent': 'parkolj-data-fetch/1.0' } });
+      const r = await fetch(url, { method: 'POST', body: new URLSearchParams({ data: q }), headers: { 'user-agent': 'parkolj-data-fetch/1.0' }, signal: AbortSignal.timeout(240_000) });
       if (!r.ok) throw new Error(`${url} ${r.status}`);
       return (await r.json()).elements;
     } catch (e) {
