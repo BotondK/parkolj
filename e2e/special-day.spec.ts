@@ -22,5 +22,6 @@ test('a ledolgozós szombat előtt pár nappal is látszik a Tudnivalókban', as
   await page.getByText('Kezdjük').click();
   await page.getByRole('tab', { name: 'Menü', exact: true }).click();
   await page.getByText('Információk és súgó').click();
+  await page.getByText('A mobilparkolás működése').click();
   await expect(page.getByTestId('special-day')).toContainText('augusztus 8., szombat ledolgozós szombat');
 });

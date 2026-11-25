@@ -19,8 +19,8 @@ import {
   type Settings,
   PLUS_MONTHLY_FT,
 } from '../types';
-import InfoScreen from './InfoScreen';
 import PrivacyScreen from './PrivacyScreen';
+import HelpScreen from './HelpScreen';
 import WidgetsScreen from './WidgetsScreen';
 import type { WidgetAction, WidgetData } from '../widgets/widgetModel';
 import { PlusBadge, PlusPage } from './PlusScreens';
@@ -106,12 +106,7 @@ export default function MenuScreens(p: MenuProps) {
     case 'widgets':
       return <WidgetsScreen lang={p.lang} data={p.widget.data} onAction={p.widget.onAction} onBack={back()} />;
     case 'info':
-      return (
-        <View>
-          <PageHeader title={a.infoHelp} onBack={back()} />
-          <InfoScreen t={p.t} lang={p.lang} hideTitle district={p.district} />
-        </View>
-      );
+      return <HelpScreen t={p.t} lang={p.lang} district={p.district} onBack={back()} openFeedback={() => setPage('feedback')} openPrivacy={() => setPage('privacy')} />;
     default:
       return <MenuHome {...p} />;
   }

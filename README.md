@@ -61,6 +61,7 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 53. Összeomlás esetén üres képernyő helyett hibaképernyő: a futó parkolás (zóna, rendszám, meddig érvényes) akkor is látszik, egy gombbal újraindul; névtelen hibajelentés megy (rendszám, e-mail, hely nélkül), a leggyakoribb hibák: `select * from public.error_summary;`. Kipróbálás: https://botondk.github.io/parkolj/?crashtest
 54. Húzható alsó panel telefonon (mint a BudapestGO-ban): felhúzva teljes képernyő „˅ Parkolás” sávval és a keresővel, lehúzva nagyobb térkép; koppintás a fogantyúra is vált
 55. Lejárati értesítés a bezárt webappnak is (Web Push, iPhone-on a kezdőképernyőre mentett appban): indításkor ütemez, leállításkor töröl; a küldő a Supabase-ben fut percenként. Élesítés egy gombbal: Actions → „Supabase telepítés” (lásd docs/FIOK.md)
+56. „Információk és súgó” a BudapestGO mintájára: vészhelyzet (112, nem találod az autód, sérült autó), jelmagyarázat (zónák, térképjelek, esélyszínek), fő funkciók, mobilparkolás működése, GYIK, visszajelzés, fővárosi parkolási tájékoztató, dokumentumok (adatkezelés, akadálymentesítési nyilatkozat, licencek), verziószám
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 
