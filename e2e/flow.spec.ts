@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openMenu } from './menu';
 
 // Külső szolgáltatások (térképcsempék, címkereső) nélkül is működnie kell: tartalékokkal
 test.beforeEach(async ({ page }) => {
@@ -42,7 +43,7 @@ test('célpont → 3 javaslat → navigáció → fizetés → aktív jegy → l
   await page.getByText('Lezárt').click();
   await expect(page.getByText('Magyar Állami Operaház').first()).toBeVisible();
 
-  await tab(page, 'Menü').click();
+  await openMenu(page);
   await page.getByText('Értesítéseim').click();
   await expect(page.getByText('Parkolás elindult')).toBeVisible();
   await expect(page.getByText('Parkolás lezárva')).toBeVisible();
@@ -62,7 +63,7 @@ test('kedvenc hely mentése csillaggal, majd indítás a Kedvenceimből', async 
 });
 
 test('bankkártya: hibás szám elutasítva, jó szám csak utolsó 4 számjeggyel tárolva; kupon', async ({ page }) => {
-  await tab(page, 'Menü').click();
+  await openMenu(page);
   await page.getByText('Vásárlás és fizetés').click();
   await page.getByText('Bankkártyáim').click();
   // Üres listánál az új kártya űrlapja eleve nyitva van
@@ -88,7 +89,7 @@ test('bankkártya: hibás szám elutasítva, jó szám csak utolsó 4 számjeggy
 });
 
 test('beállítások: sötét/világos mód és nyelvváltás', async ({ page }) => {
-  await tab(page, 'Menü').click();
+  await openMenu(page);
   await page.getByText('Beállítások').click();
   await page.getByText('Sötét', { exact: true }).click();
   const bg = () => page.evaluate(() => getComputedStyle(document.querySelector('[data-testid="app-root"]') ?? document.body).backgroundColor);
@@ -109,8 +110,8 @@ test('beállítások: sötét/világos mód és nyelvváltás', async ({ page })
 });
 
 test('visszajelzés: fiókszerver nélkül sorba kerül, nem vész el', async ({ page }) => {
-  await tab(page, 'Menü').click();
-  await page.getByText('Visszajelzés küldése').click();
+  await openMenu(page);
+  await page.getByTestId('tm-bug').or(page.getByText('Visszajelzés küldése', { exact: true })).first().click();
   await page.getByLabel('4/5').click();
   await page.getByPlaceholder('Írd le a tapasztalatod…').fill('Nagyon jó, de kellene több garázs.');
   await page.getByText('Küldés', { exact: true }).click();
@@ -146,7 +147,7 @@ test('Parkolj Plusz: alkalmi Plusz fizetéskor, autó helye, majd havi előfizet
   await expect(page.getByText('Parkolás leállítva')).toBeVisible();
   await page.getByText('Kész').click();
 
-  await tab(page, 'Menü').click();
+  await openMenu(page);
   await page.getByText('Parkolj Plusz').first().click();
   await page.getByText('Előfizetek').click();
   await expect(page.getByText(/Aktív előfizetés/)).toBeVisible();
@@ -168,7 +169,7 @@ test('a választógombok felirata keskeny telefonon sem csonkul', async ({ page 
     const cut = await labels.evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent));
     expect(cut).toEqual([]);
   };
-  await tab(page, 'Menü').click();
+  await openMenu(page);
   await page.getByText('Beállítások', { exact: true }).click();
   await notTruncated();
   await page.getByLabel('Vissza').first().click();
@@ -181,7 +182,7 @@ test('garázsjavaslat valódi helyről becsült árral; adatkezelési tájékozt
   await page.getByText('Magyar Állami Operaház').first().click();
   await expect(page.getByText(/^kb\. \d+ Ft\/óra$/).first()).toBeVisible();
 
-  await tab(page, 'Menü').click();
+  await openMenu(page);
   await page.getByText('Adatkezelési tájékoztató').click();
   await expect(page.getByText('Milyen adatokat tárolunk?')).toBeVisible();
   await expect(page.getByText(/a teljes számot és a CVC-t soha/)).toBeVisible();
@@ -199,14 +200,14 @@ test('névtelen statisztika: lépések sorba kerülnek személyes adat nélkül,
   expect(raw).not.toContain('ABC');
   expect(raw).not.toMatch(/47\.\d{3}/);
 
-  await tab(page, 'Menü').click();
+  await openMenu(page);
   await page.getByText('Beállítások').click();
   await page.getByRole('switch', { name: 'Névtelen használati statisztika' }).click();
   await expect.poll(async () => (await queue()).length).toBe(0);
 });
 
 test('widgetek: előnézet üresen és aktív parkolással, +15 perc és leállítás a widgetről', async ({ page }) => {
-  await tab(page, 'Menü').click();
+  await openMenu(page);
   await page.getByText('Widgetek', { exact: true }).click();
   await expect(page.getByText(/^Tedd ki a Parkolj widgetet/)).toBeVisible();
   await expect(page.getByText('Nincs aktív parkolás').first()).toBeVisible();
@@ -224,7 +225,7 @@ test('widgetek: előnézet üresen és aktív parkolással, +15 perc és leáll�
   const lejar = async () => (await page.getByText(/^ABC-123 · . zóna · Lejár \d\d:\d\d$|· Lejár \d\d:\d\d/).first().textContent())!.match(/(\d\d):(\d\d)/)!;
 
   const before = await lejar();
-  await tab(page, 'Menü').click();
+  await openMenu(page);
   await page.getByText('Widgetek', { exact: true }).click();
   const stage = page.getByTestId('widget-stage');
   await expect(stage.getByText(/zóna · /).first()).toBeVisible();
@@ -239,7 +240,7 @@ test('widgetek: előnézet üresen és aktív parkolással, +15 perc és leáll�
   const mins = (m: RegExpMatchArray) => Number(m[1]) * 60 + Number(m[2]);
   expect((mins(after) - mins(before) + 1440) % 1440).toBe(15);
 
-  await tab(page, 'Menü').click();
+  await openMenu(page);
   await page.getByText('Widgetek', { exact: true }).click();
   await page.getByTestId('widget-stage').getByRole('button', { name: 'Leállítás' }).click();
   await expect(page.getByText('Parkolás leállítva')).toBeVisible();

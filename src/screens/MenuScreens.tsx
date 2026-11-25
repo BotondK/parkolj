@@ -25,7 +25,7 @@ import WidgetsScreen from './WidgetsScreen';
 import type { WidgetAction, WidgetData } from '../widgets/widgetModel';
 import { PlusBadge, PlusPage } from './PlusScreens';
 
-export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback' | 'plus' | 'privacy' | 'widgets';
+export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback' | 'plus' | 'privacy' | 'widgets' | 'about';
 
 export type MenuProps = {
   /** A felhasználó kerülete (GPS alapján), a lakossági engedély linkjéhez */
@@ -105,6 +105,8 @@ export default function MenuScreens(p: MenuProps) {
       return <PrivacyScreen lang={p.lang} onBack={back()} />;
     case 'widgets':
       return <WidgetsScreen lang={p.lang} data={p.widget.data} onAction={p.widget.onAction} onBack={back()} />;
+    case 'about':
+      return <HelpScreen t={p.t} lang={p.lang} district={p.district} initial="about" onBack={back()} openFeedback={() => setPage('feedback')} openPrivacy={() => setPage('privacy')} />;
     case 'info':
       return <HelpScreen t={p.t} lang={p.lang} district={p.district} onBack={back()} openFeedback={() => setPage('feedback')} openPrivacy={() => setPage('privacy')} />;
     default:
@@ -158,7 +160,8 @@ function MenuHome({ a, account, setPage, notes, settings }: MenuProps) {
         <ListRow icon="card" label={a.purchase} onPress={() => setPage('payment')} />
         <ListRow icon="help" label={a.infoHelp} onPress={() => setPage('info')} />
         <ListRow icon="chat" label={a.feedback} onPress={() => setPage('feedback')} />
-        <ListRow icon="info" label={a.privacy} onPress={() => setPage('privacy')} last />
+        <ListRow icon="info" label={a.privacy} onPress={() => setPage('privacy')} />
+        <ListRow icon="info" label={a.about} onPress={() => setPage('about')} last />
       </Section>
       <Text style={{ color: C.sub, fontSize: 12, textAlign: 'center' }}>{a.appVersion}</Text>
     </View>

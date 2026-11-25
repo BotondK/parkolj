@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { openMenu } from './menu';
 
 // „Információk és súgó” (a BudapestGO mintájára): vészhelyzet, jelmagyarázat, fő funkciók, mobilparkolás, GYIK, visszajelzés, dokumentumok, verzió
 const axe = async (page: Page) =>
@@ -9,7 +10,7 @@ test('súgó: minden aloldal megnyílik, akadálymentes', async ({ page }) => {
   await page.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
   await page.goto('./');
   await page.getByText('Kezdjük').click();
-  await page.getByRole('tab', { name: 'Menü', exact: true }).click();
+  await openMenu(page);
   await page.getByText('Információk és súgó').click();
   const home = page.getByTestId('help-home');
   await expect(home).toContainText('Vészhelyzet van?');
@@ -50,4 +51,34 @@ test('súgó: minden aloldal megnyílik, akadálymentes', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Visszajelzés küldése' }).or(page.getByText('Visszajelzés küldése').first())).toBeVisible();
   console.log(issues.join('\n'));
   expect(issues).toEqual([]);
+});
+
+test('asztali menü: pirula, lenyíló menü, nyelv almenü, Ctrl+U, bal sáv alja', async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 0) < 900, 'csak asztali nézetben');
+  await page.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+  await page.goto('./');
+  await page.getByText('Kezdjük').click();
+  await expect(page.getByRole('tab', { name: 'Menü' })).toHaveCount(0);
+  await page.getByTestId('top-menu-btn').click();
+  const menu = page.getByTestId('top-menu');
+  await expect(menu).toContainText('Hibabejelentés (Ctrl+U)');
+  // Nyelv almenü: angolra vált
+  await menu.getByText('Nyelv').click();
+  await menu.getByText('English').click();
+  await expect(menu).toHaveCount(0);
+  await expect(page.getByPlaceholder(/Where/)).toBeVisible();
+  await page.getByTestId('top-menu-btn').click();
+  await page.getByTestId('top-menu').getByText('Language').click();
+  await page.getByTestId('top-menu').getByText('Magyar').click();
+  // Esc bezárja
+  await page.getByTestId('top-menu-btn').click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('top-menu')).toHaveCount(0);
+  // Ctrl+U: hibabejelentés
+  await page.keyboard.press('Control+u');
+  await expect(page.getByText('Mennyire vagy elégedett?')).toBeVisible();
+  // Bal sáv alja: logó → Névjegy
+  await expect(page.getByTestId('side-bug')).toContainText('Hibabejelentés (Ctrl+U)');
+  await page.getByRole('button', { name: 'Névjegy' }).click();
+  await expect(page.getByTestId('help-about')).toContainText('Verzió: 0.3.0');
 });

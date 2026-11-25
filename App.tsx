@@ -4,6 +4,7 @@ import { AppState, Linking, Platform, Pressable, ScrollView, Text, TextInput, us
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ParkingMap from './src/components/ParkingMap';
 import { BottomSheet } from './src/components/BottomSheet';
+import { TopMenu, type TopMenuItem } from './src/components/TopMenu';
 import type { MapMarker } from './src/components/mapTypes';
 import { Icon, type IconName } from './src/components/icons';
 import { ListRow, Section, titleColor } from './src/components/kit';
@@ -978,6 +979,48 @@ function Main() {
     </View>
   );
 
+  // Asztali menü (jobb felső pirula): a menüoldalak a bal oldali sávban nyílnak meg
+  const openMenuPage = (pg: MenuPage) => {
+    setTabRaw('menu');
+    setMenuPage(pg);
+  };
+  const topMenuItems: TopMenuItem[] = [
+    { icon: 'user', label: authSession?.email || account ? a.myAccount : a.login, onPress: () => openMenuPage('account'), testID: 'tm-account' },
+    { icon: 'starFill', label: a.plusName, onPress: () => openMenuPage('plus') },
+    { icon: 'bell', label: a.notifications, onPress: () => openMenuPage('notes') },
+    { icon: 'gear', label: a.settings, onPress: () => openMenuPage('settings') },
+    { icon: 'card', label: a.purchase, onPress: () => openMenuPage('payment') },
+    { icon: 'map', label: a.widgets, onPress: () => openMenuPage('widgets') },
+    { icon: 'help', label: a.infoHelp, onPress: () => openMenuPage('info') },
+    'divider',
+    { icon: 'bug', label: a.bugReport, hint: 'Ctrl+U', onPress: () => openMenuPage('feedback'), testID: 'tm-bug' },
+    {
+      icon: 'globe',
+      label: a.language,
+      sub: (
+        [
+          ['hu', 'Magyar'],
+          ['en', 'English'],
+          ['de', 'Deutsch'],
+        ] as [Lang, string][]
+      ).map(([l, name]) => ({ label: name, on: lang === l, onPress: () => setLang(l) })),
+    },
+    { icon: 'info', label: a.privacy, onPress: () => openMenuPage('privacy') },
+    { icon: 'parking', label: a.about, onPress: () => openMenuPage('about') },
+  ];
+  // Ctrl+U (Macen Cmd+U): hibabejelentés, mint a BudapestGO-ban
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'u') {
+        e.preventDefault();
+        openMenuPage('feedback');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const map = (
     <View style={{ flex: 1 }}>
       <ParkingMap
@@ -995,10 +1038,8 @@ function Main() {
       />
       {wide ? (
         <View style={{ position: 'absolute', top: 24, right: 24, zIndex: 1100 }}>
-          {/* Csak az óra: a menü a bal oldali sávban, az alsó fülsorból nyílik */}
-          <View style={[styles.pill, { paddingRight: 20 }]}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, fontVariant: ['tabular-nums'] }}>{clock}</Text>
-          </View>
+          {/* Óra és menü (mint a BudapestGO weben); a rétegek gomb mellette, a térképen */}
+          <TopMenu clock={clock} items={topMenuItems} label={a.openMenu} />
         </View>
       ) : (
         !sheetFull && <View style={{ position: 'absolute', top: 12, left: 12, right: 12, zIndex: 1100 }}>{searchPill}</View>
@@ -1329,17 +1370,26 @@ function Main() {
   );
 
   const sideTop = (
-    <View style={styles.sideTop}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: tab === 'park' ? 20 : 0 }}>
+    <View style={[styles.sideTop, tab !== 'park' && { paddingBottom: 0, paddingTop: 0 }]}>
+      {tab === 'park' && searchPill}
+    </View>
+  );
+  // Asztali bal sáv alja (mint a BudapestGO weben): hibabejelentés gyorsbillentyűvel és a logó
+  const sideBottom = (
+    <View style={{ paddingHorizontal: 28, paddingTop: 10, paddingBottom: 14, gap: 10 }}>
+      <Pressable onPress={() => openMenuPage('feedback')} role="button" testID="side-bug" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start' }}>
+        <Icon name="bug" size={18} color={titleColor()} />
+        <Text style={{ color: titleColor(), fontWeight: '700' }}>{a.bugReport} (Ctrl+U)</Text>
+      </Pressable>
+      <Pressable onPress={() => openMenuPage('about')} role="button" accessibilityLabel={a.about} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, borderWidth: isDark ? 0 : 1, borderColor: C.line }}>
         <View style={styles.brandMark}>
           <Text style={{ color: C.brand, fontWeight: '900', fontSize: 13 }}>P</Text>
         </View>
-        <Text style={{ fontSize: 22, letterSpacing: 2, color: C.brand }}>
+        <Text style={{ fontSize: 20, letterSpacing: 2, color: titleColor() }}>
           PARK<Text style={{ fontWeight: '900' }}>OLJ</Text>
         </Text>
-        <Text style={{ color: C.sub, fontSize: 12, flex: 1, textAlign: 'right' }}>{t.tagline}</Text>
-      </View>
-      {tab === 'park' && searchPill}
+        <Text style={{ color: C.sub, fontSize: 11, flex: 1, textAlign: 'right' }}>{t.tagline}</Text>
+      </Pressable>
     </View>
   );
 
@@ -1438,7 +1488,8 @@ function Main() {
     ['park', a.tabPark, 'parking'],
     ['fav', a.tabFav, 'star'],
     ['parkings', a.tabParkings, 'ticket'],
-    ['menu', a.tabMenu, 'menu'],
+    // Asztalon a menü a jobb felső pirulában van, ott nem kell külön fül
+    ...(wide ? [] : ([['menu', a.tabMenu, 'menu']] as [Tab, string, IconName][])),
   ];
   const tabs = (
     <View style={styles.tabBar} role="tablist">
@@ -1497,6 +1548,7 @@ function Main() {
           <View style={{ width: 460, backgroundColor: C.bg, borderRightWidth: 1, borderColor: C.line }}>
             {sideTop}
             {panel}
+            {sideBottom}
             {tabs}
           </View>
           {map}

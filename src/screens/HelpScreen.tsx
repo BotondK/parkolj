@@ -12,7 +12,7 @@ import InfoScreen from './InfoScreen';
 // „Információk és súgó” a BudapestGO mintájára, parkolásra szabva: baj esetén teendők, jelmagyarázat, fő funkciók,
 // a mobilparkolás működése, GYIK, visszajelzés, a fővárosi parkolás elérhetősége, dokumentumok és verzió.
 
-type Sub = 'home' | 'legend' | 'features' | 'how' | 'faq' | 'a11y' | 'licenses';
+type Sub = 'home' | 'about' | 'legend' | 'features' | 'how' | 'faq' | 'a11y' | 'licenses';
 type QA = [q: string, a: string];
 
 const HU = {
@@ -43,6 +43,8 @@ const HU = {
   a11y: 'Akadálymentesítési nyilatkozat',
   licenses: 'Licencek és adatforrások',
   version: (v: string) => `Verzió: ${v} (prototípus)`,
+  about: 'Névjegy',
+  aboutBody: 'Parkolás a célod mellett, Budapesten: a célodhoz legközelebbi, legolcsóbb és legbiztosabb helyet mutatja, odanavigál, és percre pontosan fizetsz. Két budapesti fejlesztő saját projektje; jelenleg prototípus, a zárt bétára készül.',
   // Jelmagyarázat
   zonesTitle: 'Parkolási zónák',
   zoneLine: (ft: number, h: string) => `${ft} Ft/óra · fizetős hétköznap ${h}`,
@@ -138,6 +140,8 @@ const EN: HelpStrings = {
   a11y: 'Accessibility statement',
   licenses: 'Licences and data sources',
   version: (v: string) => `Version: ${v} (prototype)`,
+  about: 'About',
+  aboutBody: 'Parking next to your destination in Budapest: it shows the closest, cheapest and surest space, navigates you there, and you pay by the minute. A side project of two Budapest developers; currently a prototype, preparing for a closed beta.',
   zonesTitle: 'Parking zones',
   zoneLine: (ft: number, h: string) => `${ft} Ft/hour · paid on weekdays ${h}`,
   mapTitle: 'Symbols on the map',
@@ -226,6 +230,8 @@ const DE: HelpStrings = {
   a11y: 'Erklärung zur Barrierefreiheit',
   licenses: 'Lizenzen und Datenquellen',
   version: (v: string) => `Version: ${v} (Prototyp)`,
+  about: 'Über die App',
+  aboutBody: 'Parken neben deinem Ziel in Budapest: zeigt den nächsten, günstigsten und sichersten Platz, navigiert dich hin, und du zahlst minutengenau. Ein eigenes Projekt zweier Budapester Entwickler; derzeit ein Prototyp, in Vorbereitung auf eine geschlossene Beta.',
   zonesTitle: 'Parkzonen',
   zoneLine: (ft: number, h: string) => `${ft} Ft/Std. · gebührenpflichtig werktags ${h}`,
   mapTitle: 'Zeichen auf der Karte',
@@ -379,12 +385,35 @@ function Legend({ s, t }: { s: HelpStrings; t: Strings }) {
   );
 }
 
-export default function HelpScreen({ t, lang, district, onBack, openFeedback, openPrivacy }: { t: Strings; lang: Lang; district?: string | null; onBack: () => void; openFeedback: () => void; openPrivacy: () => void }) {
-  const [sub, setSub] = useState<Sub>('home');
+export default function HelpScreen({ t, lang, district, onBack, openFeedback, openPrivacy, initial = 'home' }: { t: Strings; lang: Lang; district?: string | null; onBack: () => void; openFeedback: () => void; openPrivacy: () => void; initial?: 'home' | 'about' }) {
+  const [sub, setSub] = useState<Sub>(initial);
   const [openQ, setOpenQ] = useState<number | null>(null);
   const s = S[lang] ?? HU;
-  const home = () => setSub('home');
+  // A Névjegyből (ha közvetlenül nyílt meg) a menübe megy vissza, máshonnan a súgó főoldalára
+  const home = () => (sub === 'about' && initial === 'about' ? onBack() : setSub('home'));
 
+  if (sub === 'about')
+    return (
+      <View testID="help-about">
+        <PageHeader title={s.about} onBack={home} />
+        <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+          <View style={[styles.brandMark, { width: 64, height: 64, borderRadius: 32, borderWidth: 8 }]}>
+            <Text style={{ color: C.brand, fontWeight: '900', fontSize: 22 }}>P</Text>
+          </View>
+          <Text style={{ fontSize: 28, letterSpacing: 3, color: titleColor(), marginTop: 12 }}>
+            PARK<Text style={{ fontWeight: '900' }}>OLJ</Text>
+          </Text>
+          <Text style={{ color: C.sub, marginTop: 4 }}>{s.version(app.expo.version)}</Text>
+        </View>
+        <Text style={{ color: C.text, fontSize: 16, lineHeight: 23, marginVertical: 12 }}>{s.aboutBody}</Text>
+        <Section>
+          <ListRow icon="help" label={s.title} onPress={() => setSub('home')} />
+          <ListRow label={s.privacy} onPress={openPrivacy} />
+          <ListRow label={s.a11y} onPress={() => setSub('a11y')} />
+          <ListRow label={s.licenses} onPress={() => setSub('licenses')} last />
+        </Section>
+      </View>
+    );
   if (sub === 'legend')
     return (
       <View>

@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { openMenu } from './menu';
 
 // Akadálymentességi vizsgálat (WCAG 2.1 A/AA) a fő képernyőkön. A térkép vásznát kihagyjuk (külön szöveges lista van).
 const scan = async (page: Page, name: string) => {
@@ -27,15 +28,19 @@ test('akadálymentesség: fő képernyők', async ({ page }) => {
   all.push(...(await scan(page, 'parkolásaim')));
   await page.getByRole('tab', { name: 'Kedvenceim' }).click();
   all.push(...(await scan(page, 'kedvencek')));
-  await page.getByRole('tab', { name: 'Menü' }).click();
+  await openMenu(page);
   all.push(...(await scan(page, 'menü')));
-  for (const p of ['Beállítások', 'Widgetek', 'Parkolj Plusz', 'Fizetés és számlázás', 'Visszajelzés küldése', 'Fiók']) {
+  for (const p of ['Beállítások', 'Widgetek', 'Parkolj Plusz', 'Vásárlás és fizetés', 'Visszajelzés küldése', 'Hibabejelentés', 'Névjegy', 'Fiók']) {
     const row = page.getByText(p, { exact: true }).first();
     if (!(await row.isVisible().catch(() => false))) continue;
     await row.click();
     all.push(...(await scan(page, p)));
-    await page.getByRole('tab', { name: 'Menü' }).click();
-    await page.getByRole('tab', { name: 'Menü' }).click();
+    // Vissza a menübe: telefonon a Menü fül kétszer (főoldal), asztalon újra a lenyíló menü
+    if ((page.viewportSize()?.width ?? 0) >= 900) await openMenu(page);
+    else {
+      await page.getByRole('tab', { name: 'Menü' }).click();
+      await page.getByRole('tab', { name: 'Menü' }).click();
+    }
   }
   console.log(all.join('\n'));
   expect(all).toEqual([]);

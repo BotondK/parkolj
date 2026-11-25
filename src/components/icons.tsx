@@ -4,7 +4,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 export type IconName =
   | 'map' | 'star' | 'starFill' | 'ticket' | 'menu' | 'home' | 'work' | 'search' | 'bell' | 'gear' | 'card' | 'info'
   | 'user' | 'chevron' | 'back' | 'car' | 'pin' | 'trash' | 'plus' | 'receipt' | 'users' | 'finger' | 'coupon'
-  | 'moon' | 'globe' | 'help' | 'logout' | 'close' | 'check' | 'clock' | 'external' | 'parking' | 'chat';
+  | 'moon' | 'globe' | 'help' | 'logout' | 'close' | 'check' | 'clock' | 'external' | 'parking' | 'chat' | 'bug' | 'burger';
 
 export function Icon({ name, size = 24, color = '#000', stroke = 1.8 }: { name: IconName; size?: number; color?: string; stroke?: number }) {
   const p = { stroke: color, strokeWidth: stroke, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
@@ -166,6 +166,15 @@ export function Icon({ name, size = 24, color = '#000', stroke = 1.8 }: { name: 
         return <Path {...p} d="M4 5.5h16v10H10l-4.5 4v-4H4z M8 9.5h8M8 12.5h5" />;
       case 'external':
         return <Path {...p} d="M13 4h7v7M20 4l-9 9M18 14v6H4V6h6" />;
+      case 'bug':
+        return (
+          <>
+            <Rect {...p} x="7" y="7" width="10" height="13" rx="5" />
+            <Path {...p} d="M9 7.5a3 3 0 0 1 6 0M12 11v9M7 12H3.5M20.5 12H17M7.5 16.5 4 19M16.5 16.5 20 19M7.5 9 4.5 6.5M16.5 9l3-2.5" />
+          </>
+        );
+      case 'burger':
+        return <Path {...p} strokeWidth={stroke + 0.6} d="M4 6.5h16M4 12h16M4 17.5h16" />;
     }
   })();
   return (

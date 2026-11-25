@@ -428,7 +428,7 @@ export default function ParkingMap({ markers, selectedId, onSelect, focus, onMap
       <style>{`.maplibregl-ctrl-attrib{font-size:11px}.maplibregl-popup-content{border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.18);padding:10px 12px}`}</style>
       <div ref={host} style={{ position: 'absolute', inset: 0, backgroundColor: dark ? '#1E1D22' : '#F2EFE6' }} />
       {/* Rétegválasztó (jobbra fent, az óra mellett / alatt) */}
-      <div style={{ position: 'absolute', zIndex: 1000, ...(controlsTop ? { right: 12, top: 80 } : { right: 150, top: 26 }) }}>
+      <div style={{ position: 'absolute', zIndex: 1000, ...(controlsTop ? { right: 12, top: 80 } : { right: 192, top: 26 }) }}>
         <button aria-label={L.layers} style={{ ...btn, ...(controlsTop ? { width: 44, height: 44 } : {}) }} onClick={() => setLayersOpen((o) => !o)}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill={dark ? '#F5F4F7' : '#1C1B1F'} aria-hidden>
             <path d="M12 2 1 8l11 6 11-6-11-6Zm0 14.2L3.2 11.4 1 12.6 12 18.6l11-6-2.2-1.2L12 16.2Zm0 4.6-8.8-4.8L1 17.2 12 23l11-5.8-2.2-1.2L12 20.8Z" />
