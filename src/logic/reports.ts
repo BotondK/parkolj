@@ -1,6 +1,6 @@
 // Jelzések küldése sorral: ha nincs kapcsolat vagy fiókszerver, a készüléken marad, és később megy el.
 import { cloud } from './cloud';
-import { enqueueReport, setHotspots, type Hotspot, type SpotReport } from './reportCore';
+import { enqueueReport, setHotspots, setSearchStats, type Hotspot, type SearchStat, type SpotReport } from './reportCore';
 import { loadJSON, saveJSON } from './storage';
 
 export async function sendReport(r: SpotReport | null): Promise<'sent' | 'queued' | 'invalid'> {
@@ -36,6 +36,21 @@ export async function loadHotspots(): Promise<Hotspot[]> {
     const items = await cloud.nospaceHotspots();
     setHotspots(items);
     await saveJSON('hotspots', { at: Date.now(), items });
+    return items;
+  } catch {
+    return cached?.items ?? [];
+  }
+}
+
+/** Valódi helykeresési idők: a tárolt példány azonnal, a szerverről 12 óránként frissítve */
+export async function loadSearchStats(): Promise<SearchStat[]> {
+  const cached = await loadJSON<{ at: number; items: SearchStat[] } | null>('searchStats', null);
+  if (cached) setSearchStats(cached.items);
+  if (!cloud || (cached && Date.now() - cached.at < 12 * 3600_000)) return cached?.items ?? [];
+  try {
+    const items = await cloud.searchTimeStats();
+    setSearchStats(items);
+    await saveJSON('searchStats', { at: Date.now(), items });
     return items;
   } catch {
     return cached?.items ?? [];

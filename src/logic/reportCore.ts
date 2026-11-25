@@ -2,8 +2,9 @@
 // Felhasználói azonosító, rendszám nélkül; a hely ~100 m-re kerekítve (3 tizedesjegy), a megjegyzés legfeljebb 300 karakter.
 import type { LatLng } from '../data/zones';
 
-export type ReportKind = 'nospace' | 'wrongzone' | 'wrongprice' | 'notpaid' | 'other';
-export const REPORT_KINDS: ReportKind[] = ['nospace', 'wrongzone', 'wrongprice', 'notpaid', 'other'];
+/** found: leállítás után a felhasználó megmondja, mennyi ideig keresett helyet (search_min) */
+export type ReportKind = 'nospace' | 'wrongzone' | 'wrongprice' | 'notpaid' | 'other' | 'found';
+export const REPORT_KINDS: ReportKind[] = ['nospace', 'wrongzone', 'wrongprice', 'notpaid', 'other', 'found'];
 
 export type SpotReport = {
   at: string;
@@ -15,6 +16,8 @@ export type SpotReport = {
   lng: number;
   note: string | null;
   lang: 'hu' | 'en' | 'de';
+  /** Csak „found” jelzésnél: hány percig keresett helyet (0, 3, 10, 20) */
+  search_min?: number | null;
 };
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -30,6 +33,7 @@ export function buildReport(p: {
   note?: string;
   lang: SpotReport['lang'];
   now?: Date;
+  searchMin?: number;
 }): SpotReport | null {
   if (!inBudapest(p.coord)) return null;
   const note = (p.note ?? '').trim().slice(0, 300);
@@ -43,6 +47,8 @@ export function buildReport(p: {
     lng: r3(p.coord.lng),
     note: note || null,
     lang: p.lang,
+    // Mindig benne van (null is): a szerver egy kötegben csak azonos mezőkészletű sorokat fogad el
+    search_min: p.kind === 'found' ? Math.max(0, Math.min(60, Math.round(p.searchMin ?? 0))) : null,
   };
 }
 
@@ -72,4 +78,33 @@ export function hotspotPenalty(p: LatLng, hour: number, list: Hotspot[] = hotspo
     pen = Math.max(pen, Math.min(0.35, 0.12 + 0.04 * (h.reports - 3)));
   }
   return pen;
+}
+
+/** Válaszlehetőségek a „Mennyi ideig kerestél helyet?” kérdésre: a tárolt perc a sáv jellemző értéke */
+export const SEARCH_BUCKETS = [0, 3, 10, 20] as const;
+
+/** Valódi helykeresési idő a válaszokból (szerver: zóna × 3 órás sáv, legalább 5 válasz) */
+export type SearchStat = { zone_id: string; hour_from: number; answers: number; avg_min: number; quick_share: number };
+let searchStats: SearchStat[] = [];
+export const setSearchStats = (s: SearchStat[]) => {
+  searchStats = s.map((x) => ({ ...x, avg_min: Number(x.avg_min), quick_share: Number(x.quick_share), answers: Number(x.answers) }));
+};
+export const getSearchStats = () => searchStats;
+
+/** Átlagos keresési idő percben egy zónában az adott órában, vagy null, ha nincs elég válasz */
+export function searchMinutesFor(zoneId: string | null | undefined, hour: number, list: SearchStat[] = searchStats): number | null {
+  if (!zoneId) return null;
+  const s = list.find((x) => x.zone_id === zoneId && x.hour_from === Math.floor(hour / 3) * 3);
+  return s && s.answers >= 5 ? s.avg_min : null;
+}
+
+/**
+ * Becsült keresési idő egy jelöltre: a szabad hely esélyéből (0–12 perc), és ha van valódi adat a zónára és sávra,
+ * akkor a kettő átlaga, ahol a valódi átlagot az esélyhez igazítjuk (jobb esély → kevesebb keresés).
+ */
+export function searchEstimate(availability: number, real: number | null): number {
+  const sim = (1 - availability) * 12;
+  if (real == null) return sim;
+  const scaled = real * (1 - availability) * 2; // átlagos esély (0,5) mellett pont a valódi átlag
+  return (sim + scaled) / 2;
 }

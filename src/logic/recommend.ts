@@ -4,7 +4,7 @@ import { distanceM, offset, walkMinutes, zoneAt } from './geo';
 import { formatClock, paidEnd, priceFor, priceWindow } from './pricing';
 import { bpParts } from './budapestTime';
 import { streetPointsNear } from './zoneStreets';
-import { hotspotPenalty } from './reportCore';
+import { hotspotPenalty, searchEstimate, searchMinutesFor } from './reportCore';
 import { ZONES } from '../data/zones';
 
 export type OptionKind = 'fastest' | 'cheapest' | 'garage' | 'here';
@@ -97,7 +97,7 @@ export function recommend(dest: LatLng, plannedMinutes: number, at: Date = new D
       bearing: bearingOf(coord),
       distanceM: Math.round(d / 10) * 10,
       street,
-      etaMin: Math.round(walkMin + (1 - availability) * 12),
+      etaMin: Math.round(walkMin + searchEstimate(availability, searchMinutesFor(zone?.id, bpParts(at).hour))),
       reportedFull: hotspotPenalty(coord, bpParts(at).hour) > 0,
     });
   };

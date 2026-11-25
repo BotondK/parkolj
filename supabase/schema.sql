@@ -279,3 +279,27 @@ returns void language sql security definer set search_path = '' as $$
 $$;
 revoke all on function public.push_forget(text) from public, anon, authenticated;
 grant execute on function public.push_forget(text) to service_role;
+
+-- Helykeresési idő: leállítás után a felhasználó egy koppintással megmondja, mennyi ideig keresett helyet (0, 3, 10 vagy 20 perc).
+-- Ugyanabba a névtelen spot_reports táblába kerül „found” jelzésként (zóna, ~100 m-es hely, idő; fiók és rendszám nélkül).
+alter table public.spot_reports add column if not exists search_min smallint check (search_min is null or search_min between 0 and 60);
+alter table public.spot_reports drop constraint if exists spot_reports_kind_check;
+alter table public.spot_reports add constraint spot_reports_kind_check check (kind in ('nospace','wrongzone','wrongprice','notpaid','other','found'));
+alter table public.spot_reports drop constraint if exists spot_reports_found_check;
+alter table public.spot_reports add constraint spot_reports_found_check check ((kind = 'found') = (search_min is not null));
+
+-- Átlagos keresési idő zóna × 3 órás sáv (Budapest idő) szerint, az elmúlt 90 napból; csak ahol legalább 5 válasz van.
+-- Bárki olvashatja: az app ebből becsli a „perc a célig” időt, a „Városnak” oldal ebből mutatja.
+create or replace function public.search_time_stats()
+returns table (zone_id text, hour_from int, answers int, avg_min numeric, quick_share numeric)
+language sql stable security definer set search_path = '' as $$
+  select r.zone_id, (extract(hour from r.at at time zone 'Europe/Budapest')::int / 3) * 3,
+         count(*)::int, round(avg(r.search_min), 1), round(avg((r.search_min <= 3)::int), 2)
+  from public.spot_reports r
+  where r.kind = 'found' and r.zone_id is not null and r.at > now() - interval '90 days'
+  group by 1, 2
+  having count(*) >= 5
+  order by 1, 2;
+$$;
+revoke all on function public.search_time_stats() from public;
+grant execute on function public.search_time_stats() to anon, authenticated;

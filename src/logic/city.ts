@@ -1,6 +1,6 @@
 // A „Városnak” oldal adatlogikája: összesítés, mintaadat, CSV. Tiszta függvények (tesztelhető).
 import type { CityRow } from './cloud';
-import type { Hotspot } from './reportCore';
+import type { Hotspot, SearchStat } from './reportCore';
 
 export const CITY_ZONES = ['A', 'B', 'C', 'D'] as const;
 export const CITY_HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7–22 óra
@@ -63,3 +63,18 @@ export function sampleHotspots(): Hotspot[] {
   ];
   return pts.map(([lat, lng, zone_id, hour_from, reports]) => ({ lat, lng, zone_id, hour_from, reports, last_at: '' }));
 }
+
+/** Mintaadat a „Mennyi ideig keresnek helyet?” táblához, amíg kevés a valódi válasz (A–D zóna × 3 órás sáv, átlagos perc) */
+export function sampleSearchStats(): SearchStat[] {
+  const base: Record<string, number> = { A: 9, B: 7, C: 4, D: 2 };
+  const band: Record<number, number> = { 6: 0.5, 9: 1, 12: 0.9, 15: 1, 18: 1.4, 21: 0.8 };
+  return Object.entries(base).flatMap(([zone_id, b]) =>
+    Object.entries(band).map(([h, k]) => {
+      const avg = Math.round(b * k * 10) / 10;
+      return { zone_id, hour_from: Number(h), answers: 12, avg_min: avg, quick_share: Math.max(0.05, Math.min(0.95, Math.round((1 - avg / 15) * 100) / 100)) };
+    }),
+  );
+}
+
+/** Színfokozat a keresési időhöz: 0–3 perc jó, 3–8 közepes, 8+ nehéz */
+export const searchTone = (min: number): 'good' | 'mid' | 'bad' => (min <= 3 ? 'good' : min <= 8 ? 'mid' : 'bad');

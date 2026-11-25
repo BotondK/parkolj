@@ -3,9 +3,9 @@ import { Linking, Platform, Pressable, ScrollView, Text, useColorScheme, useWind
 import { PillButton, Segmented } from '../components/kit';
 import { applyTheme, bgForWhite, C, isDark } from '../components/ui';
 import { ZONES } from '../data/zones';
-import { byZone, CITY_HOURS, CITY_ZONES, cityCsv, heat, sampleCityRows, sampleHotspots, type DayFilter } from '../logic/city';
+import { byZone, CITY_HOURS, CITY_ZONES, cityCsv, heat, sampleCityRows, sampleHotspots, sampleSearchStats, searchTone, type DayFilter } from '../logic/city';
 import { districtAt } from '../logic/geo';
-import type { Hotspot } from '../logic/reportCore';
+import type { Hotspot, SearchStat } from '../logic/reportCore';
 import { cloud, type CityRow } from '../logic/cloud';
 import { formatFt } from '../logic/pricing';
 
@@ -37,6 +37,12 @@ export default function CityScreen() {
   useEffect(() => {
     (cloud ? cloud.nospaceHotspots().catch(() => null) : Promise.resolve(null)).then((r) =>
       setSpots(r && r.length >= 3 ? { items: r.map((x) => ({ ...x, lat: Number(x.lat), lng: Number(x.lng) })), live: true } : { items: sampleHotspots(), live: false }),
+    );
+  }, []);
+  const [search, setSearch] = useState<{ items: SearchStat[]; live: boolean } | null>(null);
+  useEffect(() => {
+    (cloud ? cloud.searchTimeStats().catch(() => null) : Promise.resolve(null)).then((r) =>
+      setSearch(r && r.length >= 4 ? { items: r.map((x) => ({ ...x, avg_min: Number(x.avg_min), quick_share: Number(x.quick_share) })), live: true } : { items: sampleSearchStats(), live: false }),
     );
   }, []);
 
@@ -228,6 +234,48 @@ export default function CityScreen() {
         </View>
       )}
 
+      {/* Helykeresési idő: a sofőrök a leállítás után egy koppintással megmondják, mennyi ideig kerestek helyet */}
+      {search && (
+        <View testID="search-card" style={[card, { gap: 10 }]}>
+          <Text style={{ color: C.text, fontSize: 18, fontWeight: '800' }}>Mennyi ideig keresnek helyet?</Text>
+          <Text style={{ color: C.sub, fontSize: 14, lineHeight: 20 }}>
+            Átlagos helykeresési idő percben, zónánként és napszakonként. A sofőrök a parkolás leállítása után egy koppintással válaszolnak; egy cella csak akkor látszik, ha legalább 5 válasz van (az elmúlt 90 napból).
+          </Text>
+          <View style={{ alignSelf: 'flex-start', backgroundColor: search.live ? C.goodSoft : C.warnSoft, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <Text style={{ color: search.live ? C.good : C.warn, fontWeight: '800', fontSize: 13 }}>{search.live ? '● Élő béta-adat' : '◌ Mintaadat: még kevés a válasz'}</Text>
+          </View>
+          <View accessibilityRole="none">
+            <View style={{ flexDirection: 'row' }}>
+              <Text style={{ width: 44 }} />
+              {[6, 9, 12, 15, 18, 21].map((hb) => (
+                <Text key={hb} style={{ flex: 1, textAlign: 'center', color: C.sub, fontSize: 12, fontWeight: '700' }}>
+                  {hb}–{hb + 3}
+                </Text>
+              ))}
+            </View>
+            {['A', 'B', 'C', 'D'].map((z) => (
+              <View key={z} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                <View style={{ width: 36, height: 30, marginRight: 8, borderRadius: 8, backgroundColor: zColor(z), alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#fff', fontWeight: '800' }}>{z}</Text>
+                </View>
+                {[6, 9, 12, 15, 18, 21].map((hb) => {
+                  const st = search.items.find((x) => x.zone_id === z && x.hour_from === hb);
+                  const tone = st ? searchTone(st.avg_min) : null;
+                  const bg = tone === 'good' ? C.goodSoft : tone === 'mid' ? C.warnSoft : tone === 'bad' ? C.dangerSoft : 'transparent';
+                  const fg = tone === 'good' ? C.good : tone === 'mid' ? C.warn : tone === 'bad' ? C.danger : C.sub;
+                  return (
+                    <View key={hb} accessibilityLabel={`${z} zóna, ${hb}:00–${hb + 3}:00: ${st ? `${st.avg_min} perc` : 'nincs adat'}`} style={{ flex: 1, marginHorizontal: 2, height: 30, borderRadius: 6, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: fg, fontWeight: '800', fontSize: 13 }}>{st ? st.avg_min.toLocaleString('hu-HU') : '–'}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+          <Text style={{ color: C.sub, fontSize: 12 }}>Zöld: 3 percen belül, narancs: 3–8 perc, piros: 8 percnél több. Az app ebből becsli a „perc a célig” időt.</Text>
+        </View>
+      )}
+
       {/* Mit adhat a város számára */}
       <View style={[card, { gap: 8 }]}>
         <Text style={{ color: C.text, fontSize: 18, fontWeight: '800' }}>Élesben ezt kapja a város</Text>
@@ -235,6 +283,7 @@ export default function CityScreen() {
           'Valós idejű kereslet zónánként és óránként, a mostani SMS- és automatás adatok mellé.',
           'Kevesebb körözés: a sofőrök a célponthoz legközelebbi, jó eséllyel szabad helyre vagy garázsba mennek.',
           'Hol és mikor nincs hely: a sofőrök „Nem volt hely” jelzéseiből, utcai pontossággal.',
+          'Mennyi ideig keresnek helyet a sofőrök zónánként és napszakonként (a körözés közvetlen mérőszáma).',
           'A 3 órás szabály betartása: az app figyelmeztet, és csak a zónában megengedett ideig hosszabbít.',
           'Rendezvények (színház, koncert, meccs) hatása a környék parkolására, előre tervezhetően.',
           'Nyílt, géppel olvasható formátum (CSV, később API), személyes adat nélkül.',

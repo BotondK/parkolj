@@ -53,6 +53,7 @@ test('Városnak oldal: mintaadat, szűrő, CSV, akadálymentes', async ({ page }
   await expect(page.getByText(/Mintaadat/).first()).toBeVisible();
   await expect(page.getByTestId('nospace-card')).toContainText('Hol nem találnak helyet?');
   await expect(page.getByTestId('nospace-card')).toContainText('9 jelzés');
+  await expect(page.getByTestId('search-card')).toContainText('Mennyi ideig keresnek helyet?');
   await page.getByRole('radio', { name: 'Hétvége' }).click();
   await expect(page.getByRole('radio', { name: 'Hétvége' })).toBeChecked();
   await page.getByLabel(/A zóna, 19:00–20:00/).click();

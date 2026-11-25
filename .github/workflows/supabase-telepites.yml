@@ -106,4 +106,5 @@ jobs:
           check "app_errors tábla (hibás sort elutasít)" '400' "$(req -X POST "$U/rest/v1/app_errors" -d '{"kind":"x"}')"
           check "spot_reports tábla (hibás sort elutasít)" '400' "$(req -X POST "$U/rest/v1/spot_reports" -d '{"kind":"x"}')"
           check "nospace_hotspots függvény" '200' "$(req -X POST "$U/rest/v1/rpc/nospace_hotspots" -d '{}')"
+          check "search_time_stats függvény" '200' "$(req -X POST "$U/rest/v1/rpc/search_time_stats" -d '{}')"
           exit $fail

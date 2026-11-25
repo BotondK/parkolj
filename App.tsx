@@ -34,8 +34,8 @@ import { registerServiceWorker, useOnline } from './src/logic/offline';
 import { eventStay } from './src/logic/event';
 import { configureStats, track } from './src/logic/analytics';
 import { configureCrash, setCrashScreen } from './src/logic/crash';
-import { buildReport, type ReportKind } from './src/logic/reportCore';
-import { flushReports, loadHotspots, sendReport } from './src/logic/reports';
+import { buildReport, SEARCH_BUCKETS, type ReportKind } from './src/logic/reportCore';
+import { flushReports, loadHotspots, loadSearchStats, sendReport } from './src/logic/reports';
 import { driveToUrl, prSuggestion, transitUrl } from './src/logic/parkRide';
 import { rememberPlace, topFrequent, type FrequentPlace } from './src/logic/frequent';
 import CarSpotCard from './src/components/CarSpotCard';
@@ -107,6 +107,8 @@ function Main() {
   const zoneStreets = useZoneStreets();
   // „Nem volt hely” forró pontok száma (betöltéskor újraszámolja a javaslatokat)
   const [hotspotCount, setHotspotCount] = useState(0);
+  // Valódi helykeresési idők száma (betöltéskor újraszámolja a „perc a célig” becslést)
+  const [statsCount, setStatsCount] = useState(0);
   const [clock, setClock] = useState(() => formatClock(new Date()));
   useEffect(() => {
     const id = setInterval(() => setClock(formatClock(new Date())), 15000);
@@ -506,7 +508,7 @@ function Main() {
   const options = useMemo(
     () => (dest ? recommend(dest, stay, new Date(Date.now() + arriveOffset * 60000)) : []),
     // az utcaszintű zónaadat betöltése után újraszámol (valódi utcákon javasol)
-    [dest, stay, arriveOffset, zoneStreets.length, hotspotCount],
+    [dest, stay, arriveOffset, zoneStreets.length, hotspotCount, statsCount],
   );
   const hereOpt = useMemo(() => (here ? hereOption(here, stay) : null), [here, stay]);
   const selected = hereOpt ?? options.find((o) => o.id === selectedId) ?? null;
@@ -521,7 +523,17 @@ function Main() {
     if (!loaded) return;
     flushReports();
     loadHotspots().then((h) => setHotspotCount(h.length));
+    loadSearchStats().then((st) => setStatsCount(st.length));
   }, [loaded]);
+  // Leállítás után: „Mennyi ideig kerestél helyet?” (egy válasz parkolásonként)
+  const [foundAnswer, setFoundAnswer] = useState<number | null>(null);
+  useEffect(() => {
+    if (step !== 'summary') setFoundAnswer(null);
+  }, [step]);
+  const answerFound = (o: ParkingOption, min: number) => {
+    setFoundAnswer(min);
+    sendReport(buildReport({ kind: 'found', coord: o.coord, zone: o.zone?.id ?? null, district: districtAt(o.coord), optionKind: o.kind, lang, searchMin: min }));
+  };
 
   useEffect(() => {
     if (options.length && !options.some((o) => o.id === selectedId)) setSelectedId(options[0].id);
@@ -1363,6 +1375,23 @@ function Main() {
             <Row k={t.duration} v={formatDuration(Math.min(session.elapsedSec / 60, session.durationMin), lang)} />
             <Row k={t.charged} v={formatFt(chargeFor(session))} strong />
           </View>
+          {session.option.kind !== 'garage' && (
+            <View testID="found-card" style={[styles.card, { marginTop: 12 }]}>
+              <Text style={{ fontWeight: '800', fontSize: 16, color: C.text }}>{t.foundQ}</Text>
+              {foundAnswer == null ? (
+                <>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                    {SEARCH_BUCKETS.map((m, i) => (
+                      <Chip key={m} text={t.foundA[i]} active={false} onPress={() => answerFound(session.option, m)} />
+                    ))}
+                  </View>
+                  <Text style={{ color: C.sub, fontSize: 12, marginTop: 8 }}>{t.foundWhy}</Text>
+                </>
+              ) : (
+                <Text style={{ color: C.good, fontWeight: '600', marginTop: 6 }}>{t.foundThanks}</Text>
+              )}
+            </View>
+          )}
           <PrimaryButton text={t.done} onPress={reset} />
         </View>
       )}

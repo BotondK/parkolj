@@ -108,3 +108,7 @@ Ez lefuttatja a `schema.sql`-t, létrehozza a Web Push kulcsokat (csak először
 Telefonos appban a lejárati értesítést a telefon maga ütemezi. A webappnál (pl. iPhone-on a kezdőképernyőre mentve) ehhez szerver kell: a parkolás indításakor az app elküldi a `push_schedule` függvénynek, mikor szóljon (a beállított perccel előtte és lejáratkor), a böngésző push-címével együtt. A `push-send` függvény (supabase/functions/push-send) percenként kiküldi az esedékeseket, titkosítva. Leállításkor a `push_cancel` törli. Nincs benne fiók, rendszám vagy hely; a sor kiküldés után törlődik.
 
 iPhone-on csak a kezdőképernyőre mentett appban működik (iOS 16.4+), és az első parkolásnál engedélyezni kell az értesítéseket. A webes demóban a „gyorsított idő” kapcsolót ki kell kapcsolni az aktív parkolásnál, mert gyorsított időnél nem ütemez.
+
+## Helykeresési idő
+
+Leállítás után az app megkérdezi: „Mennyi ideig kerestél helyet?” (azonnal, pár perc, 5–15 perc, több mint 15 perc). A válasz `found` jelzésként kerül a `spot_reports` táblába (`search_min`: 0, 3, 10 vagy 20), névtelenül, ~100 m-es hellyel. A `search_time_stats()` függvény zóna × 3 órás sáv szerint összesít (legalább 5 válasz, 90 nap); az app 12 óránként tölti le, és ezzel javítja a „perc a célig” becslést. A „Városnak” oldal táblázatként mutatja.

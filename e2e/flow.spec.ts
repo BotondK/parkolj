@@ -37,6 +37,13 @@ test('célpont → 3 javaslat → navigáció → fizetés → aktív jegy → l
   await page.getByText('Részletek', { exact: true }).click();
   await page.getByText('Parkolás leállítása').click();
   await expect(page.getByText('Parkolás leállítva')).toBeVisible();
+  // Egy koppintásos kérdés: mennyi ideig kereste a helyet (névtelen jelzés, sorba kerül)
+  await expect(page.getByTestId('found-card')).toContainText('Mennyi ideig kerestél helyet?');
+  await page.getByText('Pár perc', { exact: true }).click();
+  await expect(page.getByTestId('found-card')).toContainText('Köszönjük!');
+  const q = await page.evaluate(() => localStorage.getItem('parkolj:reportQueue') ?? '');
+  expect(q).toContain('"kind":"found"');
+  expect(q).toContain('"search_min":3');
   await page.getByText('Kész').click();
 
   await tab(page, 'Parkolásaim').click();

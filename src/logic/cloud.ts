@@ -1,7 +1,7 @@
 // Fiók és felhőszinkron Supabase-szel (Auth + Postgres), külső csomag nélkül, sima fetch-csel.
 // Ha nincs beállítva EXPO_PUBLIC_SUPABASE_URL és EXPO_PUBLIC_SUPABASE_ANON_KEY, az app helyi fiókkal működik tovább.
 // A tábla és a jogosultságok: supabase/schema.sql. Beállítás: docs/FIOK.md.
-import type { Hotspot, SpotReport } from './reportCore';
+import type { Hotspot, SearchStat, SpotReport } from './reportCore';
 import type { CrashReport } from './crashCore';
 import type { BetaRow } from './betaCore';
 import type { BillingProfile, Car, FavoritePlace, HistoryItem, PaymentCard, Session, Settings } from '../types';
@@ -163,6 +163,8 @@ export function makeCloud(cfg: CloudConfig, f: Fetch = fetch) {
     sendReports: (rows: SpotReport[]) => call<unknown>('/rest/v1/spot_reports', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(rows) }),
     /** „Nem volt hely” forró pontok (névtelen összesítés), belépés nélkül */
     nospaceHotspots: () => call<Hotspot[]>('/rest/v1/rpc/nospace_hotspots', { method: 'POST', body: '{}' }),
+    /** Átlagos helykeresési idő zóna × 3 órás sáv szerint (névtelen összesítés), belépés nélkül */
+    searchTimeStats: () => call<SearchStat[]>('/rest/v1/rpc/search_time_stats', { method: 'POST', body: '{}' }),
     /** Jelentkezés a zárt bétára (be nem lépve). Adatbázis-függvény: a már jelentkezett címet csendben kihagyja,
      *  így a válaszból nem derül ki, hogy egy e-mail cím szerepel-e a listán. */
     betaSignup: (row: BetaRow) => call<unknown>('/rest/v1/rpc/beta_signup', { method: 'POST', body: JSON.stringify(row) }),
