@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Linking, Platform, Pressable, ScrollView, Text, TextInput, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ParkingMap from './src/components/ParkingMap';
+import { BottomSheet } from './src/components/BottomSheet';
 import type { MapMarker } from './src/components/mapTypes';
 import { Icon, type IconName } from './src/components/icons';
 import { ListRow, Section, titleColor } from './src/components/kit';
@@ -111,6 +112,8 @@ function Main() {
     return () => clearInterval(id);
   }, []);
   const [step, setStep] = useState<Step>('search');
+  /** Telefonon a térkép fölötti panel teljes képernyőre felhúzva (ilyenkor a kereső a panel tetején van) */
+  const [sheetFull, setSheetFull] = useState(false);
   const [query, setQuery] = useState('');
   const [dest, setDest] = useState<Place | null>(null);
   const [here, setHere] = useState<LatLng | null>(null);
@@ -642,6 +645,8 @@ function Main() {
   // Valós idejű parkolásnál a telefon előre ütemezi a lejárati értesítéseket (bezárt appnál is szól)
   const endAt = session ? session.startedAt + session.durationMin * 60000 : 0;
   useEffect(() => {
+    // Betöltés előtt nem nyúlunk hozzá: induláskor még nincs meg a futó parkolás, és a törlés a szerveren lévő értesítést is vinné
+    if (!loaded) return;
     if (step !== 'active' || !session || demoSpeed) {
       cancelExpiry();
       return;
@@ -651,7 +656,7 @@ function Main() {
     const end = pe ? Math.min(pe.getTime(), endAt) : endAt;
     // Kikapcsolt emlékeztetőnél csak a lejáratkor szól (a „hamarosan” időpont a múltba kerül, kimarad)
     scheduleExpiry(end, a.soonIn(settings.remindMin), t.alertExpired, t.appName, settings.remind ? settings.remindMin : 100000);
-  }, [step, endAt, demoSpeed, t, a, settings.remind, settings.remindMin]);
+  }, [loaded, step, endAt, demoSpeed, t, a, settings.remind, settings.remindMin]);
 
   // Fizetési lépésnél az alapértelmezett kártya és számlázási profil
   const payOptions = useMemo(() => [{ id: 'wallet', label: walletLabel(a) }, ...cards.map((c) => ({ id: c.id, label: cardLabel(c) }))], [cards, a]);
@@ -996,7 +1001,7 @@ function Main() {
           </View>
         </View>
       ) : (
-        <View style={{ position: 'absolute', top: 12, left: 12, right: 12, zIndex: 1100 }}>{searchPill}</View>
+        !sheetFull && <View style={{ position: 'absolute', top: 12, left: 12, right: 12, zIndex: 1100 }}>{searchPill}</View>
       )}
     </View>
   );
@@ -1482,7 +1487,7 @@ function Main() {
       </SafeAreaView>
     );
 
-  const sheetH = step === 'search' && !hereOpt ? '46%' : step === 'options' ? '60%' : '64%';
+  const sheetPct = step === 'search' && !hereOpt ? 0.46 : step === 'options' ? 0.6 : 0.64;
 
   return (
     <SafeAreaView testID="app-root" style={{ flex: 1, backgroundColor: wide || tab !== 'park' ? C.bg : C.card }} edges={wide ? ['top', 'bottom'] : ['top']}>
@@ -1499,13 +1504,9 @@ function Main() {
       ) : tab === 'park' ? (
         <View style={{ flex: 1 }}>
           {map}
-          <View style={[styles.sheet, { height: sheetH }, Platform.OS === 'web' && ({ transform: 'translateZ(0)' } as object)]}>
-            <View style={styles.grabber} />
+          <BottomSheet midPct={sheetPct} title={t.tabPark} resetKey={step} labels={{ expand: t.sheetExpand, collapse: t.sheetCollapse }} onSnap={(sn) => setSheetFull(sn === 'full')} top={<View style={{ paddingHorizontal: 12, paddingBottom: 6 }}>{searchPill}</View>} footer={<SafeAreaView edges={['bottom']} style={{ backgroundColor: C.tabBar }}>{tabs}</SafeAreaView>}>
             {panel}
-            <SafeAreaView edges={['bottom']} style={{ backgroundColor: C.tabBar }}>
-              {tabs}
-            </SafeAreaView>
-          </View>
+          </BottomSheet>
         </View>
       ) : (
         // Telefonon a többi fül teljes képernyős oldal (mint a BudapestGO-ban)

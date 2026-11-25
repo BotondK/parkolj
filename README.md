@@ -59,6 +59,7 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 51. „Hol hagytam az autót?” mindenkinek: szint, jegyzet és fotó az aktív jegyen (a fotó csak a készüléken marad)
 52. „Nem volt hely” forró pontok: ahol mások többször nem találtak helyet, ott a javaslat kisebb esélyt mutat; a „Városnak” oldalon lista a BKK-nak
 53. Összeomlás esetén üres képernyő helyett hibaképernyő: a futó parkolás (zóna, rendszám, meddig érvényes) akkor is látszik, egy gombbal újraindul; névtelen hibajelentés megy (rendszám, e-mail, hely nélkül), a leggyakoribb hibák: `select * from public.error_summary;`. Kipróbálás: https://botondk.github.io/parkolj/?crashtest
+54. Húzható alsó panel telefonon (mint a BudapestGO-ban): felhúzva teljes képernyő „˅ Parkolás” sávval és a keresővel, lehúzva nagyobb térkép; koppintás a fogantyúra is vált
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 
