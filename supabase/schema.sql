@@ -219,3 +219,63 @@ create or replace view public.error_summary with (security_invoker = true) as
          array_agg(distinct screen) as kepernyok, array_agg(distinct platform) as platformok, max(version) as verzio, max(at) as utoljara
   from public.app_errors group by fp, name order by db desc;
 revoke all on public.error_summary from anon, authenticated;
+
+-- Lejárati értesítés a bezárt webappnak (Web Push). Az app a parkolás indításakor beküldi, mikor szóljon (legfeljebb 4 időpont,
+-- 26 órán belül), és a böngésző push-címét. Nincs felhasználói azonosító, rendszám vagy hely; a sor kiküldés után, leállításkor vagy
+-- egy óra késés után törlődik. Kívülről sem olvasni, sem írni nem lehet közvetlenül: csak a push_schedule és push_cancel függvény hívható.
+create table if not exists public.push_jobs (
+  id bigserial primary key,
+  token uuid not null,
+  endpoint text not null check (endpoint ~ '^https://' and char_length(endpoint) <= 800),
+  p256dh text not null check (char_length(p256dh) between 80 and 100),
+  auth text not null check (char_length(auth) between 16 and 30),
+  send_at timestamptz not null,
+  title text not null check (char_length(title) <= 60),
+  body text not null check (char_length(body) <= 200),
+  created_at timestamptz not null default now()
+);
+create index if not exists push_jobs_send_at_idx on public.push_jobs (send_at);
+create index if not exists push_jobs_token_idx on public.push_jobs (token);
+alter table public.push_jobs enable row level security;
+revoke all on public.push_jobs from anon, authenticated;
+
+-- Ütemezés: a token (az app véletlen azonosítója a parkoláshoz) és a push-cím korábbi időpontjait lecseréli
+create or replace function public.push_schedule(p_token uuid, p_endpoint text, p_p256dh text, p_auth text, p_jobs jsonb)
+returns int language plpgsql security definer set search_path = '' as $$
+declare n int;
+begin
+  if jsonb_typeof(p_jobs) <> 'array' or jsonb_array_length(p_jobs) > 4 then raise exception 'legfeljebb 4 időpont'; end if;
+  delete from public.push_jobs where token = p_token or endpoint = p_endpoint;
+  insert into public.push_jobs (token, endpoint, p256dh, auth, send_at, title, body)
+    select p_token, p_endpoint, p_p256dh, p_auth, j.at, left(j.title, 60), left(j.body, 200)
+    from jsonb_to_recordset(p_jobs) as j(at timestamptz, title text, body text)
+    where j.at > now() and j.at < now() + interval '26 hours' and j.title is not null and j.body is not null;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public.push_schedule(uuid, text, text, text, jsonb) from public;
+grant execute on function public.push_schedule(uuid, text, text, text, jsonb) to anon, authenticated;
+
+-- Leállításkor: csak aki ismeri a tokent, az törölheti
+create or replace function public.push_cancel(p_token uuid)
+returns void language sql security definer set search_path = '' as $$
+  delete from public.push_jobs where token = p_token;
+$$;
+revoke all on function public.push_cancel(uuid) from public;
+grant execute on function public.push_cancel(uuid) to anon, authenticated;
+
+-- A küldő (Edge Function, service_role) kiveszi az esedékeseket; a nagyon régieket is törli
+create or replace function public.push_take_due()
+returns setof public.push_jobs language sql security definer set search_path = '' as $$
+  delete from public.push_jobs where send_at <= now() + interval '20 seconds' returning *;
+$$;
+revoke all on function public.push_take_due() from public, anon, authenticated;
+grant execute on function public.push_take_due() to service_role;
+
+-- Megszűnt feliratkozás (a push szolgáltatás 404/410-et adott): minden időpontja törlődik
+create or replace function public.push_forget(p_endpoint text)
+returns void language sql security definer set search_path = '' as $$
+  delete from public.push_jobs where endpoint = p_endpoint;
+$$;
+revoke all on function public.push_forget(text) from public, anon, authenticated;
+grant execute on function public.push_forget(text) to service_role;

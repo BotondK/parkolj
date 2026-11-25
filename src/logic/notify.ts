@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { expiryPlan } from './pushPlan';
 
 // Natív helyi értesítések (Expo Go-ban is működik). Webes változat: notify.web.ts
 
@@ -29,13 +30,7 @@ export async function alertUser(title: string, body: string) {
  */
 export async function scheduleExpiry(endAt: number, soon: string, expired: string, title: string, soonMin = 10) {
   await cancelExpiry();
-  const now = Date.now();
-  const plan: [number, string][] = [
-    [endAt - soonMin * 60000, soon],
-    [endAt, expired],
-  ];
-  for (const [at, body] of plan) {
-    if (at <= now + 5000) continue;
+  for (const { at, body } of expiryPlan(endAt, soon, expired, title, soonMin)) {
     try {
       await Notifications.scheduleNotificationAsync({
         content: { title, body, data: { kind: 'expiry' } },

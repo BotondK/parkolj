@@ -92,3 +92,19 @@ A `schema.sql` újrafuttatása létrehozza az `app_errors` táblát. Ha az app �
 Kívülről csak írható. Leggyakoribb hibák: `select * from public.error_summary;`. Régiek törlése (90 nap): `delete from public.app_errors where at < now() - interval '90 days';`
 
 Kipróbálás: a webes demóban a `?crashtest` paraméter szándékos hibát vált ki (https://botondk.github.io/parkolj/?crashtest).
+
+## Egygombos telepítés (ajánlott)
+
+Nem kell többé kézzel futtatni a `schema.sql`-t. Egyszer kell hozzá egy hozzáférési kulcs:
+
+1. Supabase → jobb felül a profilod → **Account preferences → Access Tokens → Generate new token** (név: `parkolj-github`). Másold ki.
+2. GitHub → a repo **Settings → Secrets and variables → Actions → New repository secret**, név: `SUPABASE_ACCESS_TOKEN`, érték: a kulcs.
+3. GitHub → **Actions → Supabase telepítés → Run workflow**.
+
+Ez lefuttatja a `schema.sql`-t, létrehozza a Web Push kulcsokat (csak először), telepíti a `push-send` függvényt, beállítja a percenkénti küldést, és a végén ellenőriz. Bármikor újra futtatható; a meglévő adatot és kulcsokat nem bántja.
+
+## Lejárati értesítés bezárt webappnál (Web Push)
+
+Telefonos appban a lejárati értesítést a telefon maga ütemezi. A webappnál (pl. iPhone-on a kezdőképernyőre mentve) ehhez szerver kell: a parkolás indításakor az app elküldi a `push_schedule` függvénynek, mikor szóljon (a beállított perccel előtte és lejáratkor), a böngésző push-címével együtt. A `push-send` függvény (supabase/functions/push-send) percenként kiküldi az esedékeseket, titkosítva. Leállításkor a `push_cancel` törli. Nincs benne fiók, rendszám vagy hely; a sor kiküldés után törlődik.
+
+iPhone-on csak a kezdőképernyőre mentett appban működik (iOS 16.4+), és az első parkolásnál engedélyezni kell az értesítéseket. A webes demóban a „gyorsított idő” kapcsolót ki kell kapcsolni az aktív parkolásnál, mert gyorsított időnél nem ütemez.

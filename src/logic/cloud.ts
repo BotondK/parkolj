@@ -151,6 +151,12 @@ export function makeCloud(cfg: CloudConfig, f: Fetch = fetch) {
     /** Névtelen használati események (zárt béta); felhasználói azonosító nélkül, belépve sem kötjük a fiókhoz */
     sendEvents: (events: { sid: string; name: string; at: string; lang: string; platform: string; props: Record<string, unknown> }[]) =>
       call<unknown>('/rest/v1/events', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(events.map((e) => ({ sid: e.sid, name: e.name, at: e.at, lang: e.lang, platform: e.platform, props: e.props }))) }),
+    /** Web Push: a küldő nyilvános kulcsa (Edge Function), ezzel iratkozik fel a böngésző */
+    pushKey: () => call<{ publicKey: string }>('/functions/v1/push-send', { method: 'GET' }).then((r) => r.publicKey),
+    /** Lejárati értesítések ütemezése a bezárt webappnak; azonosító nélkül, a token csak ehhez a parkoláshoz tartozik */
+    pushSchedule: (token: string, sub: { endpoint: string; p256dh: string; auth: string }, jobs: { at: string; title: string; body: string }[]) =>
+      call<number>('/rest/v1/rpc/push_schedule', { method: 'POST', body: JSON.stringify({ p_token: token, p_endpoint: sub.endpoint, p_p256dh: sub.p256dh, p_auth: sub.auth, p_jobs: jobs }) }),
+    pushCancel: (token: string) => call<unknown>('/rest/v1/rpc/push_cancel', { method: 'POST', body: JSON.stringify({ p_token: token }) }),
     /** Névtelen hibajelentések (összeomlás); azonosító nélkül */
     sendCrashes: (rows: CrashReport[]) => call<unknown>('/rest/v1/app_errors', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(rows) }),
     /** „Nem volt hely” / „Hibás adat” jelzések; azonosító nélkül, belépve sem kötjük a fiókhoz */

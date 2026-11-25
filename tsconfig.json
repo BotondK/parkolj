@@ -6,6 +6,7 @@
   "exclude": [
     "tests",
     "node_modules",
-    "server"
+    "server",
+    "supabase/functions/push-send"
   ]
 }

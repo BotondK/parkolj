@@ -79,3 +79,34 @@ self.addEventListener('fetch', (e) => {
   }
   // Minden más (fiók, címkereső) a hálózatra megy, nem tároljuk
 });
+
+// Lejárati értesítés bezárt appnál (Web Push, supabase/functions/push-send). A tartalom titkosítva jön, a böngésző bontja ki.
+self.addEventListener('push', (e) => {
+  let d = {};
+  try {
+    d = e.data ? e.data.json() : {};
+  } catch {}
+  const title = d.title || 'Parkolj';
+  e.waitUntil(
+    self.registration.showNotification(title, {
+      body: d.body || '',
+      tag: d.tag || 'parkolj',
+      renotify: true,
+      icon: './apple-touch-icon.png',
+      badge: './apple-touch-icon.png',
+      data: { url: self.registration.scope },
+    }),
+  );
+});
+
+// Az értesítésre koppintva a már nyitott appra vált, vagy megnyitja
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || self.registration.scope;
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      const open = list.find((c) => c.url.startsWith(self.registration.scope));
+      return open ? open.focus() : self.clients.openWindow(url);
+    }),
+  );
+});
