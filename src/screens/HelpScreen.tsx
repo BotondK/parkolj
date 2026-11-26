@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, Text, View } from 'react-native';
+import { TOUR_UI } from '../logic/tour';
 import app from '../../app.json';
 import { Icon, type IconName } from '../components/icons';
 import { ListRow, PageHeader, Section, titleColor } from '../components/kit';
@@ -29,6 +30,7 @@ const HU = {
   features: 'Az alkalmazás fő funkciói',
   how: 'A mobilparkolás működése',
   faq: 'Gyakran ismételt kérdések',
+  tourSub: 'Egy perces, lépésenkénti bemutató egy estéről (kivetítőre is)',
   fbTitle: 'Visszajelzés az app működéséről',
   fbBody: 'Írd meg, mi nem működik, vagy mit csinálnál másképp. Minden visszajelzést elolvasunk.',
   fbBtn: 'Visszajelzés küldése',
@@ -126,6 +128,7 @@ const EN: HelpStrings = {
   features: 'Main features of the app',
   how: 'How mobile parking works',
   faq: 'Frequently asked questions',
+  tourSub: 'A one-minute step-by-step walkthrough of an evening (also for a projector)',
   fbTitle: 'Feedback about the app',
   fbBody: 'Tell us what does not work or what you would do differently. We read every message.',
   fbBtn: 'Send feedback',
@@ -216,6 +219,7 @@ const DE: HelpStrings = {
   features: 'Die wichtigsten Funktionen',
   how: 'So funktioniert Handyparken',
   faq: 'Häufige Fragen',
+  tourSub: 'Eine einminütige Schritt-für-Schritt-Tour durch einen Abend (auch für den Beamer)',
   fbTitle: 'Feedback zur App',
   fbBody: 'Schreib uns, was nicht funktioniert oder was du anders machen würdest. Wir lesen jede Nachricht.',
   fbBtn: 'Feedback senden',
@@ -497,6 +501,7 @@ export default function HelpScreen({ t, lang, district, onBack, openFeedback, op
         <ListRow icon="star" label={s.features} onPress={() => setSub('features')} />
         <ListRow icon="ticket" label={s.how} onPress={() => setSub('how')} />
         <ListRow icon="help" label={s.faq} onPress={() => setSub('faq')} />
+        {Platform.OS === 'web' && typeof window !== 'undefined' && <ListRow icon="map" label={TOUR_UI[lang].start} sub={s.tourSub} onPress={() => window.location.assign(window.location.pathname + '?bemutato')} />}
         <InfoCard icon="chat" title={s.fbTitle} body={s.fbBody} last>
           <OutlineBtn icon="chat" text={s.fbBtn} onPress={openFeedback} />
         </InfoCard>

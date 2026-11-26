@@ -9,7 +9,7 @@ import type { MapMarker } from './src/components/mapTypes';
 import { Icon, type IconName } from './src/components/icons';
 import { ListRow, Section, titleColor } from './src/components/kit';
 import { applyTheme, BackLink, C, Chip, isDark, PrimaryButton, Row, styles, zoneText } from './src/components/ui';
-import { placeName, type Place } from './src/data/places';
+import { PLACES, placeName, type Place } from './src/data/places';
 import type { LatLng } from './src/data/zones';
 import { STRINGS, type Lang } from './src/i18n';
 import { ACC, DEMO_COUPONS } from './src/i18nAccount';
@@ -35,6 +35,7 @@ import { eventStay } from './src/logic/event';
 import { configureStats, track } from './src/logic/analytics';
 import { configureCrash, setCrashScreen } from './src/logic/crash';
 import { buildReport, SEARCH_BUCKETS, type ReportKind } from './src/logic/reportCore';
+import { TOUR_STEPS, TOUR_TEXT, TOUR_UI, type TourStepId } from './src/logic/tour';
 import { flushReports, loadHotspots, loadSearchStats, sendReport } from './src/logic/reports';
 import { driveToUrl, prSuggestion, transitUrl } from './src/logic/parkRide';
 import { rememberPlace, topFrequent, type FrequentPlace } from './src/logic/frequent';
@@ -80,6 +81,8 @@ const STAY_CHOICES = [30, 60, 120, 180, 240];
 const PAGE_Q = Platform.OS === 'web' && typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 const CITY_PAGE = !!PAGE_Q?.has('varos');
 const BETA_PAGE = !!PAGE_Q?.has('beta');
+/** Bemutató mód (?bemutato): lépésenként végigvezet egy estén, felirattal (BKK-, befektetői bemutatóhoz) */
+const TOUR_START = !!PAGE_Q?.has('bemutato');
 
 registerServiceWorker();
 
@@ -196,7 +199,7 @@ function Main() {
       setCredit(cr);
       setUsedCoupons(uc);
       if (cloud) setAuthSession(await loadJSON<AuthSession | null>('auth', null));
-      setOnboarded(await loadJSON<boolean>('onboarded', false));
+      setOnboarded(TOUR_START || (await loadJSON<boolean>('onboarded', false)));
       if (c) {
         setCars(c);
         setCarId(c.find((x) => x.id === dc)?.id ?? c[0]?.id ?? null);
@@ -1020,6 +1023,83 @@ function Main() {
     { icon: 'info', label: a.privacy, onPress: () => openMenuPage('privacy') },
     { icon: 'parking', label: a.about, onPress: () => openMenuPage('about') },
   ];
+  // --- Bemutató mód ---
+  const [tour, setTour] = useState<number | null>(null);
+  const tourEnter = (id: TourStepId) => {
+    switch (id) {
+      case 'intro':
+        reset();
+        setTabRaw('park');
+        setDemoSpeed(true);
+        return;
+      case 'options':
+        pickDest(PLACES.find((p) => p.id === 'opera') ?? PLACES[0]);
+        return;
+      case 'garage': {
+        const g = options.find((o) => o.kind === 'garage');
+        if (g) setSelectedId(g.id);
+        // A bemutató weben fut: a javaslatlistát a garázsig görgeti, hogy látsszon mind a három
+        if (Platform.OS === 'web') setTimeout(() => document.querySelector('[data-testid="opt-garage"]')?.scrollIntoView({ block: 'end', behavior: 'smooth' }), 150);
+        return;
+      }
+      case 'navigate': {
+        const f = options.find((o) => o.kind === 'fastest') ?? options[0];
+        if (!f) return;
+        setSelectedId(f.id);
+        setDuration(Math.min(stay, f.maxMinutes ?? stay));
+        setStep('navigate');
+        return;
+      }
+      case 'pay':
+        setStep('pay');
+        return;
+      case 'active':
+        startSession();
+        return;
+      case 'stop':
+        stopSession();
+        return;
+    }
+  };
+  const tourGo = (i: number) => {
+    setTour(i);
+    tourEnter(TOUR_STEPS[i]);
+  };
+  useEffect(() => {
+    if (loaded && TOUR_START) tourGo(0);
+  }, [loaded]);
+  const tourCard =
+    tour == null ? null : (
+      <View testID="tour-card" role="dialog" aria-label={TOUR_TEXT[lang][TOUR_STEPS[tour]].title} style={{ position: 'absolute', top: wide ? 100 : 80, left: wide ? 24 : 12, right: wide ? undefined : 12, maxWidth: 440, zIndex: 1200, backgroundColor: C.card, borderRadius: 18, padding: 16, borderWidth: 2, borderColor: C.brand, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Text style={{ flex: 1, fontSize: 18, fontWeight: '800', color: titleColor() }}>{TOUR_TEXT[lang][TOUR_STEPS[tour]].title}</Text>
+          <Text style={{ color: C.sub, fontSize: 13, fontWeight: '700' }}>
+            {tour + 1}/{TOUR_STEPS.length}
+          </Text>
+          <Pressable onPress={() => setTour(null)} role="button" accessibilityLabel={TOUR_UI[lang].close} hitSlop={10}>
+            <Icon name="close" size={20} color={C.sub} />
+          </Pressable>
+        </View>
+        <Text style={{ color: C.text, fontSize: 15, lineHeight: 21, marginTop: 6 }}>{TOUR_TEXT[lang][TOUR_STEPS[tour]].body}</Text>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+          {tour < TOUR_STEPS.length - 1 ? (
+            <Pressable testID="tour-next" onPress={() => tourGo(tour + 1)} role="button" style={{ backgroundColor: C.brand, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 18 }}>
+              <Text style={{ color: C.onBrand, fontWeight: '700' }}>{TOUR_UI[lang].next} →</Text>
+            </Pressable>
+          ) : (
+            <>
+              <Pressable onPress={() => Linking.openURL(window.location.pathname + '?varos')} role="link" style={{ backgroundColor: C.brand, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 18 }}>
+                <Text style={{ color: C.onBrand, fontWeight: '700' }}>{TOUR_UI[lang].city} ↗</Text>
+              </Pressable>
+              <Pressable onPress={() => tourGo(0)} role="button" style={{ borderWidth: 2, borderColor: C.brand, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 16 }}>
+                <Text style={{ color: titleColor(), fontWeight: '700' }}>{TOUR_UI[lang].again}</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+      </View>
+    );
+
   // Ctrl+U (Macen Cmd+U): hibabejelentés, mint a BudapestGO-ban
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
@@ -1035,6 +1115,7 @@ function Main() {
 
   const map = (
     <View style={{ flex: 1 }}>
+      {tourCard}
       <ParkingMap
         markers={markers}
         selectedId={selectedId}
@@ -1209,6 +1290,7 @@ function Main() {
           )}
           {options.map((o) => (
             <OptionCard
+              testID={`opt-${o.kind}`}
               key={o.id + o.kind}
               o={o}
               t={t}

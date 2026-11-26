@@ -138,6 +138,7 @@ export function OptionCard({
   stay,
   active,
   onPress,
+  testID,
 }: {
   o: ParkingOption;
   t: Strings;
@@ -145,12 +146,13 @@ export function OptionCard({
   stay: number;
   active: boolean;
   onPress: () => void;
+  testID?: string;
 }) {
   const color = MARKER_COLORS[o.kind];
   const sub = o.street && o.kind !== 'garage' ? `${o.street} · ${o.kind === 'fastest' ? t.fastestSub : o.surer ? t.surerSub : t.cheapestSub}` : o.kind === 'fastest' ? t.fastestSub : o.kind === 'cheapest' ? (o.surer ? t.surerSub : t.cheapestSub) : t.garageSub;
   const over = o.maxMinutes != null && stay > o.maxMinutes;
   return (
-    <Pressable onPress={onPress} style={[styles.card, styles.option, active && { borderColor: color, borderWidth: 2 }]}>
+    <Pressable testID={testID} onPress={onPress} style={[styles.card, styles.option, active && { borderColor: color, borderWidth: 2 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={[styles.badge, { backgroundColor: color, borderRadius: o.kind === 'garage' ? 8 : 999 }]}>
           <Text style={{ color: '#fff', fontWeight: '800' }}>{o.kind === 'fastest' ? '1' : o.kind === 'cheapest' ? '2' : 'P'}</Text>
