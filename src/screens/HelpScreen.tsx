@@ -40,8 +40,8 @@ const HU = {
   cityLink: 'Fővárosi parkolási tájékoztató (bkk.hu)',
   docs: 'Dokumentumok',
   privacy: 'Adatkezelési tájékoztató',
-  terms: 'ÁSZF',
-  termsSoon: 'A fizetős indulás előtt készül el',
+  terms: 'Béta felhasználási feltételek',
+  termsSoon: 'A teljes ÁSZF a fizetős indulás előtt készül el',
   a11y: 'Akadálymentesítési nyilatkozat',
   licenses: 'Licencek és adatforrások',
   version: (v: string) => `Verzió: ${v} (prototípus)`,
@@ -138,8 +138,8 @@ const EN: HelpStrings = {
   cityLink: 'City parking information (bkk.hu)',
   docs: 'Documents',
   privacy: 'Privacy notice',
-  terms: 'Terms and conditions',
-  termsSoon: 'Coming before the paid launch',
+  terms: 'Beta terms of use',
+  termsSoon: 'Full terms and conditions come before the paid launch',
   a11y: 'Accessibility statement',
   licenses: 'Licences and data sources',
   version: (v: string) => `Version: ${v} (prototype)`,
@@ -229,8 +229,8 @@ const DE: HelpStrings = {
   cityLink: 'Parkinformationen der Stadt (bkk.hu)',
   docs: 'Dokumente',
   privacy: 'Datenschutzhinweis',
-  terms: 'AGB',
-  termsSoon: 'Kommt vor dem kostenpflichtigen Start',
+  terms: 'Beta-Nutzungsbedingungen',
+  termsSoon: 'Vollständige AGB vor dem kostenpflichtigen Start',
   a11y: 'Erklärung zur Barrierefreiheit',
   licenses: 'Lizenzen und Datenquellen',
   version: (v: string) => `Version: ${v} (Prototyp)`,
@@ -389,7 +389,7 @@ function Legend({ s, t }: { s: HelpStrings; t: Strings }) {
   );
 }
 
-export default function HelpScreen({ t, lang, district, onBack, openFeedback, openPrivacy, initial = 'home' }: { t: Strings; lang: Lang; district?: string | null; onBack: () => void; openFeedback: () => void; openPrivacy: () => void; initial?: 'home' | 'about' }) {
+export default function HelpScreen({ t, lang, district, onBack, openFeedback, openPrivacy, openTerms, initial = 'home' }: { t: Strings; lang: Lang; district?: string | null; onBack: () => void; openFeedback: () => void; openPrivacy: () => void; openTerms: () => void; initial?: 'home' | 'about' }) {
   const [sub, setSub] = useState<Sub>(initial);
   const [openQ, setOpenQ] = useState<number | null>(null);
   const s = S[lang] ?? HU;
@@ -413,6 +413,7 @@ export default function HelpScreen({ t, lang, district, onBack, openFeedback, op
         <Section>
           <ListRow icon="help" label={s.title} onPress={() => setSub('home')} />
           <ListRow label={s.privacy} onPress={openPrivacy} />
+          <ListRow label={s.terms} onPress={openTerms} />
           <ListRow label={s.a11y} onPress={() => setSub('a11y')} />
           <ListRow label={s.licenses} onPress={() => setSub('licenses')} last />
         </Section>
@@ -515,7 +516,7 @@ export default function HelpScreen({ t, lang, district, onBack, openFeedback, op
 
       <Section title={s.docs}>
         <ListRow label={s.privacy} onPress={openPrivacy} />
-        <ListRow label={s.terms} sub={s.termsSoon} />
+        <ListRow label={s.terms} sub={s.termsSoon} onPress={openTerms} />
         <ListRow label={s.a11y} onPress={() => setSub('a11y')} />
         <ListRow label={s.licenses} onPress={() => setSub('licenses')} last />
       </Section>

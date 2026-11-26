@@ -43,6 +43,12 @@ test('súgó: minden aloldal megnyílik, akadálymentes', async ({ page }) => {
   await page.getByText('Akadálymentesítési nyilatkozat').click();
   await expect(page.getByText(/WCAG 2.1 AA/)).toBeVisible();
   await back();
+  await page.getByText('Béta felhasználási feltételek').click();
+  await expect(page.getByTestId('terms')).toContainText('A fizetés a bétában nem valódi');
+  await expect(page.getByTestId('terms')).toContainText('helyszíni táblák');
+  issues.push(...(await axe(page)).map((v) => `feltételek: ${v}`));
+  await openMenu(page);
+  await page.getByText('Információk és súgó').click();
   await page.getByText('Licencek és adatforrások').click();
   await expect(page.getByText('© OpenStreetMap közreműködők, ODbL licenc')).toBeVisible();
   await back();
@@ -81,4 +87,13 @@ test('asztali menü: pirula, lenyíló menü, nyelv almenü, Ctrl+U, bal sáv al
   await expect(page.getByTestId('side-bug')).toContainText('Hibabejelentés (Ctrl+U)');
   await page.getByRole('button', { name: 'Névjegy' }).click();
   await expect(page.getByTestId('help-about')).toContainText('Verzió: 0.3.0');
+});
+
+test('béta oldal: a felhasználási feltételek megnyílnak és vissza lehet lépni', async ({ page }) => {
+  await page.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+  await page.goto('./?beta&lang=en');
+  await page.getByTestId('beta-terms').click();
+  await expect(page.getByTestId('terms')).toContainText('Payment in the beta is not real');
+  await page.getByRole('button', { name: 'Vissza' }).first().click();
+  await expect(page.getByTestId('beta-terms')).toBeVisible();
 });

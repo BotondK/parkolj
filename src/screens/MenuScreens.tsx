@@ -20,12 +20,13 @@ import {
   PLUS_MONTHLY_FT,
 } from '../types';
 import PrivacyScreen from './PrivacyScreen';
+import TermsScreen from './TermsScreen';
 import HelpScreen from './HelpScreen';
 import WidgetsScreen from './WidgetsScreen';
 import type { WidgetAction, WidgetData } from '../widgets/widgetModel';
 import { PlusBadge, PlusPage } from './PlusScreens';
 
-export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback' | 'plus' | 'privacy' | 'widgets' | 'about';
+export type MenuPage = 'home' | 'account' | 'notes' | 'settings' | 'payment' | 'cards' | 'profiles' | 'coupon' | 'info' | 'feedback' | 'plus' | 'privacy' | 'terms' | 'widgets' | 'about';
 
 export type MenuProps = {
   /** A felhasználó kerülete (GPS alapján), a lakossági engedély linkjéhez */
@@ -103,12 +104,14 @@ export default function MenuScreens(p: MenuProps) {
       return <FeedbackPage {...p} onBack={back()} />;
     case 'privacy':
       return <PrivacyScreen lang={p.lang} onBack={back()} />;
+    case 'terms':
+      return <TermsScreen lang={p.lang} onBack={back()} />;
     case 'widgets':
       return <WidgetsScreen lang={p.lang} data={p.widget.data} onAction={p.widget.onAction} onBack={back()} />;
     case 'about':
-      return <HelpScreen t={p.t} lang={p.lang} district={p.district} initial="about" onBack={back()} openFeedback={() => setPage('feedback')} openPrivacy={() => setPage('privacy')} />;
+      return <HelpScreen t={p.t} lang={p.lang} district={p.district} initial="about" onBack={back()} openFeedback={() => setPage('feedback')} openPrivacy={() => setPage('privacy')} openTerms={() => setPage('terms')} />;
     case 'info':
-      return <HelpScreen t={p.t} lang={p.lang} district={p.district} onBack={back()} openFeedback={() => setPage('feedback')} openPrivacy={() => setPage('privacy')} />;
+      return <HelpScreen t={p.t} lang={p.lang} district={p.district} onBack={back()} openFeedback={() => setPage('feedback')} openPrivacy={() => setPage('privacy')} openTerms={() => setPage('terms')} />;
     default:
       return <MenuHome {...p} />;
   }

@@ -6,6 +6,7 @@ import type { Lang } from '../i18n';
 import { BETA_FREQS, BETA_PLATFORMS, BETA_WHO, betaError, betaRow, type BetaForm } from '../logic/betaCore';
 import { cloud } from '../logic/cloud';
 import PrivacyScreen from './PrivacyScreen';
+import TermsScreen, { TERMS } from './TermsScreen';
 
 // Jelentkezés a zárt bétára (a webes demóban: ?beta). Magyarul, angolul és németül; a cím csak a meghívóhoz kell.
 
@@ -125,7 +126,7 @@ export default function BetaScreen() {
   const [form, setForm] = useState<BetaForm>({ email: '', platform: null, freq: null, who: null, consent: false });
   const [tried, setTried] = useState(false);
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'fail' | 'off'>('idle');
-  const [privacy, setPrivacy] = useState(false);
+  const [doc, setDoc] = useState<null | 'privacy' | 'terms'>(null);
   useEffect(() => {
     if (Platform.OS === 'web') document.title = `Parkolj · ${t.title}`;
   }, [t.title]);
@@ -149,10 +150,10 @@ export default function BetaScreen() {
 
   const wrap = { padding: 16, paddingBottom: 48, width: '100%' as const, maxWidth: 560, alignSelf: 'center' as const, gap: 16 };
 
-  if (privacy)
+  if (doc)
     return (
       <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={wrap}>
-        <PrivacyScreen lang={lang} onBack={() => setPrivacy(false)} />
+        {doc === 'privacy' ? <PrivacyScreen lang={lang} onBack={() => setDoc(null)} /> : <TermsScreen lang={lang} onBack={() => setDoc(null)} />}
       </ScrollView>
     );
 
@@ -197,9 +198,14 @@ export default function BetaScreen() {
               </View>
               <Text style={{ flex: 1, color: C.text, fontSize: 14, lineHeight: 20 }}>{t.consent}</Text>
             </Pressable>
-            <Pressable role="link" onPress={() => setPrivacy(true)} style={{ alignSelf: 'flex-start', paddingVertical: 8, marginLeft: 36 }}>
-              <Text style={{ color: titleColor(), fontWeight: '700', textDecorationLine: 'underline' }}>{t.privacy}</Text>
-            </Pressable>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 18, marginLeft: 36 }}>
+              <Pressable role="link" onPress={() => setDoc('privacy')} style={{ paddingVertical: 8 }}>
+                <Text style={{ color: titleColor(), fontWeight: '700', textDecorationLine: 'underline' }}>{t.privacy}</Text>
+              </Pressable>
+              <Pressable role="link" testID="beta-terms" onPress={() => setDoc('terms')} style={{ paddingVertical: 8 }}>
+                <Text style={{ color: titleColor(), fontWeight: '700', textDecorationLine: 'underline' }}>{TERMS[lang].title}</Text>
+              </Pressable>
+            </View>
 
             {tried && err && err !== 'email' && (
               <Text role="alert" style={{ color: C.danger, fontSize: 14, marginTop: 6 }}>
