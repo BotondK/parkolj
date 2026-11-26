@@ -41,9 +41,10 @@ test('célpont → 3 javaslat → navigáció → fizetés → aktív jegy → l
   await expect(page.getByTestId('found-card')).toContainText('Mennyi ideig kerestél helyet?');
   await page.getByText('Pár perc', { exact: true }).click();
   await expect(page.getByTestId('found-card')).toContainText('Köszönjük!');
-  const q = await page.evaluate(() => localStorage.getItem('parkolj:reportQueue') ?? '');
-  expect(q).toContain('"kind":"found"');
-  expect(q).toContain('"search_min":3');
+  // A sorba írás a küldési kísérlet után történik (aszinkron), ezért várunk rá
+  const queue = () => page.evaluate(() => localStorage.getItem('parkolj:reportQueue') ?? '');
+  await expect.poll(queue, { timeout: 10000 }).toContain('"kind":"found"');
+  expect(await queue()).toContain('"search_min":3');
   await page.getByText('Kész').click();
 
   await tab(page, 'Parkolásaim').click();
@@ -205,7 +206,7 @@ test('névtelen statisztika: lépések sorba kerülnek személyes adat nélkül,
   await expect.poll(async () => (await queue()).map((e) => e.name), { timeout: 10_000 }).toEqual(expect.arrayContaining(['app_open', 'dest_selected', 'navigate', 'start']));
   const raw = JSON.stringify(await queue());
   expect(raw).not.toContain('ABC');
-  expect(raw).not.toMatch(/47\.\d{3}/);
+  expect(raw).not.toMatch(/(?<!\d:)47\.\d{3}/); // szélességi fok, nem időbélyeg másodperce
 
   await openMenu(page);
   await page.getByText('Beállítások').click();

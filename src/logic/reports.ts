@@ -3,27 +3,42 @@ import { cloud } from './cloud';
 import { enqueueReport, setHotspots, setSearchStats, type Hotspot, type SearchStat, type SpotReport } from './reportCore';
 import { loadJSON, saveJSON } from './storage';
 
-export async function sendReport(r: SpotReport | null): Promise<'sent' | 'queued' | 'invalid'> {
-  if (!r) return 'invalid';
-  const q = enqueueReport(await loadJSON<SpotReport[]>('reportQueue', []), r);
-  const left = await flushReports(q);
-  return left.length ? 'queued' : 'sent';
+// Egyszerre egy művelet fér a sorhoz: két egymás utáni jelzés ne írja felül egymást
+let lock: Promise<unknown> = Promise.resolve();
+const serial = <T>(fn: () => Promise<T>): Promise<T> => {
+  const run = lock.then(fn, fn);
+  lock = run.catch(() => undefined);
+  return run;
+};
+
+export function sendReport(r: SpotReport | null): Promise<'sent' | 'queued' | 'invalid'> {
+  if (!r) return Promise.resolve('invalid');
+  return serial(async () => {
+    // Előbb a készülékre mentjük, hogy a küldés közbeni bezárásnál se vesszen el
+    const q = enqueueReport(await loadJSON<SpotReport[]>('reportQueue', []), r);
+    await saveJSON('reportQueue', q);
+    const left = await flushNow(q);
+    return left.length ? 'queued' : 'sent';
+  });
 }
 
-export async function flushReports(q?: SpotReport[]): Promise<SpotReport[]> {
+export function flushReports(): Promise<SpotReport[]> {
+  return serial(() => flushNow());
+}
+
+async function flushNow(q?: SpotReport[]): Promise<SpotReport[]> {
   const queue = q ?? (await loadJSON<SpotReport[]>('reportQueue', []));
+  if (!cloud || !queue.length) return queue;
   let left = queue;
-  if (cloud && queue.length) {
-    try {
-      await cloud.sendReports(queue);
-      left = [];
-    } catch (e) {
-      // Elutasított (hibás) jelzés: eldobjuk. A 404 (még nincs tábla a szerveren) után megtartjuk, és később újra próbáljuk.
-      const status = (e as { status?: number })?.status ?? 0;
-      if (status >= 400 && status < 500 && status !== 404) left = [];
-    }
+  try {
+    await cloud.sendReports(queue);
+    left = [];
+  } catch (e) {
+    // Elutasított (hibás) jelzés: eldobjuk. A 404 (még nincs tábla a szerveren) után megtartjuk, és később újra próbáljuk.
+    const status = (e as { status?: number })?.status ?? 0;
+    if (status >= 400 && status < 500 && status !== 404) left = [];
   }
-  await saveJSON('reportQueue', left);
+  if (left !== queue) await saveJSON('reportQueue', left);
   return left;
 }
 

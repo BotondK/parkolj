@@ -25,7 +25,7 @@ test('hibaképernyő: futó jegy látszik, jelentés névtelen, újraindítás m
   if (process.env.CI) await expect.poll(() => sent.length).toBeGreaterThan(0);
   for (const r of sent) {
     expect(r.kind).toBe('render');
-    expect(JSON.stringify(r)).not.toMatch(/ABC-123|teszt@pelda|47\.49|19\.04/);
+    expect(JSON.stringify(r)).not.toMatch(/ABC-123|teszt@pelda|(?<!\d:)47\.49|(?<!\d:)19\.04/);
     expect(r.message).toContain('<rsz>');
   }
   await page.getByRole('button', { name: 'Újraindítás' }).click();
