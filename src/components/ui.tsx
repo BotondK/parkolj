@@ -81,9 +81,9 @@ export function Chip({ text, active, onPress }: { text: string; active: boolean;
   );
 }
 
-export function PrimaryButton({ text, onPress, disabled }: { text: string; onPress: () => void; disabled?: boolean }) {
+export function PrimaryButton({ text, onPress, disabled, testID }: { text: string; onPress: () => void; disabled?: boolean; testID?: string }) {
   return (
-    <Pressable role="button" aria-disabled={!!disabled} disabled={disabled} onPress={disabled ? undefined : onPress} style={[styles.primary, disabled && { opacity: 0.4 }]}>
+    <Pressable role="button" testID={testID} aria-disabled={!!disabled} disabled={disabled} onPress={disabled ? undefined : onPress} style={[styles.primary, disabled && { opacity: 0.4 }]}>
       <Text style={styles.primaryText}>{text}</Text>
     </Pressable>
   );

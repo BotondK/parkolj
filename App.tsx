@@ -37,6 +37,7 @@ import { configureCrash, setCrashScreen } from './src/logic/crash';
 import { buildReport, SEARCH_BUCKETS, type ReportKind } from './src/logic/reportCore';
 import { TOUR_STEPS, TOUR_TEXT, TOUR_UI, type TourStepId } from './src/logic/tour';
 import { flushReports, loadHotspots, loadSearchStats, sendReport } from './src/logic/reports';
+import { smsLimitMinutes } from './src/logic/sms';
 import { driveToUrl, prSuggestion, transitUrl } from './src/logic/parkRide';
 import { rememberPlace, topFrequent, type FrequentPlace } from './src/logic/frequent';
 import CarSpotCard from './src/components/CarSpotCard';
@@ -630,7 +631,7 @@ function Main() {
     }
     // Plusz: automatikus hosszabbítás lejárat előtt 2 perccel (3 órás szabály és keret betartva)
     const sessionPlus = settings.plus === 'monthly' || !!session.plusOnce;
-    if (sessionPlus && settings.autoExtend && shouldAutoExtend(session, settings.autoExtendMax, z?.maxMinutes)) {
+    if (sessionPlus && !session.sms && settings.autoExtend && shouldAutoExtend(session, settings.autoExtendMax, z?.maxMinutes)) {
       const durationMin = session.durationMin + AUTO_EXT_STEP_MIN;
       const end = formatClock(new Date(session.startedAt + durationMin * 60000));
       setSession({ ...session, durationMin, autoExtMin: (session.autoExtMin ?? 0) + AUTO_EXT_STEP_MIN, warnedSoon: false, warnedExpired: false });
@@ -648,12 +649,14 @@ function Main() {
       addNote(a.noteSoon, soonText);
       setSession({ ...session, warnedSoon: true });
     } else if (left <= 0 && !session.warnedExpired) {
+      // SMS-es parkolásnál nem a jegy jár le, hanem a zóna időkorlátja telik be
+      const expiredText = session.sms ? t.limitReached : t.alertExpired;
       setBanner({
         kind: 'danger',
-        text: t.alertExpired + (z ? t.expiredFine(formatFt(z.surcharge[0])) : ''),
+        text: expiredText + (z ? t.expiredFine(formatFt(z.surcharge[0])) : ''),
       });
-      if (!(SCHEDULES_IN_BACKGROUND && !demoSpeed)) alertUser(t.appName, t.alertExpired);
-      addNote(a.noteExpired, t.alertExpired);
+      if (!(SCHEDULES_IN_BACKGROUND && !demoSpeed)) alertUser(t.appName, expiredText);
+      addNote(a.noteExpired, expiredText);
       setSession({ ...session, warnedExpired: true });
     }
   }, [session, step, t, a, demoSpeed, settings.remind, settings.remindMin, settings.plus, settings.autoExtend, settings.autoExtendMax]);
@@ -671,7 +674,7 @@ function Main() {
     const pe = z ? paidEnd(z, new Date(session.startedAt)) : null;
     const end = pe ? Math.min(pe.getTime(), endAt) : endAt;
     // Kikapcsolt emlékeztetőnél csak a lejáratkor szól (a „hamarosan” időpont a múltba kerül, kimarad)
-    scheduleExpiry(end, a.soonIn(settings.remindMin), t.alertExpired, t.appName, settings.remind ? settings.remindMin : 100000);
+    scheduleExpiry(end, a.soonIn(settings.remindMin), session.sms ? t.limitReached : t.alertExpired, t.appName, settings.remind ? settings.remindMin : 100000);
   }, [loaded, step, endAt, demoSpeed, t, a, settings.remind, settings.remindMin]);
 
   // Fizetési lépésnél az alapértelmezett kártya és számlázási profil
@@ -723,8 +726,39 @@ function Main() {
     setStep('active');
   };
 
+  // Valódi parkolás SMS-ben (a mobilszolgáltatón át fizet): az app csak időzít, emlékeztet és a STOP-ot segíti
+  const startSmsSession = (number: string) => {
+    const car = cars.find((c) => c.id === carId);
+    if (!selected || !car || !number) return;
+    requestNotify();
+    setBanner(null);
+    const now = new Date();
+    const limit = smsLimitMinutes(selected.zone, now);
+    addNote(a.noteStartTitle, a.noteStarted(selected.zone ? `${t.zoneOf(selected.zone.id)}, ${car.plate}` : car.plate, formatClock(new Date(now.getTime() + limit * 60000))));
+    setSession({
+      payLabel: t.smsPaid,
+      option: selected,
+      placeName: dest ? placeName(dest, lang) : t.hereTitle,
+      plate: car.plate,
+      country: car.country,
+      durationMin: limit,
+      startedAt: now.getTime(),
+      elapsedSec: 0,
+      warnedSoon: false,
+      warnedExpired: false,
+      sms: { number },
+    });
+    track('start', { option: selected.kind, zone: selected.zone?.id ?? 'garage', minutes: limit, plus: false, sms: true });
+    setStep('active');
+  };
+
   const extend = () => {
     if (!session) return;
+    // SMS-es parkolás magától fut a leállításig, nincs mit hosszabbítani
+    if (session.sms) {
+      setBanner({ kind: 'warn', text: t.smsActive });
+      return;
+    }
     const max = session.option.zone?.maxMinutes;
     if (max && session.durationMin + 15 > max) {
       setBanner({ kind: 'danger', text: t.limitReached });
@@ -743,7 +777,7 @@ function Main() {
       const z = session.option.zone;
       const minutes = Math.max(1, Math.round(Math.min(session.elapsedSec / 60, session.durationMin)));
       const gross = chargeFor(session);
-      const used = Math.min(credit, gross);
+      const used = session.sms ? 0 : Math.min(credit, gross);
       if (used) setCredit((c) => c - used);
       addNote(a.noteStopTitle, a.noteStopped(formatFt(gross - used)));
       setHistory((h) => [
@@ -1408,6 +1442,9 @@ function Main() {
           onBack={() => setStep(hereOpt ? 'search' : 'navigate')}
           onPay={startSession}
           onReport={(kind, note) => report(kind, selected, note)}
+          smsPrefix={settings.smsPrefix}
+          setSmsPrefix={(smsPrefix) => patchSettings({ smsPrefix })}
+          onSmsStarted={startSmsSession}
         />
       )}
 

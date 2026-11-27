@@ -66,6 +66,7 @@ Expo (React Native + TypeScript) app, ami iOS-en, Androidon és weben is fut.
 58. „Mennyi ideig kerestél helyet?”: leállítás után egy koppintás (névtelen); az átlagos keresési idő zóna × napszak szerint javítja a „perc a célig” becslést, és a „Városnak” oldalon táblázatként látszik (`search_time_stats()`)
 59. Bemutató mód BKK-, befektetői és pályázati találkozókra: https://botondk.github.io/parkolj/?bemutato (vagy Súgó → Bemutató indítása); 8 lépésben végigvezet egy estén az Operától a leállításig és a városnak szóló oldalig, felirattal, magyarul, angolul és németül
 60. Béta felhasználási feltételek (tervezet, HU/EN/DE): a Súgóban, a Névjegyben és a béta jelentkezési oldalon. Kimondja, hogy a bétában a fizetés nem valódi, a díjat a szokott módon kell megfizetni; a fizetésnél is ezt írja ki. A teljes ÁSZF a fizetős indulás előtt jön
+61. Valódi parkolás SMS-ben (a terv SMS-tartaléka, a zárt bétához és a K1 kapuhoz): zónakód és szolgáltató (Yettel 20, Telekom 30, One 70) választása, a rendszám a szabály szerint (kötőjel nélkül, külföldinél „,SK”), előtöltött SMS; a visszaigazolás után az app időzít a zóna korlátjáig vagy a fizetős idő végéig, figyelmeztet, és egy gombbal előtölti a STOP SMS-t
 
 Tesztek: `npm test` (logika), `npm run e2e` (végigkattintós, a webes buildre), `cd server && npm test` (API). A webes demó csak akkor frissül, ha mind átmegy.
 

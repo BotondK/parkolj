@@ -14,6 +14,7 @@ import type { ParkingOption } from '../logic/recommend';
 import type { Lang, Strings } from '../i18n';
 import type { AccStrings } from '../i18nAccount';
 import { COUNTRIES, plateValid, type Car, type Session } from '../types';
+import { SMS_PREFIXES, SMS_STOP, smsNumber as smsNumberFor, smsNumberPretty, smsPlate, smsUri, type SmsPrefix } from '../logic/sms';
 
 export function chargeFor(s: Session) {
   const z = s.option.zone;
@@ -214,7 +215,15 @@ export function PayStep({
   onBack,
   onPay,
   onReport,
+  smsPrefix = '30',
+  setSmsPrefix,
+  onSmsStarted,
 }: {
+  /** Mobilszolgáltató előhívója (20/30/70) az SMS-es parkoláshoz */
+  smsPrefix?: SmsPrefix;
+  setSmsPrefix?: (p: SmsPrefix) => void;
+  /** Az SMS-t elküldte, és megjött a visszaigazolás: az app időzítője induljon */
+  onSmsStarted?: (number: string) => void;
   plusSlot?: React.ReactNode;
   /** Alkalmi Plusz díja, a fizetendőhöz adódik */
   plusFee?: number;
@@ -253,9 +262,12 @@ export function PayStep({
   const endsFree = pe && pe.getTime() < now.getTime() + duration * 60000;
   const paidMin = z ? chargeableMinutes(z, now, duration) : 0;
   const [code, setCode] = useState(z?.smsCode ?? '');
-  const smsNumber = code ? `+3630763${code}` : '';
+  const smsNumber = smsNumberFor(smsPrefix, code);
+  const [smsSent, setSmsSent] = useState(false);
   const end = new Date(Date.now() + duration * 60000);
-  const plate = cars.find((c) => c.id === carId)?.plate ?? '';
+  const car = cars.find((c) => c.id === carId);
+  const plate = car?.plate ?? '';
+  const smsBody = car ? smsPlate(car.plate, car.country) : '';
   const used = Math.min(credit, price);
   return (
     <View>
@@ -336,16 +348,40 @@ export function PayStep({
               </Pressable>
             ))}
           </ScrollView>
-          <Text style={{ fontWeight: '700', marginTop: 2, color: C.text }} selectable>
-            {plate} → {smsNumber}
+          {setSmsPrefix && (
+            <>
+              <Text style={{ color: C.sub, fontSize: 12, marginTop: 4 }}>{t.smsCarrier}</Text>
+              <View style={[styles.chipRow, { marginTop: 6 }]}>
+                {SMS_PREFIXES.map((o) => (
+                  <Chip key={o.prefix} text={`${o.label} (${o.prefix})`} active={smsPrefix === o.prefix} onPress={() => setSmsPrefix(o.prefix)} />
+                ))}
+              </View>
+            </>
+          )}
+          <Text testID="sms-preview" style={{ fontWeight: '700', marginTop: 8, color: C.text }} selectable>
+            {smsBody} → {smsNumberPretty(smsNumber)}
           </Text>
           <Pressable
-            onPress={() => (track('sms_open', { zone: z?.id ?? 'none' }), Linking.openURL(`sms:${smsNumber}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(plate)}`))}
-            style={[styles.navBtn, { marginTop: 10 }]}
+            role="button"
+            testID="sms-send"
+            disabled={!smsNumber || !smsBody}
+            onPress={() => {
+              track('sms_open', { zone: z?.id ?? 'none' });
+              setSmsSent(true);
+              Linking.openURL(smsUri(smsNumber, smsBody, Platform.OS === 'ios')).catch(() => undefined);
+            }}
+            style={[styles.navBtn, { marginTop: 10 }, (!smsNumber || !smsBody) && { opacity: 0.4 }]}
           >
             <Text style={styles.navBtnText}>{t.smsSend}</Text>
             <Text style={{ color: C.sub }}>✉</Text>
           </Pressable>
+          {smsSent && onSmsStarted && (
+            <View style={{ marginTop: 10, gap: 8 }}>
+              <Text style={{ color: C.text, fontSize: 14 }}>{t.smsSentQ}</Text>
+              <PrimaryButton testID="sms-started" text={t.smsStarted} onPress={() => onSmsStarted(smsNumber)} />
+            </View>
+          )}
+          <Text style={{ color: C.sub, fontSize: 12, marginTop: 8 }}>{t.smsFeeNote}</Text>
         </View>
       )}
     </View>
@@ -382,9 +418,17 @@ export function ActiveStep({
   const hh = Math.floor(leftSec / 3600);
   const mm = Math.floor((leftSec % 3600) / 60);
   const ss = leftSec % 60;
+  const [stopAsked, setStopAsked] = useState(false);
+  const sms = s.sms;
   return (
     <View>
       <Text style={styles.h1}>{t.active}</Text>
+      {sms && (
+        <View testID="sms-active" style={[styles.banner, { backgroundColor: C.soft, marginTop: 8, marginBottom: 0 }]}>
+          <Text style={{ color: C.text, fontWeight: '600' }}>{t.smsActive}</Text>
+          <Text style={{ color: C.sub, fontSize: 12, marginTop: 2 }}>{smsNumberPretty(sms.number)}</Text>
+        </View>
+      )}
       <Text style={styles.sub}>
         {s.plate} · {s.option.zone ? `${t.zoneOf(s.option.zone.id)}` : ''} · {t.endsAt} {formatClock(endAt)}
       </Text>
@@ -392,7 +436,7 @@ export function ActiveStep({
         <Text style={{ fontSize: 48, fontWeight: '800', color, fontVariant: ['tabular-nums'] }}>
           {hh}:{mm.toString().padStart(2, '0')}:{ss.toString().padStart(2, '0')}
         </Text>
-        <Text style={{ color: C.sub }}>{t.remaining}</Text>
+        <Text style={{ color: C.sub }}>{sms ? `${t.remaining} ${t.smsToLimit}` : t.remaining}</Text>
         <View style={styles.progress}>
           <View style={{ width: `${pct * 100}%`, height: '100%', backgroundColor: color, borderRadius: 99 }} />
         </View>
@@ -400,16 +444,40 @@ export function ActiveStep({
           {t.costSoFar}: <Text style={{ fontWeight: '800', color: C.text }}>{formatFt(chargeFor(s))}</Text>
         </Text>
       </View>
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-        <Pressable role="button" style={[styles.secondary, atLimit && { borderColor: C.line }]} onPress={onExtend}>
-          <Text style={[styles.secondaryText, atLimit && { color: C.sub }]}>{t.extend}</Text>
-        </Pressable>
-        <Pressable style={[styles.secondary, { borderColor: C.danger }]} onPress={onStop}>
-          <Text style={[styles.secondaryText, { color: C.danger }]}>{t.stop}</Text>
-        </Pressable>
-      </View>
+      {sms ? (
+        <View style={{ marginTop: 14, gap: 10 }}>
+          <View style={{ flexDirection: 'row' }}>
+          <Pressable
+            role="button"
+            testID="sms-stop"
+            style={[styles.secondary, { borderColor: C.danger }]}
+            onPress={() => {
+              setStopAsked(true);
+              Linking.openURL(smsUri(sms.number, SMS_STOP, Platform.OS === 'ios')).catch(() => undefined);
+            }}
+          >
+            <Text style={[styles.secondaryText, { color: C.danger }]}>{t.smsStop}</Text>
+          </Pressable>
+          </View>
+          {stopAsked && (
+            <View style={{ gap: 8 }}>
+              <Text style={{ color: C.text, fontSize: 14 }}>{t.smsStopSentQ}</Text>
+              <PrimaryButton testID="sms-stopped" text={t.smsStopDone} onPress={onStop} />
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+          <Pressable role="button" style={[styles.secondary, atLimit && { borderColor: C.line }]} onPress={onExtend}>
+            <Text style={[styles.secondaryText, atLimit && { color: C.sub }]}>{t.extend}</Text>
+          </Pressable>
+          <Pressable style={[styles.secondary, { borderColor: C.danger }]} onPress={onStop}>
+            <Text style={[styles.secondaryText, { color: C.danger }]}>{t.stop}</Text>
+          </Pressable>
+        </View>
+      )}
       {extra}
-      {atLimit && (
+      {atLimit && !sms && (
         <View style={[styles.card, { marginTop: 14, backgroundColor: C.warnSoft, borderColor: C.warnSoft }]}>
           <Text style={{ color: C.warn, fontWeight: '600' }}>{t.limitReached}</Text>
           <Pressable onPress={onGarage} style={{ marginTop: 8 }}>

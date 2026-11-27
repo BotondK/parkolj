@@ -24,6 +24,8 @@ export type Session = {
   spot?: string;
   /** Garázsszint (pl. „-2”, „0”); a fotó külön, csak a készüléken (carPhoto kulcs) */
   floor?: string;
+  /** SMS-ben indított valódi parkolás (a szolgáltatón át): ide megy a STOP */
+  sms?: { number: string };
 };
 
 /** A terv szerint a „Hol parkoltam” (szint, jegyzet, fotó) az MVP része, mindenkinek ingyenes. false: Plusz-funkció. */
@@ -113,6 +115,8 @@ export type Settings = {
   autoExtendMax: 30 | 60 | 120;
   /** Névtelen használati statisztika (zárt béta), kikapcsolható */
   stats: boolean;
+  /** Mobilszolgáltató előhívója az SMS-es parkoláshoz */
+  smsPrefix: '20' | '30' | '70';
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -129,6 +133,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoExtend: true,
   autoExtendMax: 60,
   stats: true,
+  smsPrefix: '30',
 };
 
 /** Parkolj Plusz árak (a bevételi modell szerint, a Simple Pro 69 Ft-ja alatt) */

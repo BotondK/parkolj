@@ -279,3 +279,29 @@ test('P+R javaslat belvárosi célnál, tömegközlekedési átadással', async 
   await expect(page.getByText(/perc a célig/).first()).toBeVisible();
   await expect(page.getByText('⚡ Leggyorsabb')).toHaveCount(1);
 });
+
+test('valódi parkolás SMS-ben: helyes szám és rendszám, időzítő a korlátig, leállítás STOP-pal', async ({ page }) => {
+  // Az sms: linket nem nyitjuk meg, csak elkapjuk
+  await page.evaluate(() => {
+    (window as unknown as { opened: string[] }).opened = [];
+    window.open = ((u: string) => ((window as unknown as { opened: string[] }).opened.push(String(u)), null)) as typeof window.open;
+  });
+  await page.getByPlaceholder('Hova szeretnél menni?').fill('opera');
+  await page.getByText('Magyar Állami Operaház').first().click();
+  await page.getByText('Navigálj oda').click();
+  await page.getByText(/Megérkeztem/).click();
+  await expect(page.getByText('Parkolás indítása')).toBeVisible();
+  await page.getByText('One (70)').click();
+  const preview = page.getByTestId('sms-preview');
+  await expect(preview).toContainText('ABC123 → +36 70 763 ');
+  await page.getByTestId('sms-send').click();
+  const opened = () => page.evaluate(() => (window as unknown as { opened: string[] }).opened);
+  expect((await opened())[0]).toMatch(/^sms:\+3670763\d{4}\?body=ABC123$/);
+  await page.getByTestId('sms-started').click();
+  await expect(page.getByTestId('sms-active')).toContainText('STOP');
+  await expect(page.getByText('+15 perc', { exact: true })).toHaveCount(0);
+  await page.getByTestId('sms-stop').click();
+  expect((await opened())[1]).toMatch(/^sms:\+3670763\d{4}\?body=STOP$/);
+  await page.getByTestId('sms-stopped').click();
+  await expect(page.getByText('Parkolás leállítva')).toBeVisible();
+});

@@ -123,9 +123,13 @@ function Ticket({ t, a, lang, s, onDetails, onExtend }: { t: Strings; a: AccStri
               {ok ? `${formatDuration(Math.ceil(leftSec / 60), lang)} ${t.remaining}` : a.expired} · {formatFt(chargeFor(s))}
             </Text>
           </View>
-          <Pressable onPress={onExtend} style={{ backgroundColor: C.primary, borderRadius: 30, paddingHorizontal: 18, paddingVertical: 12 }}>
-            <Text style={{ color: C.onPrimary, fontWeight: '800', fontSize: 16 }}>{t.extend}</Text>
-          </Pressable>
+          {s.sms ? (
+            <Text style={{ color: C.sub, fontSize: 13, fontWeight: '700' }}>SMS</Text>
+          ) : (
+            <Pressable onPress={onExtend} style={{ backgroundColor: C.primary, borderRadius: 30, paddingHorizontal: 18, paddingVertical: 12 }}>
+              <Text style={{ color: C.onPrimary, fontWeight: '800', fontSize: 16 }}>{t.extend}</Text>
+            </Pressable>
+          )}
         </View>
       </View>
       <Pressable onPress={onDetails} style={{ borderTopWidth: 1, borderColor: C.line, paddingVertical: 14, paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
